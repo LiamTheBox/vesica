@@ -13,6 +13,17 @@ Every milestone ends with a **gate**. A milestone is done only when its gate pas
 
 Status legend: ☐ todo · ◐ in progress · ☑ done
 
+## Where things stand (end of 2026-10-20)
+
+- **M0–M7:** code done, automated gates passed, tagged `m0`–`m7`. Every milestone's **phone check is still open**.
+- **After M7 (requested):** urine scales with the volume held over a thick muscle wall, with shaded cut faces;
+  the sphincter is a muscle ring above a urethra; Kegel recovers 4× faster and eases sphincter strain while held.
+- **Live:** https://liamthebox.github.io/vesica/ (deployed by GitHub Actions on every push to `main`). Check that
+  Settings → Pages → Source is "GitHub Actions", or the old branch publish can overwrite the app.
+- **Tests:** `npm run check` green (88 unit tests). Browser tests were paused at the user's request; last full run
+  85 passed. One flaky pinch-zoom test is open (KNOWN_ISSUES).
+- **Next:** phone checks (on the live site), then M8 (minigames).
+
 ---
 
 ## M0 — Baseline & verification harness ◐ (automated gate passed; phone check pending)

@@ -11,6 +11,13 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 - **Workaround (in place):** timing-dependent tests pause the loop and step simulated time with `window.__vesica.step(n)`.
   Visual effects (springs, ripples) still run on frame time, so screenshot probes need generous waits.
 
+### Pinch-zoom e2e test fails now and then
+- **Seen:** 2026-10-20, once on Pixel 7 (`touch.spec.js`, "pinching with another tool zooms the camera and never
+  pokes"): the camera distance didn't change at all (24.2492 before and after), so the pinch didn't register.
+  It passed in the full run just before. The machine was under heavy outside load at the time.
+- **Next:** check whether the camera starts at OrbitControls' max distance (StageFit sets it to 1.6 × the fitted
+  distance) so a pinch in one direction can't move it, or whether the CDP touch events arrive too fast under load.
+
 ## Fixed
 
 | Issue | Fixed in |
