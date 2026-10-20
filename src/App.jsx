@@ -4,8 +4,10 @@ import Scene from './components/3d/Scene'
 import { useAudioAndHaptics } from './audio/useAudioAndHaptics'
 import { audio } from './audio/AudioManager'
 import { useSimStore } from './store/useSimStore'
+import { countRender } from './debug/devHook'
 
 function App() {
+  countRender('App')
   useAudioAndHaptics()
   const [started, setStarted] = useState(false)
 

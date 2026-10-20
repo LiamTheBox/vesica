@@ -284,6 +284,11 @@ class AudioManager {
     }
   }
 
+  playSquish(force = 1.0) {
+    if (!this.sfxEnabled || this.isMasterMuted) return
+    this.playSqueezeFM(force)
+  }
+
   playSlap(intensity = 1.0) {
     if (!this.sfxEnabled || this.isMasterMuted) return
     this.initCtx(); const now = this.ctx.currentTime

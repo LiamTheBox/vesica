@@ -15,24 +15,34 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 
 ---
 
-## M0 — Baseline & verification harness ☐
+## M0 — Baseline & verification harness ◐ (automated gate passed; phone check pending)
 
 Set up the tools every later milestone relies on. No gameplay changes.
 
-- ☐ `git init`, commit the current state as `baseline`.
-- ☐ Add an `.nvmrc`/`.node-version` (Node 22; it's installed through fnm but not on PATH).
-- ☐ Add **Vitest** for unit tests and **Playwright** for browser tests (reuse the cached Chromium).
-- ☐ Playwright projects for phone emulation with touch: iPhone SE, iPhone 15 Pro, Pixel 7, iPad, plus one landscape phone.
-- ☐ Dev-only debug hook `window.__vesica` (read state, set state, step N frames, count renders),
-  so tests can put the game into exact states. It's not in production builds.
-- ☐ Scripts: `test`, `test:e2e`, `check` (lint + test + build), `dev:phone` (HTTPS dev server on the LAN.
-  Device motion and service workers need a secure context on a real phone).
-- ☐ Smoke test: app loads on each device profile with no console errors, the canvas renders, tapping "Tap to start" dismisses the overlay, and a screenshot is saved.
-- ☐ Parity reference: a Playwright helper that opens the **original HTML** and reads its global `sim`
-  object, so later milestones can compare behaviour side by side.
+- ☑ `git init`, commit the current state as `baseline` (tag `baseline`).
+- ☑ `.node-version` (Node 22; it's installed through fnm but not on PATH).
+- ☑ **Vitest** 5.0.5 for unit tests and **Playwright** 1.63.0 for browser tests (that version matches the cached Chromium 1243).
+- ☑ Playwright projects for phone emulation with touch: iPhone SE, iPhone 15 Pro, iPhone 15 Pro landscape, Pixel 7, iPad (gen 7).
+  All run on Chromium; WebGL is software-rendered, so tests use 2 workers and a 60 s timeout.
+- ☑ Dev-only debug hook `window.__vesica` (`getState`, `setState`, `renders`, `resetRenders`); verified absent
+  from production builds. *Stepping N frames moves to M1, since it needs the pure step function.*
+- ☑ Scripts: `test`, `test:e2e`, `check` (lint + test + build), `dev:phone` (HTTPS dev server on the LAN).
+- ☑ Smoke test on every device: loads with no console errors, canvas fills the viewport, the start tap dismisses the overlay,
+  the simulation runs, a poke on the 3D view doesn't throw; screenshots saved.
+- ☑ Parity reference: `src/test/original.js` pulls constants from the original HTML (beverages and physics presets match);
+  `e2e/helpers/original.js` opens the original and reads its live `sim` (resting state matches the port).
 
-**Gate:** `npm run check` + smoke e2e green; screenshots in `test-results/`.
-**Manual:** open `npm run dev:phone` URL on your phone; app loads.
+**Found and fixed in M0:** `audio.playSquish` was missing from the port, so every poke or squeeze threw before
+its voice line and vibration.
+**Found for M6:** on a landscape phone the HUD covers the whole bladder (an expected-failure test tracks it).
+**Found for M2:** the bladder looks jagged and torn just after a poke; compare with the original when poke strength is reworked.
+**Local setup note:** VS Code runs as a Flatpak and sets `XDG_CACHE_HOME`, so Playwright looked for browsers in
+`~/.var/app/com.visualstudio.code/cache`; that folder now symlinks to `~/.cache/ms-playwright`.
+
+**Gate:** ☑ `npm run check` (lint 0 errors / 29 pre-existing warnings, 2 unit tests, build) · ☑ e2e 11 passed,
+4 skipped, stable across 2 runs.
+**Manual:** ☐ run `npm run dev:phone`, open the printed `https://<LAN-IP>:5173` URL on your phone (accept the
+self-signed certificate warning), check that the app loads and the start tap works.
 
 ---
 
