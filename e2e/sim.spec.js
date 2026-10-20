@@ -94,6 +94,20 @@ test.describe('controls drive the simulation', () => {
     expect((await portState(page)).isClenching).toBe(false)
   })
 
+  test('holding Clench eases the sphincter strain on the readout (requested)', async ({ page }) => {
+    await pause(page)
+    await vesica(page, () => window.__vesica.setState({ sphincterToneStrain: 0.6 }))
+    const readout = page.getByTestId('sphincter-readout')
+    await hold(page, page.getByRole('button', { name: /CLENCH/ }))
+    await step(page, 60) // 1 s
+    await expect(readout).toHaveText('CLENCHED (50%)')
+    await step(page, 120) // 3 s in all
+    await expect(readout).toHaveText('CLENCHED (30%)')
+    await page.mouse.up()
+    await step(page, 1)
+    await expect(readout).toHaveText('RESTING (30%)')
+  })
+
   test('holding Empty starts voiding after the 1 s latency', async ({ page }) => {
     await pause(page)
     await vesica(page, () => window.__vesica.setState({ volume: 400 }))

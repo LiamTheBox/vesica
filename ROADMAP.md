@@ -75,6 +75,8 @@ original's difficulty returning, not a regression.
 
 - ☑ **Changed later (requested):** Kegel stamina recovers at 0.64/s, 4× the original's 0.16/s (a full
   refill takes ~1.5 s instead of ~6 s). The parity test lists it as a deliberate difference.
+- ☑ **Added later (requested):** holding the Kegel eases the sphincter strain by 10 % per second held (the original
+  only eased it with Soothe); a full hold (~4.5 s) takes off ~45 %. The readout shows it falling: CLENCHED (n%).
 
 **Automated (unit), 34 tests in `src/sim/sim.test.js`:** initial state equals the original's `sim` field by field
 (read from the HTML); pressure curve at fill 0.2/0.5/0.8/1.0 and with a cough; stamina 0.22/s drain and 0.16/s

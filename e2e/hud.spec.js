@@ -9,7 +9,7 @@ const STATES = [
   ['overpressure', { volume: 650, sphincterToneStrain: 0.6 }, 'OVERPRESSURE', 'High retention wall stress', 'STRAINED (60%)', 0.35],
   ['stress leak', { volume: 650, isStressLeaking: true, sphincterToneStrain: 0.25 }, 'STRESS LEAK', 'Equilibrating peak overpressure...', 'LEAKING (25% Strain)', 0.7],
   ['total failure', { volume: 650, involuntaryVoiding: true }, 'INVOLUNTARY VOID', 'Total sphincter failure!', 'COLLAPSE (100%)', null],
-  ['clenched', { volume: 200, isClenching: true }, 'NOMINAL', 'App Runtime • Hydro-Acoustics', 'CLENCHED BRACED', 0],
+  ['clenched', { volume: 200, isClenching: true }, 'NOMINAL', 'App Runtime • Hydro-Acoustics', 'CLENCHED (0%)', 0],
   ['voiding', { volume: 400, isActivelyVoiding: true, sphincterDilation: 0.5 }, 'DISTENDED', 'Active elastic stretch', 'DILATING (50%)', 0],
 ]
 

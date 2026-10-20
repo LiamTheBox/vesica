@@ -32,6 +32,7 @@ export function createSimState() {
     kegelStamina: 1.0,
     kegelFatigueRate: 0.22,
     kegelRecoverRate: 0.64, // 4x the original's 0.16 (requested)
+    kegelReliefRate: 0.1, // sphincter strain relieved per second of holding (not in the original; requested)
     sphincterToneStrain: 0.0,
     detrusorSpasmIntensity: 0.0,
     sphincterDilation: 0.0,
@@ -254,9 +255,11 @@ export function stepSim(sim, dt, out, rng = Math.random) {
     }
   }
 
-  // Kegel stamina
+  // Kegel stamina. Holding the Kegel also eases the sphincter's strain, the longer the
+  // more (not in the original, which only eased it with Soothe).
   if (sim.isClenching) {
     sim.kegelStamina = Math.max(0, sim.kegelStamina - sim.kegelFatigueRate * dt)
+    sim.sphincterToneStrain = Math.max(0, sim.sphincterToneStrain - sim.kegelReliefRate * dt)
     if (sim.kegelStamina <= 0.02) {
       sim.isClenching = false
       sim.clenchExhausted = true

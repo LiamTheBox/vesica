@@ -8,7 +8,7 @@ describe('sphincter readout (original updateUI priority order)', () => {
   it.each([
     [{ involuntaryVoiding: true, isStressLeaking: true }, 'COLLAPSE (100%)'],
     [{ isStressLeaking: true, isClenching: true, tonePct: 25 }, 'LEAKING (25% Strain)'],
-    [{ isClenching: true, tonePct: 60 }, 'CLENCHED BRACED'],
+    [{ isClenching: true, tonePct: 60 }, 'CLENCHED (60%)'],
     [{ isActivelyVoiding: true, dilationPct: 87, tonePct: 60 }, 'DILATING (87%)'],
     [{ tonePct: 41 }, 'STRAINED (41%)'],
     [{ tonePct: 40 }, 'RESTING (40%)'],

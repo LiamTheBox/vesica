@@ -80,6 +80,21 @@ describe('kegel stamina', () => {
     expect(sim.kegelStamina).toBe(1)
   })
 
+  it('eases the sphincter strain the longer it is held (requested)', () => {
+    const sim = quietSim(150)
+    sim.sphincterToneStrain = 0.6
+    startClench(sim, [])
+    run(sim, 1)
+    expect(sim.sphincterToneStrain).toBeCloseTo(0.5, 6)
+    run(sim, 2)
+    expect(sim.sphincterToneStrain).toBeCloseTo(0.3, 6)
+
+    // Letting go keeps the relief but adds no more.
+    sim.isClenching = false
+    run(sim, 2)
+    expect(sim.sphincterToneStrain).toBeCloseTo(0.3, 6)
+  })
+
   it('gives out when exhausted and clears the label above 15%', () => {
     const sim = quietSim(150)
     startClench(sim, [])

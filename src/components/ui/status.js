@@ -7,7 +7,8 @@ const PULSE = ' animate-pulse'
 export function sphincterReadout(hud) {
   if (hud.involuntaryVoiding) return { text: 'COLLAPSE (100%)', tone: 'text-red-500' + PULSE }
   if (hud.isStressLeaking) return { text: `LEAKING (${hud.tonePct}% Strain)`, tone: 'text-rose-500' + PULSE }
-  if (hud.isClenching) return { text: 'CLENCHED BRACED', tone: 'text-cyan-400' }
+  // Shows the strain easing off while the Kegel is held.
+  if (hud.isClenching) return { text: `CLENCHED (${hud.tonePct}%)`, tone: 'text-cyan-400' }
   if (hud.isActivelyVoiding) return { text: `DILATING (${hud.dilationPct}%)`, tone: 'text-amber-400' }
   if (hud.tonePct > 40) return { text: `STRAINED (${hud.tonePct}%)`, tone: 'text-amber-400' + PULSE }
   return { text: `RESTING (${hud.tonePct}%)`, tone: 'text-rose-400' }
