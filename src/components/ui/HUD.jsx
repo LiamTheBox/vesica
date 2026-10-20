@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import TelemetryBar from './TelemetryBar'
 import ActionButtons from './ActionButtons'
 import { Alerts, Subtitles } from './Alerts'
+import { ChallengeBanner, ChallengeResultCard } from './ChallengeStatus'
 import BottomNav from './Tabs/BottomNav'
 import TelemetryTab from './Tabs/TelemetryTab'
 import ChallengesTab from './Tabs/ChallengesTab'
@@ -64,6 +65,7 @@ export default function HUD() {
     <div className="absolute inset-0 pointer-events-none z-10 flex flex-col p-2 sm:p-4 justify-between h-full">
       <Alerts />
       <Subtitles />
+      <ChallengeResultCard />
       
       {/* Overlay Tabs */}
       <TelemetryTab />
@@ -123,6 +125,7 @@ export default function HUD() {
 
       {/* Bottom Area */}
       <div className="mt-auto flex flex-col gap-2">
+        <ChallengeBanner />
         <ActionButtons />
         <BottomNav />
       </div>

@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { EMPTY_BESTS } from '../challenges/bests'
+import { loadJson } from './persist'
 
 // UI state plus a rounded HUD snapshot of the simulation. The live simulation lives
 // in `src/sim/engine.js`; components subscribe here so they only re-render when a
@@ -34,11 +36,16 @@ export const useUiStore = create((set) => ({
   currentSubtitle: null,
   // Last result per challenge: { success, text }
   challengeResults: { commute: null, precision: null },
+  // Most recent result, shown as a toast on the Sim screen: { challenge, success, text, id }
+  lastResult: null,
+  // Best results, kept on the device.
+  bests: loadJson('bests', EMPTY_BESTS),
   hud: initialHud,
 
   setTab: (tab) => set({ currentTab: tab }),
   setInteractionMode: (mode) => set({ interactionMode: mode }),
   toggleCutaway: () => set((state) => ({ isCutawayActive: !state.isCutawayActive })),
+  dismissResult: () => set({ lastResult: null }),
 }))
 
 export const useHud = (selector) => useUiStore((state) => selector(state.hud))

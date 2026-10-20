@@ -128,6 +128,8 @@ test.describe('controls drive the simulation', () => {
     })
     expect((await portUi(page)).challengeResults.commute.text).toMatch(/^(VICTORY!|FAILED) \(\d+ml lost\)$/)
 
+    // The result card covers the screen until dismissed (M3), then the tab keeps the result.
+    await page.getByRole('dialog', { name: 'Challenge result' }).getByRole('button', { name: 'OK' }).click()
     await page.getByRole('button', { name: /Challenges/ }).click()
     await expect(page.getByText(/^(VICTORY!|FAILED) \(\d+ml lost\)$/)).toBeVisible()
   })

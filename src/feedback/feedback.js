@@ -2,6 +2,8 @@ import { audio } from '../audio/AudioManager'
 import { ambientVoiceCategory } from '../sim/sim'
 import { onSimEvent, onSimTick } from '../sim/engine'
 import { useUiStore } from '../store/useUiStore'
+import { recordResult } from '../challenges/bests'
+import { saveJson } from '../store/persist'
 
 // Turns simulation events into sound, voice, haptics and UI reactions, matching what
 // the original game did at the same moments.
@@ -21,6 +23,17 @@ export function shakeScreen() {
 
 function setChallengeResult(challenge, result) {
   useUiStore.setState((state) => ({ challengeResults: { ...state.challengeResults, [challenge]: result } }))
+}
+
+function finishChallenge(event, text) {
+  setChallengeResult(event.challenge, { success: event.success, text })
+  const { bests } = useUiStore.getState()
+  const nextBests = recordResult(bests, event)
+  if (nextBests !== bests) saveJson('bests', nextBests)
+  useUiStore.setState({
+    bests: nextBests,
+    lastResult: { challenge: event.challenge, success: event.success, text, newBest: nextBests !== bests, id: Date.now() },
+  })
 }
 
 const handlers = {
@@ -103,20 +116,15 @@ const handlers = {
   squeezeRelease: () => audio.playGranularSlosh(1.1),
   challengeStart: (e) => {
     setChallengeResult(e.challenge, null)
+    useUiStore.setState({ lastResult: null })
     useUiStore.getState().setTab('sim')
   },
   challengeResult: (e) => {
     if (e.challenge === 'commute') {
-      setChallengeResult('commute', {
-        success: e.success,
-        text: e.success ? `VICTORY! (${e.leaked}ml lost)` : `FAILED (${e.leaked}ml lost)`,
-      })
+      finishChallenge(e, e.success ? `VICTORY! (${e.leaked}ml lost)` : `FAILED (${e.leaked}ml lost)`)
       if (e.success) haptic([100, 50, 100])
     } else {
-      setChallengeResult('precision', {
-        success: e.success,
-        text: e.success ? `SUCCESS (${e.voided}ml)` : `FAILED (${e.voided}ml)`,
-      })
+      finishChallenge(e, e.success ? `SUCCESS (${e.voided}ml)` : `FAILED (${e.voided}ml)`)
       haptic(e.success ? [50, 50, 100] : 120)
     }
   },

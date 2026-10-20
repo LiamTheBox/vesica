@@ -115,15 +115,21 @@ squeeze hold/drag/off-mesh/release, orbit, Slap button, cutaway from behind.
 
 ---
 
-## M3 — Challenge experience ☐
+## M3 — Challenge experience ◐ (automated gate passed; play check pending)
 
 - ☑ ~~Reset before start~~, ~~commute and precision scoring~~, ~~live countdown on the card~~: done in M1.
-- ☐ Result toast on the Sim screen (on mobile the Challenges tab is closed during play).
-- ☐ Live challenge timer visible on the Sim screen during the commute.
-- ☐ Best results saved locally.
+- ☑ Live challenge banner on the Sim screen above the controls: commute time left + "leaked / 20 ml" (red when
+  over) with a time bar; precision shows the instruction.
+- ☑ Result card on the Sim screen when a run ends (VICTORY/FAILED/SUCCESS text, "★ New best!", Retry, OK).
+  It stays until dismissed, because on a phone the Challenges tab is closed during play.
+- ☑ Best results saved on the device (`src/store/persist.js`, storage failures are harmless): commute = fewest
+  ml lost on a win, precision = closest to 200 ml; shown on the challenge cards.
 
-**Automated (e2e):** start each challenge from the tab and see the toast at the end.
-**Manual:** play both challenges on your phone.
+**Automated (unit):** 4 tests for best-result rules (`src/challenges/bests.test.js`).
+**Automated (e2e), `e2e/challenges.spec.js`:** commute banner → win → result card → best survives a reload;
+precision held through the real Empty button to ~200 ml → SUCCESS → Retry restarts it.
+**Gate:** ☑ `npm run check` (0 warnings, 52 unit tests, build) · ☑ e2e 29 passed, 4 skipped.
+**Manual:** ☐ play both challenges on the phone.
 
 ---
 

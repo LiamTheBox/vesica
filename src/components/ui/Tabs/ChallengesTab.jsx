@@ -1,6 +1,7 @@
 import { useHud, useUiStore } from '../../../store/useUiStore'
 import { act } from '../../../sim/engine'
 import { startCommuteChallenge, startPrecisionChallenge } from '../../../sim/sim'
+import { describeBest } from '../../../challenges/bests'
 
 const BADGE = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded'
 const TONES = {
@@ -20,6 +21,7 @@ export default function ChallengesTab() {
   const currentTab = useUiStore((s) => s.currentTab)
   const setTab = useUiStore((s) => s.setTab)
   const results = useUiStore((s) => s.challengeResults)
+  const bests = useUiStore((s) => s.bests)
   const activeChallenge = useHud((h) => h.activeChallenge)
   const challengeSeconds = useHud((h) => h.challengeSeconds)
   const totalLeaked = useHud((h) => h.totalLeaked)
@@ -49,6 +51,7 @@ export default function ChallengesTab() {
           <p className="text-[11px] text-slate-400 leading-relaxed">
             High initial volume with sudden potholes and urge contractions. Survive the full 60 seconds with less than 20ml total leakage!
           </p>
+          {bests.commute && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('commute', bests.commute)}</p>}
           <button onClick={() => act(startCommuteChallenge)} className="w-full py-2 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
             Start Commute Run
           </button>
@@ -62,6 +65,7 @@ export default function ChallengesTab() {
           <p className="text-[11px] text-slate-400 leading-relaxed">
             Account for latency and flow momentum to void exactly 200ml (±10ml tolerance) in a single continuous hold.
           </p>
+          {bests.precision && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('precision', bests.precision)}</p>}
           <button onClick={() => act(startPrecisionChallenge)} className="w-full py-2 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
             Attempt Precision Void
           </button>
