@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
-import { computeNormals, createOrganRig, ORGAN_CENTER, orientCutaway } from './organRig'
+import { computeNormals, createOrganRig, FLUID_INSET, ORGAN_CENTER, orientCutaway, RESIDUAL_ML, urineScale } from './organRig'
 import { createSimState } from '../../sim/sim'
 
 // Three.js clips points whose signed distance to a clipping plane is negative.
@@ -85,5 +85,24 @@ describe('per-frame geometry work (M7)', () => {
     const steps = [0.1, 0.3, 0.5, 0.7, 0.9].map(at)
     const gaps = steps.slice(1).map((p, i) => p.distanceTo(steps[i]))
     for (const gap of gaps) expect(gap / gaps[0]).toBeCloseTo(1, 1)
+  })
+})
+
+describe('urine inside the wall', () => {
+  it('is gone when the bladder is empty and fills the sac when full', () => {
+    expect(urineScale(0, 750)).toBe(0)
+    expect(urineScale(RESIDUAL_ML, 750)).toBe(0)
+    expect(urineScale(750, 750)).toBeCloseTo(FLUID_INSET, 9)
+    expect(urineScale(900, 750)).toBeLessThanOrEqual(FLUID_INSET) // overfull: still inside the wall
+  })
+
+  it('grows steadily with the volume, leaving a thick wall when nearly empty', () => {
+    let previous = 0
+    for (let ml = RESIDUAL_ML + 1; ml <= 750; ml += 7) {
+      const k = urineScale(ml, 750)
+      expect(k).toBeGreaterThan(previous)
+      previous = k
+    }
+    expect(urineScale(20, 750)).toBeLessThan(0.5)
   })
 })

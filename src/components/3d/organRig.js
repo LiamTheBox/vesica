@@ -110,9 +110,27 @@ export function orientCutaway(plane, cameraPosition, center = ORGAN_CENTER) {
 const POKE = { radius: 1.4, powerScale: 1.0, velScale: 1.6, dentGain: 0.35, dentCap: 0.6 }
 const SLAP = { radius: 1.8, powerScale: 2.2, velScale: 1.0, dentGain: 0.4, dentCap: 0.8 }
 
-// The liquid fills the sac just inside the wall: Organ.jsx draws the wall's geometry
-// again at this scale.
+// Urine: Organ.jsx draws the wall's geometry again, scaled to the volume held (see
+// urineScale). Full, it fills the sac just inside the membrane.
 export const FLUID_INSET = 0.965
+// What's left after voiding: the bladder counts as empty at or below this.
+export const RESIDUAL_ML = 10
+// The urine shrinks toward this point, 35 % of the way from the centre to the bottom of
+// the wall at rest, so what's left pools low, by the neck.
+const URINE_PIVOT_Y = -0.35 * 2.35 * 1.12
+
+const inflationOf = (fillRatio) => 0.55 + Math.pow(fillRatio, 0.45) * 0.75
+
+// Linear size of the urine relative to the wall. The urine's volume is the simulation's;
+// the wall's size is a visual function of fill that never drops below about half, so
+// whatever the urine doesn't fill is muscle wall: thick when empty, the thin membrane
+// (FLUID_INSET) when stretched full. A bladder holds no air.
+export function urineScale(volume, maxCapacity) {
+  const urine = Math.max(0, (volume - RESIDUAL_ML) / (maxCapacity - RESIDUAL_ML))
+  if (urine === 0) return 0
+  const wallGrowth = inflationOf(1) / inflationOf(Math.max(0.01, volume / maxCapacity))
+  return Math.min(FLUID_INSET, FLUID_INSET * wallGrowth * Math.cbrt(urine))
+}
 
 const URETER_SEGMENTS = 32
 const URETER_RADIAL = 8
@@ -326,13 +344,13 @@ export function createOrganRig() {
 
   // `objects`: live meshes/materials from Organ.jsx refs, plus the camera.
   function update(sim, dt, timeSec, objects) {
-    const { wallMat, sphincter, stream, splash, leftDrop, rightDrop, camera, cutaway } = objects
+    const { wallMat, urine, sphincter, stream, splash, leftDrop, rightDrop, camera, cutaway } = objects
     const phys = physicsOf(sim)
 
     const fillRatio = Math.max(0.01, sim.volume / sim.maxCapacity)
     const compY = sim.squeezeAmountY || 0
     const scaleY = 1.0 - compY
-    const inflationScale = 0.55 + Math.pow(fillRatio, 0.45) * 0.75
+    const inflationScale = inflationOf(fillRatio)
 
     if (cutaway && camera) orientCutaway(cutawayPlane, camera.position)
 
@@ -348,7 +366,6 @@ export function createOrganRig() {
     if (objects.fluidMat) {
       const h = sim.hydration
       objects.fluidMat.color.setRGB(1.0, 0.72 + h * 0.22, 0.1 + h * 0.6)
-      objects.fluidCapMat?.color.setRGB(0.86, 0.52 + h * 0.16, 0.06 + h * 0.18)
     }
 
     // Soft-body wall
@@ -433,6 +450,16 @@ export function createOrganRig() {
     }
     bPos.needsUpdate = true
     computeNormals(bladderGeo)
+
+    // Urine: the wall's shape scaled about a point low in the sac, free to slosh within
+    // whatever wall thickness there is around it.
+    if (urine) {
+      const k = urineScale(sim.volume, sim.maxCapacity)
+      urine.visible = k > 0.002
+      const room = 1 - k / FLUID_INSET
+      urine.scale.setScalar(Math.max(k, 1e-4))
+      urine.position.set(sim.fluidCoreOffset.x * 0.4 * room, URINE_PIVOT_Y * inflationScale * scaleY * (1 - k), sim.fluidCoreOffset.z * 0.4 * room)
+    }
 
     // Ureters stay plugged into the wall as it inflates and wobbles.
     for (const ureter of ureters) {

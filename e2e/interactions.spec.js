@@ -137,3 +137,32 @@ test.describe('gestures on the bladder', () => {
     expect(far).toBeGreaterThan(0)
   })
 })
+
+// Requested after M7: no urine when empty; the gap is muscle wall, not air.
+test('the urine grows with the volume held, and an empty bladder holds none', async ({ page }) => {
+  const errors = []
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
+  await startApp(page)
+  await page.evaluate(() => window.__vesica.pause())
+  await page.locator('button[title*="Cutaway"]').click() // compiles the cut-face shaders
+  const urineAt = async (volume) => {
+    await page.evaluate((volume) => window.__vesica.setState({ volume }), volume)
+    await page.waitForTimeout(300) // a few frames
+    return page.evaluate(() => {
+      const { scene } = window.__vesica.three()
+      const urine = scene.getObjectByName('urine')
+      return { visible: urine.visible, scale: urine.scale.x }
+    })
+  }
+
+  expect((await urineAt(10)).visible).toBe(false) // what's left after voiding
+  const sizes = []
+  for (const volume of [20, 120, 375, 750]) {
+    const urine = await urineAt(volume)
+    expect(urine.visible).toBe(true)
+    sizes.push(urine.scale)
+  }
+  expect(sizes).toEqual([...sizes].sort((a, b) => a - b))
+  expect(sizes.at(-1)).toBeCloseTo(0.965, 3) // full: just inside the membrane
+  expect(errors).toEqual([])
+})

@@ -6,16 +6,21 @@ import { QUALITY_TIERS } from '../../settings/quality'
 import { act, onSimEvent, sim } from '../../sim/engine'
 import { physicsOf } from '../../sim/sim'
 import { orbitDrag, pokeAt, slapAt, squeezeCancel, squeezeDrag, squeezePinch, squeezeRelease, squeezeStart } from '../../sim/interactions'
-import { createOrganRig, createOrganTextures, FLUID_INSET } from './organRig'
+import { createOrganRig, createOrganTextures } from './organRig'
+import { createCutMaterials } from './cutMaterials'
 
 const ndc = new THREE.Vector2()
 // Liquid opacity without transmission. Transmission only replaces the diffuse light and
 // keeps the glow and highlights, so a mostly opaque liquid matches it best (compared in M7).
 const FLUID_OPACITY = 0.9
+// Light through the urine turns amber with distance, so the far wall seen through it
+// reads as golden liquid rather than red muscle.
+const REFRACTIVE_URINE = { transmission: 0.55, ior: 1.333, thickness: 2.2, attenuationColor: 0xf59e0b, attenuationDistance: 1.2 }
 
 export default function Organ() {
   const rig = useMemo(() => createOrganRig(), [])
   const textures = useMemo(() => createOrganTextures(), [])
+  const cut = useMemo(() => createCutMaterials(), [])
   const get = useThree((state) => state.get)
 
   const bladderRef = useRef()
@@ -25,8 +30,8 @@ export default function Organ() {
   const leftDropRef = useRef()
   const rightDropRef = useRef()
   const wallMatRef = useRef()
+  const urineRef = useRef()
   const fluidMatRef = useRef()
-  const fluidCapMatRef = useRef()
 
   const isCutawayActive = useUiStore((s) => s.isCutawayActive)
   const refractive = QUALITY_TIERS[useUiStore(selectQualityTier)].transmission
@@ -133,11 +138,16 @@ export default function Organ() {
     }
   }, [get])
 
+  useEffect(() => {
+    cut.setClipping(isCutawayActive ? [rig.cutawayPlane] : [])
+  }, [cut, rig, isCutawayActive])
+
   useFrame((state, delta) => {
-    rig.update(sim, Math.min(0.08, delta), state.clock.getElapsedTime(), {
+    const dt = Math.min(0.08, delta)
+    rig.update(sim, dt, state.clock.getElapsedTime(), {
       wallMat: wallMatRef.current,
+      urine: urineRef.current,
       fluidMat: fluidMatRef.current,
-      fluidCapMat: fluidCapMatRef.current,
       sphincter: sphincterRef.current,
       stream: streamRef.current,
       splash: splashRef.current,
@@ -146,37 +156,43 @@ export default function Organ() {
       camera: state.camera,
       cutaway: isCutawayActive,
     })
+    cut.update(sim, dt, rig.cutawayPlane, isCutawayActive)
   })
 
   const clip = isCutawayActive ? [rig.cutawayPlane] : []
 
   return (
     <group position={[0, 0.2, 0]}>
-      {/* Liquid: one solid body filling the sac, the wall's own geometry just inside it.
-          Drawn first so the membrane blends over it. High quality refracts what's behind
-          it (transmission: a whole extra render pass); lower tiers let it through with
-          plain transparency, which looks nearly the same. */}
-      <mesh geometry={rig.bladderGeo} scale={FLUID_INSET} renderOrder={1}>
-        <meshPhysicalMaterial
-          key={refractive ? 'refractive' : 'blended'}
-          ref={fluidMatRef}
-          color={0xfacc15}
-          emissive={0xd97706}
-          emissiveIntensity={0.22}
-          roughness={0.12}
-          metalness={0.0}
-          {...(refractive ? { transmission: 0.55, ior: 1.333, thickness: 2.2 } : { transparent: true, opacity: FLUID_OPACITY })}
-          clippingPlanes={clip}
-          side={THREE.FrontSide}
-        />
-      </mesh>
-      {/* Cross-section of the liquid: the inside faces, shown only where the cutaway opens it. */}
-      <mesh geometry={rig.bladderGeo} scale={FLUID_INSET} renderOrder={1} visible={isCutawayActive}>
-        <meshBasicMaterial ref={fluidCapMatRef} color={0xd99a2b} clippingPlanes={clip} side={THREE.BackSide} />
-      </mesh>
+      {/* Inside of the wall: muscle. Through the membrane it fills whatever the urine
+          doesn't (a bladder holds no air); in the cutaway it's the cut face of the wall. */}
+      <mesh name="wallTissue" geometry={rig.bladderGeo} material={cut.tissue} renderOrder={2} />
 
-      {/* Wall: a thin translucent membrane that thins out as it stretches. */}
-      <mesh ref={bladderRef} geometry={rig.bladderGeo} renderOrder={10}>
+      {/* Urine: the wall's own shape, scaled to the volume held (rig.update sets the
+          transform), so an empty bladder holds none. Drawn first so the membrane blends
+          over it. High quality refracts what's behind it (transmission: a whole extra
+          render pass); lower tiers let it through with plain transparency, which looks
+          nearly the same. */}
+      <group ref={urineRef} name="urine">
+        <mesh geometry={rig.bladderGeo} renderOrder={1}>
+          <meshPhysicalMaterial
+            key={refractive ? 'refractive' : 'blended'}
+            ref={fluidMatRef}
+            color={0xfacc15}
+            emissive={0xd97706}
+            emissiveIntensity={0.22}
+            roughness={0.12}
+            metalness={0.0}
+            {...(refractive ? REFRACTIVE_URINE : { transparent: true, opacity: FLUID_OPACITY })}
+            clippingPlanes={clip}
+            side={THREE.FrontSide}
+          />
+        </mesh>
+        {/* Cross-section of the urine, shown only where the cutaway opens it. */}
+        <mesh name="urineCut" geometry={rig.bladderGeo} material={cut.urine} renderOrder={1} visible={isCutawayActive} />
+      </group>
+
+      {/* Wall: a translucent membrane that thins out as it stretches. */}
+      <mesh ref={bladderRef} name="wall" geometry={rig.bladderGeo} renderOrder={10}>
         <meshPhysicalMaterial
           ref={wallMatRef}
           map={textures.diffTex}
@@ -192,7 +208,7 @@ export default function Organ() {
           transparent
           opacity={0.6}
           depthWrite={false}
-          side={isCutawayActive ? THREE.DoubleSide : THREE.FrontSide}
+          side={THREE.FrontSide}
           clippingPlanes={clip}
         />
       </mesh>

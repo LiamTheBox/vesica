@@ -105,6 +105,12 @@ voice no more than every 10 s, challenges report results.
   Dents conserve volume (the rest of the wall bulges out); ureters stay attached to the moving wall;
   rugae folds are broader and the strain tremor is smooth, fixing the torn, spiky look at low fill.
 - ☑ Raycasting uses a bounding sphere that fits the fully inflated bladder (edge taps used to miss).
+- ☑ **Revised after M7 (requested): no urine when empty.** The urine is the wall's shape scaled to the volume
+  actually held (`urineScale`): none at the 10 ml left after voiding, just inside the membrane when full. Still
+  no air: whatever the urine doesn't fill is muscle wall, thick and folded when empty, drawn as opaque tissue
+  behind the membrane. In the cutaway, new cut-face shaders (`cutMaterials.js`) replace the flat colour: urine
+  in amber that deepens with depth, lit from above, with drifting caustic light, rising bubbles and a pale lining
+  at its edge; the wall as fibrous red muscle with a darker outer layer.
 
 **Automated (unit):** 9 interaction tests against the original's numbers (13 pokes → strain 1.0; 7 slaps on a
 full bladder + cough → total failure); cutaway plane removes the near half from front, back, side and above.
