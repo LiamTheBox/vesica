@@ -3,6 +3,8 @@ import HUD from './components/ui/HUD'
 import Scene from './components/3d/Scene'
 import { audio } from './audio/AudioManager'
 import { installFeedback } from './feedback/feedback'
+import { applySettings } from './settings/settings'
+import { useUiStore } from './store/useUiStore'
 import { act } from './sim/engine'
 import { agitate } from './sim/sim'
 import { countRender } from './debug/devHook'
@@ -11,7 +13,10 @@ function App() {
   countRender('App')
   const [started, setStarted] = useState(false)
 
-  useEffect(() => installFeedback(), [])
+  useEffect(() => {
+    applySettings(useUiStore.getState().settings)
+    return installFeedback()
+  }, [])
 
   useEffect(() => {
     const initAudio = () => {

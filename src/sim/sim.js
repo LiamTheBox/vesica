@@ -168,7 +168,8 @@ export function cough(sim, out, rng = Math.random) {
   out.push({ type: 'voice', category: 'cough' })
 }
 
-export function resetOrgan(sim, out, rng = Math.random) {
+// `silent` skips the "deflated" line, for challenge starts that refill the bladder at once.
+export function resetOrgan(sim, out, rng = Math.random, { silent = false } = {}) {
   sim.volume = 40
   sim.activeBeverages = []
   sim.isAttemptingVoid = false
@@ -191,11 +192,11 @@ export function resetOrgan(sim, out, rng = Math.random) {
   sim.urgeWaveDuration = 0
   out.push({ type: 'reset' })
   agitate(sim, out, 2.0, rng)
-  out.push({ type: 'voice', category: 'deflated' })
+  if (!silent) out.push({ type: 'voice', category: 'deflated' })
 }
 
 export function startCommuteChallenge(sim, out, rng = Math.random) {
-  resetOrgan(sim, out, rng)
+  resetOrgan(sim, out, rng, { silent: true })
   sim.volume = 580
   sim.totalLeakedVolume = 0
   sim.activeChallenge = 'commute'
@@ -206,7 +207,7 @@ export function startCommuteChallenge(sim, out, rng = Math.random) {
 }
 
 export function startPrecisionChallenge(sim, out, rng = Math.random) {
-  resetOrgan(sim, out, rng)
+  resetOrgan(sim, out, rng, { silent: true })
   sim.volume = 520
   sim.activeChallenge = 'precision'
   sim.precisionStartVolume = 520

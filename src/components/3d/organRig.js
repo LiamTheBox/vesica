@@ -214,7 +214,9 @@ export function createOrganRig() {
     if (wallMat) {
       const stretch = Math.min(1.0, fillRatio)
       wallMat.opacity = THREE.MathUtils.lerp(0.66, 0.36, stretch)
-      wallMat.emissiveIntensity = 0.18 + stretch * 0.3
+      // Strained muscle throbs, as in the original.
+      const strainPulse = sim.sphincterToneStrain > 0.3 ? Math.sin(timeSec * 15.0) * 0.35 + 0.35 : 0
+      wallMat.emissiveIntensity = 0.18 + stretch * 0.3 + strainPulse
       wallMat.roughness = THREE.MathUtils.lerp(0.38, 0.12, stretch)
     }
     if (objects.fluidMat) {

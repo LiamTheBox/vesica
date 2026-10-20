@@ -237,6 +237,18 @@ describe('reset', () => {
   })
 })
 
+describe('challenge start', () => {
+  it.each([['commute', startCommuteChallenge], ['precision', startPrecisionChallenge]])(
+    '%s resets without the "deflated" line (the bladder is refilled at once)',
+    (_, start) => {
+      const out = []
+      start(createSimState(), out, fixed(0.5))
+      expect(out.filter((e) => e.type === 'voice')).toEqual([])
+      expect(types(out)).toContain('reset')
+    },
+  )
+})
+
 describe('commute challenge', () => {
   it('fails when the potholes force leaks', () => {
     const sim = createSimState()

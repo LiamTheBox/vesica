@@ -133,19 +133,28 @@ precision held through the real Empty button to ~200 ml → SUCCESS → Retry re
 
 ---
 
-## M4 — HUD & visual parity ☐
+## M4 — HUD & visual parity ◐ (automated gate passed; play check pending)
 
-- ☐ Sphincter readout states: COLLAPSE / LEAKING / CLENCHED / DILATING / STRAINED / RESTING, with colours.
-- ☐ Pressure colour by state; header status badge + subtitle (NOMINAL → DISTENDED → OVERPRESSURE →
-  STRESS LEAK → INVOLUNTARY VOID); red vignette from 80 % fill.
-- ☐ Bladder glow pulse under strain.
-- ☐ Fluid body lags behind the wall again (fluid core offset), as in the original.
-- ☐ Voice gap adjustable in Settings.
+- ☑ Sphincter readout states from the original: COLLAPSE / LEAKING / CLENCHED BRACED / DILATING / STRAINED /
+  RESTING, with colours and pulses (`src/components/ui/status.js`).
+- ☑ Pressure colour by state; header status badge + subtitle (NOMINAL → DISTENDED → OVERPRESSURE → STRESS LEAK →
+  INVOLUNTARY VOID); organ icon grows under stress; red vignette 35 % / 70 % / 95 % pulsing.
+- ☑ Bladder wall throbs (emissive pulse) when strain is above 30 %.
+- ☑ Settings saved on the device: master mute, voice on/off + volume, **voice gap 3–30 s** (default 10),
+  effects on/off + volume, **haptics toggle** (from the original's settings; pulled forward from M5).
+- ☑ Starting a challenge no longer says "Just a tiny puddle…" at 580 ml (the original did: its reset spoke).
+- ☑ ~~Fluid body lag~~: superseded by M2's water balloon (the liquid fills the sac; slosh inertia moves the wall).
 - ☑ ~~Clench exhausted~~, ~~hum pitch~~, ~~creaks~~, ~~10 s voice gap~~, ~~deflated lines~~, ~~Reset voice~~: done in M1.
 
-**Automated (e2e):** for each state (nominal, distended, overpressure, leak, collapse), set it via the debug
-hook, then assert badge/readout text and take a screenshot. Compare with the original in the same state.
-**Manual:** listen: voice isn't spammy, creaks and hum behave.
+**Automated (unit):** 12 status tests (readout priority, badge/vignette thresholds at the original's 40 % / 80 %
+boundaries); challenge start has no "deflated" line.
+**Automated (e2e), `e2e/hud.spec.js`:** seven states set through the debug hook, asserting badge, subtitle, readout
+and vignette, with screenshots; settings survive a reload.
+**Gate:** ☑ `npm run check` (0 warnings, 67 unit tests, build) · ☑ e2e 37 passed, 4 skipped.
+**Manual:** ☐ listen: voice isn't spammy at the default gap; creaks and hum behave; vibration toggle works.
+
+**Found for M6:** on a portrait phone the camera is so close that the bladder fills the whole screen behind the
+controls; the subtitle bubble sits on top of the telemetry bar.
 
 ---
 
@@ -160,7 +169,7 @@ hook, then assert badge/readout text and take a screenshot. Compare with the ori
 - ☐ Kill mobile browser interference: long-press callout and text selection, double-tap zoom,
   pull-to-refresh/overscroll, context menu on hold buttons.
 - ☐ All tap targets ≥ 44 × 44 px.
-- ☐ Haptics: toggle in Settings respected everywhere; distinct patterns; silent no-op where unsupported (iOS Safari).
+- ◐ Haptics: ☑ toggle in Settings (M4); ☐ distinct patterns; ☐ silent no-op where unsupported (iOS Safari).
 - ☐ Device motion: request iOS permission on the start tap; "Shake phone to slosh" toggle.
 
 **Automated (e2e, touch emulation):** tap, two-thumb hold (Clench held while poking) via multi-touch

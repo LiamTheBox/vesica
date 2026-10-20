@@ -7,7 +7,8 @@ import BottomNav from './Tabs/BottomNav'
 import TelemetryTab from './Tabs/TelemetryTab'
 import ChallengesTab from './Tabs/ChallengesTab'
 import SettingsTab from './Tabs/SettingsTab'
-import { useUiStore } from '../../store/useUiStore'
+import { useHud, useUiStore } from '../../store/useUiStore'
+import { organStatus } from './status'
 import { act } from '../../sim/engine'
 import { agitate, cough, resetOrgan } from '../../sim/sim'
 import { haptic } from '../../feedback/feedback'
@@ -24,6 +25,7 @@ export default function HUD() {
   countRender('HUD')
   const mode = useUiStore((s) => s.interactionMode)
   const isCutawayActive = useUiStore((s) => s.isCutawayActive)
+  const status = useHud(organStatus)
   const setMode = useUiStore((s) => s.setInteractionMode)
   const toggleCutaway = useUiStore((s) => s.toggleCutaway)
 
@@ -76,14 +78,19 @@ export default function HUD() {
       <div className="w-full flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2 max-w-4xl mx-auto w-full pointer-events-auto flex-wrap sm:flex-nowrap">
           <div className="glass-hud px-3 py-1.5 rounded-2xl flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-600 via-amber-500 to-amber-300 flex items-center justify-center text-sm shadow-md">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-600 via-amber-500 to-amber-300 flex items-center justify-center text-sm shadow-md transition-transform duration-150" style={{ transform: `scale(${status.iconScale})` }}>
               🫁
             </div>
             <div>
-              <h1 className="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-100">
-                Vesica 3D
-              </h1>
-              <p className="text-[10px] text-slate-400 font-mono">React Port</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-100">
+                  Vesica 3D
+                </h1>
+                <span data-testid="status-badge" className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${status.badgeTone}`}>
+                  {status.badge}
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-mono">{status.sub}</p>
             </div>
           </div>
 

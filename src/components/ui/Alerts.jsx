@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useHud, useUiStore } from '../../store/useUiStore'
+import { organStatus } from './status'
 
 export function Subtitles() {
   const subtitle = useUiStore((s) => s.currentSubtitle)
@@ -49,10 +50,16 @@ export function Alerts() {
   const isStressLeaking = useHud((h) => h.isStressLeaking)
   const involuntaryVoiding = useHud((h) => h.involuntaryVoiding)
   const isUrgeWaveActive = useHud((h) => h.isUrgeWaveActive)
+  const status = useHud(organStatus)
 
   return (
     <>
-      <div className={`pointer-events-none fixed inset-0 z-10 box-border border-[10px] sm:border-[16px] border-rose-600/60 transition-opacity duration-300 ${involuntaryVoiding ? 'opacity-95 fatigue-vignette' : isStressLeaking ? 'opacity-70' : 'opacity-0'}`}></div>
+      {/* Red screen edge: overpressure 35%, stress leak 70%, total failure 95% pulsing. */}
+      <div
+        data-testid="vignette"
+        className={`pointer-events-none fixed inset-0 z-10 box-border border-[10px] sm:border-[16px] border-rose-600/60 transition-opacity duration-300 ${status.vignettePulse ? 'fatigue-vignette' : ''}`}
+        style={{ opacity: status.vignette }}
+      ></div>
 
       {isUrgeWaveActive && (
         <div className="pointer-events-none absolute top-40 sm:top-44 left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-full bg-amber-500/90 text-slate-950 text-xs font-black tracking-wider uppercase shadow-xl animate-pulse flex items-center gap-2">

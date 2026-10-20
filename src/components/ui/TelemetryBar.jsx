@@ -1,4 +1,5 @@
 import { useHud } from '../../store/useUiStore'
+import { organStatus, sphincterReadout } from './status'
 import { countRender } from '../../debug/devHook'
 
 export default function TelemetryBar() {
@@ -8,7 +9,9 @@ export default function TelemetryBar() {
   const stamPct = useHud((h) => h.staminaPct)
   const pressure = useHud((h) => h.pressure)
   const flowRate = useHud((h) => h.flowRate)
-  const tonePct = useHud((h) => h.tonePct)
+  const sphincterText = useHud((h) => sphincterReadout(h).text)
+  const sphincterTone = useHud((h) => sphincterReadout(h).tone)
+  const pressureTone = useHud((h) => organStatus(h).pressureTone)
 
   const fillPct = Math.min(100, Math.round((volume / maxCapacity) * 100))
 
@@ -38,7 +41,7 @@ export default function TelemetryBar() {
 
       <div className="text-right flex-shrink-0">
         <div className="text-[9px] text-slate-400 font-mono uppercase">Pressure</div>
-        <div className="text-xs sm:text-sm font-black font-mono text-emerald-400">{pressure.toFixed(1)} cmH₂O</div>
+        <div data-testid="pressure" className={`text-xs sm:text-sm font-black font-mono ${pressureTone}`}>{pressure.toFixed(1)} cmH₂O</div>
       </div>
 
       <div className="text-right flex-shrink-0">
@@ -48,7 +51,7 @@ export default function TelemetryBar() {
 
       <div className="text-right flex-shrink-0">
         <div className="text-[9px] text-slate-400 font-mono uppercase">Sphincter Tone</div>
-        <div className="text-xs sm:text-sm font-black font-mono text-rose-400">RESTING ({tonePct}%)</div>
+        <div data-testid="sphincter-readout" className={`text-xs sm:text-sm font-black font-mono ${sphincterTone}`}>{sphincterText}</div>
       </div>
     </div>
   )

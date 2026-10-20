@@ -6,6 +6,16 @@ import { loadJson } from './persist'
 // in `src/sim/engine.js`; components subscribe here so they only re-render when a
 // displayed value changes, never once per frame.
 
+export const DEFAULT_SETTINGS = {
+  masterMuted: false,
+  voiceEnabled: true,
+  voiceVolume: 1.0,
+  voiceGap: 10, // seconds between spoken lines, at least
+  sfxEnabled: true,
+  sfxVolume: 0.8,
+  haptics: true,
+}
+
 export const initialHud = {
   volume: 120,
   maxCapacity: 750,
@@ -40,6 +50,7 @@ export const useUiStore = create((set) => ({
   lastResult: null,
   // Best results, kept on the device.
   bests: loadJson('bests', EMPTY_BESTS),
+  settings: loadJson('settings', DEFAULT_SETTINGS),
   hud: initialHud,
 
   setTab: (tab) => set({ currentTab: tab }),
