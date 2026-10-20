@@ -3,6 +3,7 @@ import { OrbitControls } from '@react-three/drei'
 import Organ from './Organ'
 import { SimLoop } from '../../sim/SimLoop'
 import { useUiStore } from '../../store/useUiStore'
+import { DevBridge } from '../../debug/DevBridge'
 
 export default function Scene() {
   const mode = useUiStore((s) => s.interactionMode)
@@ -21,10 +22,12 @@ export default function Scene() {
         <directionalLight color={0x38bdf8} intensity={3.0} position={[-8, -4, -8]} />
         <pointLight color={0xf59e0b} intensity={5.0} distance={10} position={[0, -0.2, 0]} />
 
+        {import.meta.env.DEV && <DevBridge />}
         <SimLoop />
         <Organ />
         
-        <OrbitControls 
+        <OrbitControls
+          makeDefault
           enablePan={false} 
           enableRotate={mode === 'orbit'}
           minDistance={7} 

@@ -81,14 +81,16 @@ const handlers = {
     audio.stopUrgeRumble()
   },
   voice: (e) => audio.speak(e.category),
-  poke: () => {
-    audio.playSquish(1.0)
-    haptic(30)
+  poke: (e) => {
+    if (e.touch) {
+      audio.playSquish(1.0)
+      haptic(30)
+    }
     audio.speak('poked')
   },
   slap: (e) => {
     audio.playSlap(e.strength)
-    haptic(50)
+    if (e.haptic) haptic(50)
     audio.speak('poked')
   },
   squeezeStart: () => {

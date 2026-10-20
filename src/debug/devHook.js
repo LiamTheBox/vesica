@@ -1,5 +1,6 @@
 import { act, advance, onSimEvent, publishHud, setPaused, sim } from '../sim/engine'
 import * as simActions from '../sim/sim'
+import * as interactions from '../sim/interactions'
 import { useUiStore } from '../store/useUiStore'
 
 // Dev-only test hook exposed as `window.__vesica`. Every call site is guarded by
@@ -36,12 +37,13 @@ export function installDevHook() {
       const { currentTab, interactionMode, isCutawayActive, challengeResults, hud } = useUiStore.getState()
       return structuredClone({ currentTab, interactionMode, isCutawayActive, challengeResults, hud })
     },
+    setUi: (partial) => useUiStore.setState(partial),
     setState: (partial) => {
       Object.assign(sim, partial)
       publishHud()
     },
-    // Run a named action from src/sim/sim.js, e.g. act('ingestBeverage', 'water').
-    act: (name, ...args) => act(simActions[name], ...args),
+    // Run a named action from src/sim/sim.js or interactions.js, e.g. act('ingestBeverage', 'water').
+    act: (name, ...args) => act(simActions[name] ?? interactions[name], ...args),
     // Pause the per-frame loop so tests can step the simulation deterministically.
     pause: () => setPaused(true),
     resume: () => setPaused(false),

@@ -89,22 +89,29 @@ voice no more than every 10 s, challenges report results.
 
 ---
 
-## M2 — Bladder interactions match the original ☐
+## M2 — Bladder interactions + water-balloon visuals ◐ (automated gate passed; play check pending)
 
-Touches on the organ still use the React port's numbers (`src/sim/interactions.js`).
+- ☑ **Poke/slap match the original exactly** (`src/sim/interactions.js`): +0.08 / +0.15 strain, poke at
+  `squishForce` 2.2, slap power ×2.2, dent caps 0.6 / 0.8, original slosh and jiggle, no ripple on pokes,
+  slap ripples use `waveSpeed`/`rippleDecay`. E2E runs the same touch in both games: strain, slosh and jiggle are identical.
+- ☑ Drag-to-poke (0.7 per move) and swipe-to-slap (speed > 10 px, strength up to 3.0).
+- ☑ Slap button = original `triggerSlapImpulse` (random equator point, 2.4, no touch vibration).
+- ☑ Window-level pointer tracking like the original: squeezes and drags survive leaving the mesh; orbit sloshes.
+- ☑ **See-through (requested):** the cutaway used a fixed world plane, so from behind it did nothing (in the
+  original too). It now always removes the half facing the camera, and clips the ureters with it.
+- ☑ **Water balloon (requested):** the sac is always full of liquid (a real bladder has no air; size shows
+  volume) instead of a hollow shell sliced by a fill-level plane. The wall is a translucent membrane that thins
+  as it stretches; the liquid is one solid body inside; the cutaway shows a flat liquid cross-section.
+  Dents conserve volume (the rest of the wall bulges out); ureters stay attached to the moving wall;
+  rugae folds are broader and the strain tremor is smooth, fixing the torn, spiky look at low fill.
+- ☑ Raycasting uses a bounding sphere that fits the fully inflated bladder (edge taps used to miss).
 
-- ☐ **Poke/slap add sphincter strain** (+0.08 / +0.15) and use original strengths (poke `squishForce` 2.2,
-  slap power ×2.2, dent caps 0.6 / 0.8, original slosh and jiggle).
-- ☐ Drag-to-poke and swipe-to-slap (speed > 10 px).
-- ☐ Slap button uses the original `slapBladder` path at strength 2.4 (no extra haptic).
-- ☐ Poke ripple: the original poke has none; slap ripples use `waveSpeed`/`rippleDecay`.
-- ☐ Orbit drag imparts slosh again.
-- ☐ Check the jagged, torn look right after a poke (seen in M0 screenshots) against the original.
-- ☑ ~~Urge waves~~, ~~cough/soothe feedback~~, ~~shake~~, ~~dead `handleSlap`~~: done in M1.
-
-**Automated (unit):** 13 pokes push strain to 1.0; strain 1.0 + high fill + cough → involuntary void.
-**Automated (parity):** same poke/slap inputs on the original and the port give matching strain/slosh.
-**Manual:** spam pokes until a leak happens; slap swipes feel like the original.
+**Automated (unit):** 9 interaction tests against the original's numbers (13 pokes → strain 1.0; 7 slaps on a
+full bladder + cough → total failure); cutaway plane removes the near half from front, back, side and above.
+**Automated (e2e), `e2e/interactions.spec.js`:** original-vs-port poke and slap; tap/drag poke, tap/swipe slap,
+squeeze hold/drag/off-mesh/release, orbit, Slap button, cutaway from behind.
+**Gate:** ☑ `npm run check` (0 warnings, 48 unit tests, build) · ☑ e2e 27 passed, 4 skipped.
+**Manual:** ☐ poke and slap feel like the original; the cutaway reads well from every angle; the liquid looks like a filled balloon.
 
 ---
 
@@ -193,7 +200,43 @@ memory stable over 2 minutes.
 
 ---
 
-## M8 — Release (optional) ☐
+## M8 — Minigames (WarioWare-style) ☐
+
+Requested: short, frantic microgames about holding on, built around moving or balancing something.
+Each lasts ~5 s, opens with a one-word prompt, speeds up as you win, and costs a "life" (a leak) when lost.
+
+- ☐ Microgame runner: prompt → play → result, lives, rising speed, score, best score saved locally.
+- ☐ Touch-first input helpers: drag, tilt (device motion with drag fallback), hold, tap-on-cue.
+- ☐ First set of microgames, each tied to holding the sphincter:
+  - **BALANCE!**: keep a wobbling, sloshing bladder upright on a pedestal by dragging (or tilting) against the slosh.
+  - **HOLD!**: keep the pressure needle in the green band by holding and releasing Clench while urges push it.
+  - **DODGE!**: steer the bus left/right to miss potholes (each hit is a cough).
+  - **CLENCH!**: clench the instant the sneeze lands, not before.
+  - **CARRY!**: walk a brimming cup to the toilet by holding a steady drag speed without spilling.
+- ☐ Results feed the bladder sim (a lost microgame = a stress leak), so the 3D organ reacts between rounds.
+
+**Automated (unit):** each microgame's win/lose logic with scripted input; runner speed-up and lives.
+**Automated (e2e):** play each microgame on a phone profile through touch input, win and lose paths.
+**Manual:** play a 10-game run on the phone; inputs feel responsive.
+
+---
+
+## M9 — Story mode ☐
+
+Requested: a story mode. A day in the life of one bladder, told in short chapters.
+
+- ☐ Chapter engine: scripted beats (dialogue lines, drinks, urges, challenges, microgames) over the live sim.
+- ☐ Chapters: morning coffee → the commute → the long meeting → date night → the concert queue → the road trip finale.
+- ☐ The bladder narrates (existing voice and subtitles), with new story lines per chapter.
+- ☐ Progress, chapter unlocks and best grades saved locally; resume where you left off.
+
+**Automated (unit):** chapter scripts run to completion with scripted inputs; win/lose branches.
+**Automated (e2e):** start chapter 1 from the menu, finish it, chapter 2 unlocks and survives a reload.
+**Manual:** play the first two chapters on the phone.
+
+---
+
+## M10 — Release (optional) ☐
 
 - ☐ Replace template `README.md` with real docs (run, test, deploy).
 - ☐ Deploy as a static site (HTTPS) for phone access.

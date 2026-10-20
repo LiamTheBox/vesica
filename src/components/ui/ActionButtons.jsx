@@ -2,7 +2,7 @@ import { useHud } from '../../store/useUiStore'
 import { BEVERAGE_TYPES } from '../../physics/constants'
 import { act } from '../../sim/engine'
 import { ingestBeverage, soothe, startClench, startVoidAttempt, stopClench, stopVoidAttempt } from '../../sim/sim'
-import { requestSlap } from '../../sim/interactions'
+import { slapRandom } from '../../sim/interactions'
 
 const BEVERAGE_LABELS = {
   water: { icon: '💧', name: 'Water', note: '+180ml', tone: 'text-cyan-400' },
@@ -85,7 +85,7 @@ export default function ActionButtons() {
         </button>
 
         <button
-          onClick={() => act(requestSlap)}
+          onClick={() => act(slapRandom)}
           className="px-3 py-3 rounded-2xl glass-hud hover:border-amber-400/80 text-amber-300 font-bold text-xs uppercase active:scale-95 transition flex flex-col items-center justify-center flex-shrink-0"
           title="Slap Bladder"
         >

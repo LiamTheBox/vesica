@@ -1,22 +1,41 @@
-import { impartSloshForce } from './sim'
+import { impartSloshForce, physicsOf } from './sim'
 
-// Direct touches on the bladder. These keep the React port's current strengths;
-// ROADMAP M2 brings them back in line with the original (strain, force, drag/swipe).
+// Direct touches on the bladder, ported from the original's pokeBladder(), slapBladder(),
+// squeeze and orbit handlers. `local` is the hit point in the bladder mesh's own space.
+// The wall dent itself is visual: Organ.jsx applies it when it sees the poke/slap event.
 
-const touchRipple = (center, amplitude) => ({ center, radius: 0.1, maxRadius: 3.8, speed: 7.5, amplitude, decay: 3.5 })
+const point = (p) => ({ x: p.x, y: p.y, z: p.z })
 
-export function pokeAt(sim, out, local) {
-  sim.ripples.push(touchRipple({ x: local.x, y: local.y, z: local.z }, 0.7))
-  sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + 0.3)
-  impartSloshForce(sim, local.x * 1.5, local.z * 1.5)
-  out.push({ type: 'poke' })
+// strength: 2.2 (physics `squishForce`) for a tap, 0.7 for each step of a drag.
+export function pokeAt(sim, out, local, strength, { touch = false } = {}) {
+  impartSloshForce(sim, local.x * 2.5 * strength, local.z * 2.5 * strength)
+  sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + 0.3 * strength)
+  sim.sphincterToneStrain = Math.min(1.0, sim.sphincterToneStrain + 0.08)
+  out.push({ type: 'poke', local: point(local), strength, touch })
 }
 
-export function slapAt(sim, out, local, soundStrength = 2.0) {
-  sim.ripples.push(touchRipple({ x: local.x, y: local.y, z: local.z }, 1.5))
-  sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + 0.6)
-  impartSloshForce(sim, local.x * 4.0, local.z * 4.0)
-  out.push({ type: 'slap', strength: soundStrength })
+// strength: 2.0 for a tap in slap mode, 2.4 for the Slap button, up to 3.0 for a swipe.
+export function slapAt(sim, out, local, strength = 1.8, { haptic = false } = {}) {
+  const phys = physicsOf(sim)
+  sim.ripples.push({
+    center: point(local),
+    radius: 0.1,
+    maxRadius: 3.8,
+    speed: phys.waveSpeed,
+    amplitude: 0.65 * strength,
+    decay: phys.rippleDecay,
+  })
+  impartSloshForce(sim, local.x * 4.0 * strength, local.z * 4.0 * strength)
+  sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + 0.6 * strength)
+  sim.sphincterToneStrain = Math.min(1.0, sim.sphincterToneStrain + 0.15)
+  out.push({ type: 'slap', local: point(local), strength, haptic })
+}
+
+// The Slap button: a hit at a random point around the bladder's equator.
+export function slapRandom(sim, out, rng = Math.random) {
+  const angle = rng() * Math.PI * 2
+  const local = { x: Math.cos(angle) * 2.2, y: (rng() - 0.5) * 0.8, z: Math.sin(angle) * 2.2 }
+  slapAt(sim, out, local, 2.4)
 }
 
 export function squeezeStart(sim, out) {
@@ -34,7 +53,12 @@ export function squeezeRelease(sim, out) {
   out.push({ type: 'squeezeRelease' })
 }
 
-// The Slap button: the organ picks a random point on its surface (see Organ.jsx).
-export function requestSlap(sim, out) {
-  out.push({ type: 'slapRequest' })
+// A cancelled touch (e.g. the OS took over) lets go without the release slosh.
+export function squeezeCancel(sim) {
+  sim.targetSqueezeY = 0
+}
+
+// Dragging the camera around rocks the fluid.
+export function orbitDrag(sim, out, dx, dy) {
+  impartSloshForce(sim, dx * 0.15, dy * 0.15)
 }
