@@ -6,8 +6,11 @@ import BottomNav from './Tabs/BottomNav'
 import TelemetryTab from './Tabs/TelemetryTab'
 import ChallengesTab from './Tabs/ChallengesTab'
 import SettingsTab from './Tabs/SettingsTab'
-import { useSimStore } from '../../store/useSimStore'
-import { audio } from '../../audio/AudioManager'
+import { useUiStore } from '../../store/useUiStore'
+import { act } from '../../sim/engine'
+import { agitate, cough, resetOrgan } from '../../sim/sim'
+import { haptic } from '../../feedback/feedback'
+import { countRender } from '../../debug/devHook'
 
 const INTERACTION_MODES = [
   { key: 'poke', label: 'Poke', icon: '👉' },
@@ -17,13 +20,11 @@ const INTERACTION_MODES = [
 ]
 
 export default function HUD() {
-  const mode = useSimStore(s => s.interactionMode)
-  const isCutawayActive = useSimStore(s => s.isCutawayActive)
-  const setMode = useSimStore.getState().setInteractionMode
-  const triggerCough = useSimStore.getState().triggerCough
-  const toggleCutaway = useSimStore.getState().toggleCutaway
-  const resetOrgan = useSimStore.getState().resetOrgan
-  const setSim = useSimStore.getState().updateSim
+  countRender('HUD')
+  const mode = useUiStore((s) => s.interactionMode)
+  const isCutawayActive = useUiStore((s) => s.isCutawayActive)
+  const setMode = useUiStore((s) => s.setInteractionMode)
+  const toggleCutaway = useUiStore((s) => s.toggleCutaway)
 
   const [deferredPrompt, setDeferredPrompt] = useState(null)
 
@@ -44,45 +45,20 @@ export default function HUD() {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(()=>{})
+      document.documentElement.requestFullscreen().catch(() => {})
     } else {
-      document.exitFullscreen().catch(()=>{})
+      document.exitFullscreen().catch(() => {})
     }
   }
 
   const cycleMode = () => {
-    const idx = INTERACTION_MODES.findIndex(m => m.key === mode)
+    const idx = INTERACTION_MODES.findIndex((m) => m.key === mode)
     const next = INTERACTION_MODES[(idx + 1) % INTERACTION_MODES.length]
     setMode(next.key)
-    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(20)
+    haptic(20)
   }
 
-  const currentModeObj = INTERACTION_MODES.find(m => m.key === mode)
-
-  const handleShake = () => {
-    const strength = 3.2
-    setSim(s => ({
-      jiggleIntensity: Math.min(1.0, s.jiggleIntensity + strength * 0.4),
-      sloshVelX: s.sloshVelX + (Math.random() - 0.5) * strength * 3.5,
-      sloshVelZ: s.sloshVelZ + (Math.random() - 0.5) * strength * 3.5
-    }))
-    
-    document.body.classList.add('shake-active')
-    setTimeout(() => document.body.classList.remove('shake-active'), 250)
-    
-    audio.playGranularSlosh(strength * 0.4)
-    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(45)
-    audio.speak('shaken', true)
-  }
-
-  const handleReset = () => {
-    resetOrgan()
-    audio.stopDynamicJet()
-    audio.stopClenchHum()
-    audio.stopUrgeRumble()
-    handleShake()
-    audio.speak('deflated')
-  }
+  const currentModeObj = INTERACTION_MODES.find((m) => m.key === mode)
 
   return (
     <div className="absolute inset-0 pointer-events-none z-10 flex flex-col p-2 sm:p-4 justify-between h-full">
@@ -120,7 +96,7 @@ export default function HUD() {
               ⛶
             </button>
 
-            <button onClick={() => { toggleCutaway(); if (navigator.vibrate) navigator.vibrate(20); }} className={`glass-hud px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center gap-1 ${isCutawayActive ? 'bg-sky-500/25 border-sky-400 text-sky-400' : 'text-slate-200 hover:text-sky-400'}`} title="Toggle Sagittal Internal Cutaway">
+            <button onClick={() => { toggleCutaway(); haptic(20) }} className={`glass-hud px-2.5 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center gap-1 ${isCutawayActive ? 'bg-sky-500/25 border-sky-400 text-sky-400' : 'text-slate-200 hover:text-sky-400'}`} title="Toggle Sagittal Internal Cutaway">
               <span>🔬</span><span className="text-[11px] hidden sm:inline">Cutaway</span>
             </button>
 
@@ -128,15 +104,15 @@ export default function HUD() {
               <span>{currentModeObj?.icon}</span>
               <span className="text-[11px] hidden sm:inline">{currentModeObj?.label}</span>
             </button>
-            <button onClick={triggerCough} className="glass-hud px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 hover:text-rose-400 active:scale-95 transition flex items-center gap-1">
+            <button onClick={() => act(cough)} className="glass-hud px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 hover:text-rose-400 active:scale-95 transition flex items-center gap-1">
               <span>🤧</span>
               <span className="text-[11px] hidden sm:inline">Cough</span>
             </button>
-            <button onClick={handleShake} className="glass-hud px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 hover:text-amber-400 active:scale-95 transition flex items-center gap-1">
+            <button onClick={() => act(agitate, 3.2)} className="glass-hud px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 hover:text-amber-400 active:scale-95 transition flex items-center gap-1">
               <span>📳</span>
               <span className="text-[11px] hidden sm:inline">Shake</span>
             </button>
-            <button onClick={handleReset} className="glass-hud p-1.5 sm:p-2 rounded-xl text-xs font-bold text-slate-300 hover:text-cyan-400 transition" title="Flush Organ">
+            <button onClick={() => act(resetOrgan)} className="glass-hud p-1.5 sm:p-2 rounded-xl text-xs font-bold text-slate-300 hover:text-cyan-400 transition" title="Flush Organ">
               🔄
             </button>
           </div>

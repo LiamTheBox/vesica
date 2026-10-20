@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useSimStore } from '../../store/useSimStore'
+import { useHud, useUiStore } from '../../store/useUiStore'
 
 export function Subtitles() {
-  const subtitle = useSimStore(s => s.currentSubtitle)
-  const [visible, setVisible] = useState(false)
+  const subtitle = useUiStore((s) => s.currentSubtitle)
+  // Each subtitle shows for 5 s; a newer one restarts the timer.
+  const [expiredId, setExpiredId] = useState(null)
+  const visible = !!subtitle && subtitle.id !== expiredId
 
   useEffect(() => {
     if (!subtitle) return
-    setVisible(true)
-    const timer = setTimeout(() => setVisible(false), 5000)
+    const timer = setTimeout(() => setExpiredId(subtitle.id), 5000)
     return () => clearTimeout(timer)
   }, [subtitle])
 
@@ -45,21 +46,21 @@ export function Subtitles() {
 }
 
 export function Alerts() {
-  const isStressLeaking = useSimStore(s => s.isStressLeaking)
-  const involuntaryVoiding = useSimStore(s => s.involuntaryVoiding)
-  const isUrgeWaveActive = useSimStore(s => s.detrusorSpasmIntensity > 0.4 && s.volume / s.maxCapacity > 0.45) // Simplification
+  const isStressLeaking = useHud((h) => h.isStressLeaking)
+  const involuntaryVoiding = useHud((h) => h.involuntaryVoiding)
+  const isUrgeWaveActive = useHud((h) => h.isUrgeWaveActive)
 
   return (
     <>
       <div className={`pointer-events-none fixed inset-0 z-10 box-border border-[10px] sm:border-[16px] border-rose-600/60 transition-opacity duration-300 ${involuntaryVoiding ? 'opacity-95 fatigue-vignette' : isStressLeaking ? 'opacity-70' : 'opacity-0'}`}></div>
 
-      {isUrgeWaveActive && !isStressLeaking && !involuntaryVoiding && (
+      {isUrgeWaveActive && (
         <div className="pointer-events-none absolute top-40 sm:top-44 left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-full bg-amber-500/90 text-slate-950 text-xs font-black tracking-wider uppercase shadow-xl animate-pulse flex items-center gap-2">
           <span>⚡</span><span>DETRUSOR CONTRACTION WAVE INCOMING!</span>
         </div>
       )}
 
-      {isStressLeaking && !involuntaryVoiding && (
+      {isStressLeaking && (
         <div className="pointer-events-none absolute top-48 left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-full bg-rose-600/95 text-white text-xs font-black tracking-wider uppercase shadow-xl shadow-rose-600/50 animate-bounce text-center">
           💦 STRESS LEAK OCCURRED! PRESSURE EQUALIZING...
         </div>

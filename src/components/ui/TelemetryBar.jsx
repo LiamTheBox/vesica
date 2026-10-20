@@ -1,15 +1,16 @@
-import { useSimStore } from '../../store/useSimStore'
+import { useHud } from '../../store/useUiStore'
+import { countRender } from '../../debug/devHook'
 
 export default function TelemetryBar() {
-  const volume = useSimStore((s) => s.volume)
-  const maxCapacity = useSimStore((s) => s.maxCapacity)
-  const stamina = useSimStore((s) => s.kegelStamina)
-  const pressure = useSimStore((s) => s.pressure)
-  const flowRate = useSimStore((s) => s.flowRate)
-  const toneStrain = useSimStore((s) => s.sphincterToneStrain)
+  countRender('TelemetryBar')
+  const volume = useHud((h) => h.volume)
+  const maxCapacity = useHud((h) => h.maxCapacity)
+  const stamPct = useHud((h) => h.staminaPct)
+  const pressure = useHud((h) => h.pressure)
+  const flowRate = useHud((h) => h.flowRate)
+  const tonePct = useHud((h) => h.tonePct)
 
   const fillPct = Math.min(100, Math.round((volume / maxCapacity) * 100))
-  const stamPct = Math.min(100, Math.round(stamina * 100))
 
   return (
     <div className="glass-hud px-3 py-2 rounded-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 text-xs w-full max-w-4xl mx-auto pointer-events-auto">
@@ -17,7 +18,7 @@ export default function TelemetryBar() {
       <div className="flex-1 min-w-[120px]">
         <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono mb-1">
           <span>VOLUME</span>
-          <span className="font-bold text-amber-300">{Math.round(volume)} / {maxCapacity} ml</span>
+          <span className="font-bold text-amber-300">{volume} / {maxCapacity} ml</span>
         </div>
         <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden border border-slate-700/50">
           <div className="h-full bg-gradient-to-r from-amber-400 via-yellow-300 to-rose-500 transition-all duration-150" style={{ width: `${fillPct}%` }}></div>
@@ -47,7 +48,7 @@ export default function TelemetryBar() {
 
       <div className="text-right flex-shrink-0">
         <div className="text-[9px] text-slate-400 font-mono uppercase">Sphincter Tone</div>
-        <div className="text-xs sm:text-sm font-black font-mono text-rose-400">RESTING ({Math.round(toneStrain * 100)}%)</div>
+        <div className="text-xs sm:text-sm font-black font-mono text-rose-400">RESTING ({tonePct}%)</div>
       </div>
     </div>
   )

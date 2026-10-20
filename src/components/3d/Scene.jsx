@@ -1,11 +1,11 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import Organ from './Organ'
-import { SimEngine } from '../../physics/useSimEngine'
-import { useSimStore } from '../../store/useSimStore'
+import { SimLoop } from '../../sim/SimLoop'
+import { useUiStore } from '../../store/useUiStore'
 
 export default function Scene() {
-  const mode = useSimStore(s => s.interactionMode)
+  const mode = useUiStore((s) => s.interactionMode)
 
   return (
     <div className="absolute inset-0 z-0">
@@ -21,7 +21,7 @@ export default function Scene() {
         <directionalLight color={0x38bdf8} intensity={3.0} position={[-8, -4, -8]} />
         <pointLight color={0xf59e0b} intensity={5.0} distance={10} position={[0, -0.2, 0]} />
 
-        <SimEngine />
+        <SimLoop />
         <Organ />
         
         <OrbitControls 

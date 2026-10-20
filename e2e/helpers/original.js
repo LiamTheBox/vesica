@@ -31,7 +31,3 @@ export function readOriginalSim(page) {
     involuntaryVoiding: sim.involuntaryVoiding,
   })`)
 }
-
-export function readPortState(page) {
-  return page.evaluate(() => window.__vesica.getState())
-}

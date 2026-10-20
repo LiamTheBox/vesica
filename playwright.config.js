@@ -4,9 +4,13 @@ const PORT = 5199
 
 // Only Chromium is installed locally, so every phone profile runs on Chromium with
 // that device's viewport, touch support, pixel ratio and user agent.
+// Simulation-logic specs don't depend on screen size, so they only run on Pixel 7.
+const LOGIC_SPECS = /sim\.spec\.js/
+
 const phone = (name) => ({
   name,
   use: { ...devices[name], browserName: 'chromium', defaultBrowserType: 'chromium' },
+  testIgnore: name === 'Pixel 7' ? undefined : LOGIC_SPECS,
 })
 
 export default defineConfig({

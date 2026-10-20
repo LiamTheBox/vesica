@@ -1,8 +1,8 @@
-import { useSimStore } from '../../../store/useSimStore'
+import { useUiStore } from '../../../store/useUiStore'
 
 export default function BottomNav() {
-  const currentTab = useSimStore(s => s.currentTab)
-  const setTab = useSimStore.getState().setTab
+  const currentTab = useUiStore((s) => s.currentTab)
+  const setTab = useUiStore((s) => s.setTab)
 
   const navItems = [
     { id: 'sim', icon: '🫁', label: 'Sim' },

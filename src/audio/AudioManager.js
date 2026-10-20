@@ -33,7 +33,7 @@ class AudioManager {
 
     this.femaleVoice = null
     this.speechCooldown = 0.0
-    this.minInterval = 2.5 // Lowered from 10.0 to make it more responsive
+    this.minInterval = 10.0
     this.recentHistory = new Map()
     this.historySize = 5
 
@@ -74,16 +74,9 @@ class AudioManager {
     if (!this.femaleVoice && voices.length > 0) this.femaleVoice = voices.find(v => v.lang.startsWith('en')) || voices[0]
   }
 
-  speak(category, force = false) {
+  speak(category) {
     if (!this.voiceEnabled || this.isMasterMuted || !this.synth) return
-    
-    // If forced, cancel current speech immediately to prioritize new line
-    if (force) {
-      this.synth.cancel()
-      this.speechCooldown = 0
-    } else if (this.speechCooldown > 0 || this.synth.speaking) {
-      return
-    }
+    if (this.speechCooldown > 0 || this.synth.speaking) return
 
     const list = VOICE_DATABASE[category]
     if (!list || list.length === 0) return
@@ -163,7 +156,7 @@ class AudioManager {
     if (!this.dynamicJet) return
     const jet = this.dynamicJet; const now = this.ctx.currentTime
     jet.gain.gain.linearRampToValueAtTime(0.001, now + 0.12)
-    setTimeout(() => { try { jet.source.stop() } catch(e){} jet.source.disconnect(); jet.gain.disconnect(); if (this.dynamicJet === jet) this.dynamicJet = null }, 130)
+    setTimeout(() => { try { jet.source.stop() } catch{} jet.source.disconnect(); jet.gain.disconnect(); if (this.dynamicJet === jet) this.dynamicJet = null }, 130)
   }
 
   playGranularSlosh(magnitude) {
@@ -235,7 +228,7 @@ class AudioManager {
     if (!this.clenchHumNode) return
     const node = this.clenchHumNode; const now = this.ctx.currentTime
     node.gain.gain.linearRampToValueAtTime(0.001, now + 0.08)
-    setTimeout(() => { try { node.osc.stop() } catch(e){} node.osc.disconnect(); node.gain.disconnect(); if (this.clenchHumNode === node) this.clenchHumNode = null }, 90)
+    setTimeout(() => { try { node.osc.stop() } catch{} node.osc.disconnect(); node.gain.disconnect(); if (this.clenchHumNode === node) this.clenchHumNode = null }, 90)
   }
 
   startUrgeRumble() {
@@ -252,7 +245,7 @@ class AudioManager {
     if (!this.urgeRumbleNode) return
     const node = this.urgeRumbleNode; const now = this.ctx.currentTime
     node.gain.gain.linearRampToValueAtTime(0.001, now + 0.3)
-    setTimeout(() => { try { node.osc.stop() } catch(e){} node.osc.disconnect(); node.gain.disconnect(); if (this.urgeRumbleNode === node) this.urgeRumbleNode = null }, 320)
+    setTimeout(() => { try { node.osc.stop() } catch{} node.osc.disconnect(); node.gain.disconnect(); if (this.urgeRumbleNode === node) this.urgeRumbleNode = null }, 320)
   }
 
   playCoughBurst() {

@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
-import { useSimStore } from '../../../store/useSimStore'
+import { useState } from 'react'
+import { useUiStore } from '../../../store/useUiStore'
 import { audio } from '../../../audio/AudioManager'
 
 export default function SettingsTab() {
-  const currentTab = useSimStore(s => s.currentTab)
-  const setTab = useSimStore.getState().setTab
+  const currentTab = useUiStore((s) => s.currentTab)
+  const setTab = useUiStore((s) => s.setTab)
 
   const [masterMuted, setMasterMuted] = useState(audio.isMasterMuted)
   const [voiceEnabled, setVoiceEnabled] = useState(audio.voiceEnabled)

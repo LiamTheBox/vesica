@@ -1,13 +1,14 @@
 import { useEffect, useRef } from 'react'
-import { useSimStore } from '../../../store/useSimStore'
+import { useHud, useUiStore } from '../../../store/useUiStore'
+import { sim } from '../../../sim/engine'
 
 export default function TelemetryTab() {
-  const currentTab = useSimStore(s => s.currentTab)
-  const setTab = useSimStore.getState().setTab
+  const currentTab = useUiStore((s) => s.currentTab)
+  const setTab = useUiStore((s) => s.setTab)
   const canvasRef = useRef(null)
 
-  const maxPressure = useSimStore(s => s.maxRecordedPressure)
-  const totalLeaked = useSimStore(s => s.totalLeakedVolume)
+  const maxPressure = useHud((h) => h.maxPressure)
+  const totalLeaked = useHud((h) => h.totalLeaked)
 
   // Custom hook or direct ref to avoid re-rendering entire tab on every frame
   useEffect(() => {
@@ -38,7 +39,7 @@ export default function TelemetryTab() {
         ctx.stroke()
       }
 
-      const hist = useSimStore.getState().telemetryHistory || []
+      const hist = sim.telemetryHistory
       if (hist.length < 2) {
         raf = requestAnimationFrame(renderChart)
         return
@@ -101,7 +102,7 @@ export default function TelemetryTab() {
           </div>
           <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
             <div className="text-[9px] text-slate-400 uppercase">Total Leaked</div>
-            <div className="text-xs font-bold text-rose-400">{Math.round(totalLeaked)} ml</div>
+            <div className="text-xs font-bold text-rose-400">{totalLeaked} ml</div>
           </div>
           <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
             <div className="text-[9px] text-slate-400 uppercase">Max Recorded</div>
