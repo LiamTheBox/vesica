@@ -12,6 +12,7 @@
     "preview:phone": "vite build && vite preview --mode phone",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:perf": "playwright test -c playwright.perf.config.js",
     "check": "npm run lint && npm run test && npm run build"
   },
   "engines": {

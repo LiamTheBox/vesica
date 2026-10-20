@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useUiStore } from '../../store/useUiStore'
+import { selectQualityTier, useUiStore } from '../../store/useUiStore'
+import { QUALITY_TIERS } from '../../settings/quality'
 import { act, onSimEvent, sim } from '../../sim/engine'
 import { physicsOf } from '../../sim/sim'
 import { orbitDrag, pokeAt, slapAt, squeezeCancel, squeezeDrag, squeezePinch, squeezeRelease, squeezeStart } from '../../sim/interactions'
-import { createOrganRig } from './organRig'
+import { createOrganRig, createOrganTextures, FLUID_INSET } from './organRig'
 
 const ndc = new THREE.Vector2()
+// Liquid opacity without transmission. Transmission only replaces the diffuse light and
+// keeps the glow and highlights, so a mostly opaque liquid matches it best (compared in M7).
+const FLUID_OPACITY = 0.9
 
 export default function Organ() {
   const rig = useMemo(() => createOrganRig(), [])
+  const textures = useMemo(() => createOrganTextures(), [])
   const get = useThree((state) => state.get)
 
   const bladderRef = useRef()
@@ -24,6 +29,7 @@ export default function Organ() {
   const fluidCapMatRef = useRef()
 
   const isCutawayActive = useUiStore((s) => s.isCutawayActive)
+  const refractive = QUALITY_TIERS[useUiStore(selectQualityTier)].transmission
 
   // Dents follow the simulation's poke/slap events, whatever caused them.
   useEffect(() => {
@@ -146,24 +152,26 @@ export default function Organ() {
 
   return (
     <group position={[0, 0.2, 0]}>
-      {/* Liquid: one solid body filling the sac. Drawn first so the membrane blends over it. */}
-      <mesh geometry={rig.fluidGeo} renderOrder={1}>
+      {/* Liquid: one solid body filling the sac, the wall's own geometry just inside it.
+          Drawn first so the membrane blends over it. High quality refracts what's behind
+          it (transmission: a whole extra render pass); lower tiers let it through with
+          plain transparency, which looks nearly the same. */}
+      <mesh geometry={rig.bladderGeo} scale={FLUID_INSET} renderOrder={1}>
         <meshPhysicalMaterial
+          key={refractive ? 'refractive' : 'blended'}
           ref={fluidMatRef}
           color={0xfacc15}
           emissive={0xd97706}
           emissiveIntensity={0.22}
           roughness={0.12}
           metalness={0.0}
-          transmission={0.55}
-          ior={1.333}
-          thickness={2.2}
+          {...(refractive ? { transmission: 0.55, ior: 1.333, thickness: 2.2 } : { transparent: true, opacity: FLUID_OPACITY })}
           clippingPlanes={clip}
           side={THREE.FrontSide}
         />
       </mesh>
       {/* Cross-section of the liquid: the inside faces, shown only where the cutaway opens it. */}
-      <mesh geometry={rig.fluidGeo} renderOrder={1} visible={isCutawayActive}>
+      <mesh geometry={rig.bladderGeo} scale={FLUID_INSET} renderOrder={1} visible={isCutawayActive}>
         <meshBasicMaterial ref={fluidCapMatRef} color={0xd99a2b} clippingPlanes={clip} side={THREE.BackSide} />
       </mesh>
 
@@ -171,8 +179,8 @@ export default function Organ() {
       <mesh ref={bladderRef} geometry={rig.bladderGeo} renderOrder={10}>
         <meshPhysicalMaterial
           ref={wallMatRef}
-          map={rig.diffTex}
-          normalMap={rig.normTex}
+          map={textures.diffTex}
+          normalMap={textures.normTex}
           normalScale={[0.8, 0.8]}
           color={0xf43f5e}
           emissive={0x881337}
@@ -194,7 +202,8 @@ export default function Organ() {
       </mesh>
 
       <mesh ref={streamRef} geometry={rig.streamGeo} renderOrder={5} visible={false}>
-        <meshPhysicalMaterial color={0xfacc15} emissive={0xd97706} emissiveIntensity={0.6} roughness={0.05} transmission={0.92} ior={1.333} transparent opacity={0.92} side={THREE.DoubleSide} />
+        {/* No transmission: on a jet this thin it's invisible, and it doubled the frame cost while voiding. */}
+        <meshPhysicalMaterial color={0xfacc15} emissive={0xd97706} emissiveIntensity={0.6} roughness={0.05} transparent opacity={0.92} side={THREE.DoubleSide} />
       </mesh>
 
       <points ref={splashRef} geometry={rig.splashGeo} renderOrder={6} visible={false}>

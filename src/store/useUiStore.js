@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { EMPTY_BESTS } from '../challenges/bests'
-import { loadJson } from './persist'
+import { loadJson, saveJson } from './persist'
+import { isTier } from '../settings/quality'
 
 // UI state plus a rounded HUD snapshot of the simulation. The live simulation lives
 // in `src/sim/engine.js`; components subscribe here so they only re-render when a
@@ -15,7 +16,10 @@ export const DEFAULT_SETTINGS = {
   sfxVolume: 0.8,
   haptics: true,
   shakeToSlosh: true, // device motion sloshes the bladder
+  graphics: 'auto', // 'auto' or a tier from settings/quality.js
 }
+
+const savedAutoQuality = loadJson('quality', { tier: 'high' }).tier
 
 export const initialHud = {
   volume: 120,
@@ -55,11 +59,23 @@ export const useUiStore = create((set) => ({
   hud: initialHud,
   // Where the 3D stage sits on screen ({ x, y, width, height }), for camera framing.
   stageRect: null,
+  // Tier Auto quality settled on for this device; kept so a slow phone starts there.
+  autoQuality: isTier(savedAutoQuality) ? savedAutoQuality : 'high',
+  // The page is in the background: rendering and audio pause.
+  appHidden: false,
 
   setTab: (tab) => set({ currentTab: tab }),
   setInteractionMode: (mode) => set({ interactionMode: mode }),
   toggleCutaway: () => set((state) => ({ isCutawayActive: !state.isCutawayActive })),
   dismissResult: () => set({ lastResult: null }),
+  setAutoQuality: (tier) => {
+    set({ autoQuality: tier })
+    saveJson('quality', { tier })
+  },
 }))
+
+// The rendering tier in use: the player's choice, or what Auto settled on.
+export const selectQualityTier = (state) =>
+  isTier(state.settings.graphics) ? state.settings.graphics : state.autoQuality
 
 export const useHud = (selector) => useUiStore((state) => selector(state.hud))

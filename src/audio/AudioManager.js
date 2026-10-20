@@ -60,6 +60,16 @@ class AudioManager {
     if (this.ctx.state === 'suspended') this.ctx.resume()
   }
 
+  // In the background: silence the engine and drop the queued voice line.
+  suspend() {
+    if (this.ctx?.state === 'running') this.ctx.suspend()
+    this.synth?.cancel()
+  }
+
+  resume() {
+    if (this.ctx?.state === 'suspended') this.ctx.resume()
+  }
+
   loadVoices() {
     if (!this.synth) return
     const voices = this.synth.getVoices()

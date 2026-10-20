@@ -4,15 +4,17 @@ const PORT = 5199 // dev server: has the window.__vesica test hook
 const PREVIEW_PORT = 5299 // production build: service worker, no test hook
 
 // Simulation-logic specs don't depend on screen size, so they only run on Pixel 7.
-const LOGIC_SPECS = /(sim|interactions|challenges|hud)\.spec\.js/
+const LOGIC_SPECS = /(sim|interactions|challenges|hud|lifecycle|quality)\.spec\.js/
 const PWA_SPECS = /pwa\.spec\.js/
+// The performance gate has its own config (playwright.perf.config.js).
+const PERF_SPECS = /perf[\\/]/
 
 // Only Chromium is installed locally, so every phone profile runs on Chromium with
 // that device's viewport, touch support, pixel ratio and user agent.
 const phone = (name) => ({
   name,
   use: { ...devices[name], browserName: 'chromium', defaultBrowserType: 'chromium' },
-  testIgnore: name === 'Pixel 7' ? PWA_SPECS : [LOGIC_SPECS, PWA_SPECS],
+  testIgnore: name === 'Pixel 7' ? [PWA_SPECS, PERF_SPECS] : [LOGIC_SPECS, PWA_SPECS, PERF_SPECS],
 })
 
 export default defineConfig({

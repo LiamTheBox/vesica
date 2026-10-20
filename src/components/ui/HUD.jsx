@@ -1,17 +1,24 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import TelemetryBar from './TelemetryBar'
 import ActionButtons from './ActionButtons'
 import { StageAlerts, Subtitles, Vignette } from './Alerts'
 import { ChallengeBanner, ChallengeResultCard } from './ChallengeStatus'
 import BottomNav from './Tabs/BottomNav'
-import TelemetryTab from './Tabs/TelemetryTab'
-import ChallengesTab from './Tabs/ChallengesTab'
-import SettingsTab from './Tabs/SettingsTab'
 import { useHud, useUiStore } from '../../store/useUiStore'
 import { organStatus } from './status'
 import { countRender } from '../../debug/devHook'
 import ToolRail from './ToolRail'
 import ActionRail from './ActionRail'
+
+// Tabs load on first open (they're precached for offline play either way).
+const TelemetryTab = lazy(() => import('./Tabs/TelemetryTab'))
+const ChallengesTab = lazy(() => import('./Tabs/ChallengesTab'))
+const SettingsTab = lazy(() => import('./Tabs/SettingsTab'))
+
+function LazyTab({ id, children }) {
+  const open = useUiStore((s) => s.currentTab === id)
+  return open ? <Suspense fallback={null}>{children}</Suspense> : null
+}
 
 const TOP_BUTTON = 'glass-hud min-w-11 min-h-11 px-2.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1'
 
@@ -139,9 +146,9 @@ export default function HUD() {
       </div>
 
       <ChallengeResultCard />
-      <TelemetryTab />
-      <ChallengesTab />
-      <SettingsTab />
+      <LazyTab id="telemetry"><TelemetryTab /></LazyTab>
+      <LazyTab id="challenges"><ChallengesTab /></LazyTab>
+      <LazyTab id="settings"><SettingsTab /></LazyTab>
     </>
   )
 }

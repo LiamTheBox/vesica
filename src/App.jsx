@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import HUD from './components/ui/HUD'
-import Scene from './components/3d/Scene'
 import { audio } from './audio/AudioManager'
 import { installFeedback } from './feedback/feedback'
 import { applySettings } from './settings/settings'
@@ -8,6 +7,10 @@ import { useUiStore } from './store/useUiStore'
 import { act } from './sim/engine'
 import { agitate } from './sim/sim'
 import { countRender } from './debug/devHook'
+
+// The 3D engine (Three.js + R3F, most of the download) loads in its own chunks, so the
+// HUD and start screen don't wait for it to parse.
+const Scene = lazy(() => import('./components/3d/Scene'))
 
 function App() {
   countRender('App')
@@ -68,7 +71,9 @@ function App() {
 
   return (
     <>
-      <Scene />
+      <Suspense fallback={null}>
+        <Scene />
+      </Suspense>
       <HUD />
 
       {!started && (

@@ -1,6 +1,6 @@
 import { audio } from '../audio/AudioManager'
 import { ambientVoiceCategory } from '../sim/sim'
-import { onSimEvent, onSimTick } from '../sim/engine'
+import { onSimEvent, onSimTick, sim } from '../sim/engine'
 import { useUiStore } from '../store/useUiStore'
 import { recordResult } from '../challenges/bests'
 import { saveJson } from '../store/persist'
@@ -21,16 +21,26 @@ export function shakeScreen() {
   setTimeout(() => document.body.classList.remove('shake-active'), 250)
 }
 
-// Keeps the screen on during a challenge, where supported (Wake Lock API).
+// Keeps the screen on during a challenge, where supported (Wake Lock API). Requests
+// and releases are async, so `wantAwake` decides when a reset and a new start (Retry)
+// overlap.
 let wakeLock = null
+let wantAwake = false
 async function keepScreenAwake(on) {
+  wantAwake = on
   try {
     if (on && !wakeLock && navigator.wakeLock) {
-      wakeLock = await navigator.wakeLock.request('screen')
-      wakeLock.addEventListener('release', () => { wakeLock = null })
+      const lock = await navigator.wakeLock.request('screen')
+      if (!wantAwake || wakeLock) {
+        lock.release()
+        return
+      }
+      wakeLock = lock
+      lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null })
     } else if (!on && wakeLock) {
-      await wakeLock.release()
+      const lock = wakeLock
       wakeLock = null
+      await lock.release()
     }
   } catch {
     // Denied or unsupported: the challenge still works, the screen may just dim.
@@ -104,7 +114,9 @@ const handlers = {
     haptic(30)
     audio.speak('soothe')
   },
+  // A reset also ends any challenge (a new one starts right after, if that's why).
   reset: () => {
+    keepScreenAwake(false)
     audio.stopDynamicJet()
     audio.stopClenchHum()
     audio.stopUrgeRumble()
@@ -156,15 +168,31 @@ function onTick(sim, dt) {
   if (category) audio.speak(category)
 }
 
+// In the background the game stops: Scene pauses rendering (and with it the
+// simulation), and the sound goes quiet. The browser drops the wake lock on hide, so a
+// running challenge takes it again on return.
+function onVisibilityChange() {
+  const hidden = document.visibilityState === 'hidden'
+  useUiStore.setState({ appHidden: hidden })
+  if (hidden) {
+    audio.suspend()
+  } else {
+    audio.resume()
+    if (sim.activeChallenge) keepScreenAwake(true)
+  }
+}
+
 export function installFeedback() {
   audio.onSubtitle = (text, category) => {
     useUiStore.setState({ currentSubtitle: { text, category, id: Date.now() } })
   }
   const offEvent = onSimEvent((event) => handlers[event.type]?.(event))
   const offTick = onSimTick(onTick)
+  document.addEventListener('visibilitychange', onVisibilityChange)
   return () => {
     offEvent()
     offTick()
+    document.removeEventListener('visibilitychange', onVisibilityChange)
     audio.onSubtitle = null
   }
 }

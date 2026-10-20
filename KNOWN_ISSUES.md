@@ -5,14 +5,6 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 
 ## Open
 
-### Port renders far slower than the original under software WebGL
-- **Seen:** M1, in headless Chromium (software rendering): original ~15 fps, port ~2.5 fps.
-- **Tried:** M2 removed the wall's `transmission` (one fewer transmission material) and the ureter tubes' transmission.
-  Not yet re-measured.
-- **Next:** measure on a real phone and in the M7 profiling pass; suspects are the deforming fluid mesh,
-  `computeVertexNormals` on two 3k-vertex meshes per frame, and Three.js r185's transmission pass.
-- **Planned:** M7 (move earlier if a real phone shows the same gap).
-
 ### Real-time waits are unreliable in browser tests
 - **Seen:** M1. Headless WebGL runs at a few fps and each frame advances the sim by at most 0.08 s, so simulated
   time runs far slower than wall-clock time.
@@ -34,3 +26,7 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 | Bladder hidden behind controls on a landscape phone | M6 |
 | Small phones: tool rail overlapped the drinks shelf; 3D view squeezed; camera too close in portrait | M6 |
 | Subtitle bubble sat on top of the telemetry bar | M6 |
+| Port rendered ~2× slower than the original on a weak GPU. Cause: Three.js r185's transmission pass (an extra full render with mipmaps every frame; in the original's r128, `transmission` only lowered alpha), doubled while voiding by the stream's `DoubleSide` transmission. M1's "15 vs 2.5 fps" came from the dev server. | M7 |
+| Ureter tubes allocated a new `TubeGeometry` (and ~200 vectors) almost every frame | M7 |
+| Wake lock stayed on after a challenge was flushed; Retry could lose it (async race) | M7 |
+| No audio suspend in the background (the original had one) | M7 |

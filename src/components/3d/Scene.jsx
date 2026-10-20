@@ -3,18 +3,25 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import Organ from './Organ'
 import { SimLoop } from '../../sim/SimLoop'
-import { useUiStore } from '../../store/useUiStore'
+import { selectQualityTier, useUiStore } from '../../store/useUiStore'
+import { QUALITY_TIERS } from '../../settings/quality'
 import { DevBridge } from '../../debug/DevBridge'
 import { StageFit } from './StageFit'
+import { QualityMonitor } from './QualityMonitor'
 
 export default function Scene() {
   const mode = useUiStore((s) => s.interactionMode)
+  const tier = useUiStore(selectQualityTier)
+  // In the background nothing renders and the simulation (stepped per frame) waits.
+  const hidden = useUiStore((s) => s.appHidden)
 
   return (
-    <div className="absolute inset-0 z-0">
+    <div className="absolute inset-0 z-0" data-quality={tier}>
       {/* Starts at the original's camera angle; StageFit sets the distance. */}
       <Canvas
         camera={{ position: [0, 1.71, 11.88], fov: 45 }}
+        dpr={[1, QUALITY_TIERS[tier].maxDpr]}
+        frameloop={hidden ? 'never' : 'always'}
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance', localClippingEnabled: true }}
       >
         <color attach="background" args={['#060913']} />
@@ -28,8 +35,9 @@ export default function Scene() {
         {import.meta.env.DEV && <DevBridge />}
         <SimLoop />
         <StageFit />
+        <QualityMonitor />
         <Organ />
-        
+
         {/* One finger/left button uses the current tool; Orbit mode rotates instead.
             Two fingers zoom and rotate in any tool except Squeeze, where a pinch squeezes. */}
         <OrbitControls

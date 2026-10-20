@@ -28,3 +28,9 @@ export function updateSettings(patch) {
   applySettings(settings)
   saveJson('settings', settings)
 }
+
+// Graphics quality: 'auto' or a fixed tier. Choosing Auto again re-detects from the top.
+export function setGraphics(graphics) {
+  if (graphics === 'auto') useUiStore.getState().setAutoQuality('high')
+  updateSettings({ graphics })
+}

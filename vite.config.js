@@ -53,6 +53,23 @@ export default defineConfig(({ mode }) => {
       ...(phone ? [basicSsl()] : []),
     ],
     server: phone ? { host: true } : undefined,
+    build: {
+      // Three.js alone is ~740 kB minified: R3F registers the whole THREE namespace, so
+      // it can't be tree-shaken.
+      chunkSizeWarningLimit: 760,
+      rolldownOptions: {
+        output: {
+          // Libraries in their own long-lived chunks: an app update re-downloads only the app.
+          codeSplitting: {
+            groups: [
+              { name: 'three', test: /node_modules[\\/](three|three-stdlib)[\\/]/ },
+              { name: 'r3f', test: /node_modules[\\/](@react-three|its-fine|react-use-measure|suspend-react)[\\/]/ },
+              { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store)[\\/]/ },
+            ],
+          },
+        },
+      },
+    },
     test: {
       include: ['src/**/*.test.{js,jsx}'],
       environment: 'node',

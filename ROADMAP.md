@@ -222,22 +222,66 @@ screen, launch it offline, rotate between portrait and landscape.
 
 ---
 
-## M7 — Mobile performance ☐
+## M7 — Mobile performance ◐ (automated gate passed; phone check pending)
 
-**Measured in M1:** in headless (software-rendered) Chromium the original runs at **~15 fps** and the port at
-**~2.5 fps** on the same machine. Suspects: the port deforms a second 64×48 sphere for the fluid every frame
-(the original's fluid is a static 48×36 sphere), and Three.js r185's transmission pass costs more than r128's.
-Confirm on real hardware first; if a phone shows the same gap, move this milestone earlier.
+**Measured first** (`npm run test:perf` and the scripts behind it): headless Chromium can reach the real GPU
+(RX 6650 XT through ANGLE/Vulkan), so real-GPU runs with CDP CPU throttling measure the JavaScript cost, and
+software WebGL (SwiftShader), whose frame rate follows GPU work, stands in for a weak phone GPU. Production
+build, Pixel 7 profile:
 
-- ☐ Quality tiers (auto-adapting): pixel-ratio cap, lower sphere detail, cheaper materials (no transmission)
-  on weak devices.
-- ☐ Remove per-frame allocations in the vertex loops; one normals pass per mesh per frame.
-- ☐ Pause rendering and audio when the app is hidden.
-- ☐ Code-split the 1.15 MB bundle (Three.js chunk, lazy tabs).
+| | Before M7 | After M7 | Original |
+|---|---|---|---|
+| Real GPU, 4× slower CPU, voiding + pokes | 60 fps, 11.7 ms main thread / frame | 60 fps, 4.8 ms | 60 fps, 8.2 ms |
+| Real GPU, 10× slower CPU, same | — | 57 fps, 14 ms | — |
+| Software GPU, idle (High / Medium / Low) | 3.8 fps | 10 / 37 / 52 fps | 6.9 fps |
+| Software GPU, full + voiding + pokes (High / Medium / Low) | 2.8 fps (dev server, no pokes) | 6.8 / 25 / 38 fps | 7.3 fps |
 
-**Automated (e2e):** with 4× CPU throttling on a phone profile, sustained ≥ 45 fps over 10 s of active play;
-memory stable over 2 minutes.
-**Manual:** play 5 minutes on your phone. It should stay smooth, the phone shouldn't get hot, and battery drain should be acceptable.
+M1's "15 vs 2.5 fps" came from the dev server. The real gap was GPU work, ~1.8× the original's: Three.js r185's
+**transmission** pass renders the scene again into a multisampled half-float target and builds its mipmaps every
+frame (in the original's r128, `transmission` only lowered alpha), and while voiding the stream's `DoubleSide`
+transmission ran it twice more. Pixel ratio is the next lever (2 → 1 is 2.4× faster); clearcoat, mesh detail and
+material type barely register.
+
+- ☑ **Quality tiers**, Auto by default (`src/settings/quality.js`, `QualityMonitor.jsx`):
+  High = pixel ratio ≤ 2 and refractive liquid with the transmission pass at half resolution (indistinguishable
+  from full); Medium = ≤ 1.5 and the liquid alpha-blended at 0.9 opacity (matched against High by screenshot,
+  and it's what the original's r128 did anyway); Low = 1 and alpha-blended. Auto steps down after two straight 2 s
+  windows under 48 fps, ignoring the first 3 s after a start or change (shader compiles), gaps while hidden, and time
+  with a sheet open (its blur isn't the device's fault). The tier it settles on is saved, so a slow phone starts
+  there next time; Settings → Graphics Quality offers Auto / High / Medium / Low, and picking Auto re-detects.
+- ☑ The stream has no transmission in any tier: invisible on a jet that thin.
+- ☑ ~~Lower sphere detail~~: dropped. Measured CPU cost is low (57 fps even at 10× CPU throttling) and triangles
+  are not where GPU time goes, so it would only cost looks.
+- ☑ Per-frame work (`organRig.js`): the liquid reuses the wall's geometry at 0.965 scale (one deformation, one
+  normals pass and one upload instead of two); per-vertex constants (fold pattern, jiggle angles via angle-sum
+  identities, tremor phases) precomputed; loops on raw arrays; normals computed on raw arrays (same result as
+  Three.js, checked bit for bit); ureter tubes rebuilt in place with an arc-length table instead of a new
+  `TubeGeometry` and ~200 vectors per frame. Wall, normals, sphincter and stream output are bit-identical to before
+  over a 240-frame scripted run.
+- ☑ In the background: rendering stops (`frameloop="never"`, so the simulation waits too), the AudioContext is
+  suspended and the queued voice line dropped, as in the original; on return a running challenge takes the
+  wake lock again (browsers drop it on hide).
+- ☑ Code split: `three` (739 kB), `r3f` (168 kB), `react` (178 kB) and app (63 kB) chunks; the 3D scene loads
+  lazily behind the HUD and start screen; tabs load on first open. All precached for offline play.
+
+**Found and fixed in M7:** Flush during a challenge left the wake lock on; Retry could lose it (an async
+release raced the new request).
+**Automated (unit):** 7 Auto-monitor and tier tests (`src/settings/quality.test.js`); normals equal Three.js's,
+ureters stay on the moving wall, drops move at an even pace (`organRig.test.js`).
+**Automated (e2e), `e2e/lifecycle.spec.js`:** hidden → no rendering, frozen simulation, suspended audio, speech
+cancelled, all back on return; wake lock re-taken on return, released by a reset, exactly one after Retry.
+**`e2e/quality.spec.js`:** each Graphics option sets the pixel ratio, liquid material and transmission scale, and
+survives a reload; Auto re-detects from High.
+**Gate (`npm run test:perf`, production build):** real GPU: worst second ≥ 45 fps with 4× CPU throttling during
+voiding + pokes, Auto stays on High; JS heap, DOM nodes and listeners flat over 2 minutes of drinks, voiding,
+coughs, cutaway and tabs. Software GPU: Auto reaches Low, ≥ 30 fps there, and the next visit starts at Low.
+Measured: 60 fps in every one of the 10 seconds; heap 9.6 → 9.2 MB with 506 → 506 DOM nodes and 222 → 222
+listeners; Low on software GPU 35 fps (worst second 32).
+**Gate:** ☑ `npm run check` (0 warnings, 82 unit tests, build) · ☑ e2e 84 passed, 24 skipped (device-scoped),
+stable across 2 runs · ☑ `npm run test:perf` 3 passed, twice. (The e2e helper now allows 20 s for the canvas:
+the scene is a lazy chunk and mounts after the load event.)
+**Manual:** ☐ play 5 minutes on your phone: smooth, not hot, acceptable battery drain. Check Settings → Graphics
+Quality to see which tier Auto chose.
 
 ---
 

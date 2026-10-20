@@ -1,5 +1,6 @@
 import { useUiStore } from '../../../store/useUiStore'
-import { updateSettings } from '../../../settings/settings'
+import { setGraphics, updateSettings } from '../../../settings/settings'
+import { QUALITY_TIERS, TIER_ORDER } from '../../../settings/quality'
 import Sheet from '../Sheet'
 
 function Toggle({ label, hint, checked, onChange }) {
@@ -27,6 +28,36 @@ function Slider({ label, value, display, min, max, step, onChange }) {
 }
 
 const percent = (v) => `${Math.round(v * 100)}%`
+
+const GRAPHICS_OPTIONS = [{ key: 'auto', label: 'Auto' }, ...TIER_ORDER.map((key) => ({ key, label: QUALITY_TIERS[key].label }))]
+
+function GraphicsPicker() {
+  const graphics = useUiStore((s) => s.settings.graphics)
+  const autoQuality = useUiStore((s) => s.autoQuality)
+  return (
+    <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+      <span className="text-xs font-bold text-slate-300">🎛️ Graphics Quality</span>
+      <div role="radiogroup" aria-label="Graphics quality" className="grid grid-cols-4 gap-1.5">
+        {GRAPHICS_OPTIONS.map((option) => (
+          <button
+            key={option.key}
+            role="radio"
+            aria-checked={graphics === option.key}
+            onClick={() => setGraphics(option.key)}
+            className={`min-h-11 rounded-xl text-xs font-bold transition active:scale-95 ${graphics === option.key ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <p data-testid="graphics-hint" className="text-[10px] text-slate-500 font-mono">
+        {graphics === 'auto'
+          ? `Auto picks what this device runs smoothly: now ${QUALITY_TIERS[autoQuality].label}`
+          : 'Lower settings run cooler and save battery'}
+      </p>
+    </div>
+  )
+}
 
 export default function SettingsTab() {
   const currentTab = useUiStore((s) => s.currentTab)
@@ -81,6 +112,8 @@ export default function SettingsTab() {
           onChange={(v) => updateSettings({ shakeToSlosh: v })}
         />
       </div>
+
+      <GraphicsPicker />
     </Sheet>
   )
 }

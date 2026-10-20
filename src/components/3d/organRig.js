@@ -1,13 +1,15 @@
 import * as THREE from 'three'
 import { physicsOf } from '../../sim/sim'
 
-// Geometry, textures and per-frame deformation for the organ. Kept outside React so
+// Geometry and per-frame deformation for the organ. Kept outside React so
 // the 60 fps vertex work never touches component render; `Organ.jsx` wires it up.
+// The per-frame loops work on the raw attribute arrays with per-vertex constants
+// precomputed, and allocate nothing (M7).
 
 const SPLASH_COUNT = 180
 const STREAM_SEGMENTS = 24
 
-function generateVascularAndNormalMaps() {
+export function createOrganTextures() {
   const size = 1024
   const cvsDiffuse = document.createElement('canvas')
   cvsDiffuse.width = size
@@ -65,6 +67,32 @@ function generateVascularAndNormalMaps() {
   return { diffTex, normTex }
 }
 
+// Same result as BufferGeometry.computeVertexNormals() for indexed geometry, on the raw
+// arrays. Three's version reads every corner through a Vector3, which made it the
+// largest single cost of a frame on a throttled phone profile.
+export function computeNormals(geometry) {
+  const pos = geometry.attributes.position.array
+  const nrm = geometry.attributes.normal.array
+  const idx = geometry.index.array
+  nrm.fill(0)
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3
+    const cbx = pos[c] - pos[b], cby = pos[c + 1] - pos[b + 1], cbz = pos[c + 2] - pos[b + 2]
+    const abx = pos[a] - pos[b], aby = pos[a + 1] - pos[b + 1], abz = pos[a + 2] - pos[b + 2]
+    const nx = cby * abz - cbz * aby
+    const ny = cbz * abx - cbx * abz
+    const nz = cbx * aby - cby * abx
+    nrm[a] += nx; nrm[a + 1] += ny; nrm[a + 2] += nz
+    nrm[b] += nx; nrm[b + 1] += ny; nrm[b + 2] += nz
+    nrm[c] += nx; nrm[c + 1] += ny; nrm[c + 2] += nz
+  }
+  for (let i = 0; i < nrm.length; i += 3) {
+    const inv = 1 / (Math.sqrt(nrm[i] * nrm[i] + nrm[i + 1] * nrm[i + 1] + nrm[i + 2] * nrm[i + 2]) || 1)
+    nrm[i] *= inv; nrm[i + 1] *= inv; nrm[i + 2] *= inv
+  }
+  geometry.attributes.normal.needsUpdate = true
+}
+
 // Bladder centre in world space (the organ group sits 0.2 above the origin).
 export const ORGAN_CENTER = new THREE.Vector3(0, 0.2, 0)
 
@@ -82,10 +110,17 @@ export function orientCutaway(plane, cameraPosition, center = ORGAN_CENTER) {
 const POKE = { radius: 1.4, powerScale: 1.0, velScale: 1.6, dentGain: 0.35, dentCap: 0.6 }
 const SLAP = { radius: 1.8, powerScale: 2.2, velScale: 1.0, dentGain: 0.4, dentCap: 0.8 }
 
-// The liquid fills the sac just inside the wall.
-const FLUID_INSET = 0.965
+// The liquid fills the sac just inside the wall: Organ.jsx draws the wall's geometry
+// again at this scale.
+export const FLUID_INSET = 0.965
 
 const URETER_SEGMENTS = 32
+const URETER_RADIAL = 8
+const URETER_RADIUS = 0.11
+// Ring orientation reference: the ureters run roughly in the x–y plane, never along z.
+const URETER_REF = new THREE.Vector3(0, 0, 1)
+// Arc-length table resolution, so rings and drops are spaced evenly along the tube.
+const ARC_SAMPLES = 64
 
 function createUreter(side, baseVertices) {
   // Ureters enter the back of the bladder, above and to the side of the neck.
@@ -103,9 +138,76 @@ function createUreter(side, baseVertices) {
     new THREE.Vector3(2.4 * side, 2.0, -0.4),
     baseVertices[endIndex].clone(),
   ])
-  const geo = new THREE.TubeGeometry(curve, URETER_SEGMENTS, 0.11, 8, false)
+  // Only the topology (index, uvs) is kept; buildTube() writes the vertices.
+  const geo = new THREE.TubeGeometry(curve, URETER_SEGMENTS, URETER_RADIUS, URETER_RADIAL, false)
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 2, 0), 6)
-  return { curve, geo, endIndex, lastEnd: new THREE.Vector3(Infinity, 0, 0) }
+  const ureter = { curve, geo, endIndex, arc: new Float64Array(ARC_SAMPLES + 1), lastEnd: new THREE.Vector3(Infinity, 0, 0) }
+  buildTube(ureter)
+  return ureter
+}
+
+const arcPoint = new THREE.Vector3()
+const arcPrev = new THREE.Vector3()
+
+// Curve parameter t at arc-length fraction u (what Curve.getPointAt does, without its allocations).
+function curveT(arc, u) {
+  const target = u * arc[ARC_SAMPLES]
+  let lo = 0
+  let hi = ARC_SAMPLES
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1
+    if (arc[mid] < target) lo = mid
+    else hi = mid
+  }
+  const span = arc[hi] - arc[lo]
+  return (lo + (span > 0 ? (target - arc[lo]) / span : 0)) / ARC_SAMPLES
+}
+
+const ringCenter = new THREE.Vector3()
+const ringAhead = new THREE.Vector3()
+const ringBehind = new THREE.Vector3()
+const ringT = new THREE.Vector3()
+const ringN = new THREE.Vector3()
+const ringB = new THREE.Vector3()
+
+// Writes the tube around the curve into the existing buffers (TubeGeometry would
+// allocate a whole new geometry every time the wall moves).
+function buildTube({ curve, geo, arc }) {
+  curve.getPoint(0, arcPrev)
+  arc[0] = 0
+  for (let k = 1; k <= ARC_SAMPLES; k++) {
+    curve.getPoint(k / ARC_SAMPLES, arcPoint)
+    arc[k] = arc[k - 1] + arcPoint.distanceTo(arcPrev)
+    arcPrev.copy(arcPoint)
+  }
+
+  const pos = geo.attributes.position.array
+  const nrm = geo.attributes.normal.array
+  let o = 0
+  for (let i = 0; i <= URETER_SEGMENTS; i++) {
+    const t = curveT(arc, i / URETER_SEGMENTS)
+    curve.getPoint(t, ringCenter)
+    curve.getPoint(Math.min(1, t + 0.001), ringAhead)
+    curve.getPoint(Math.max(0, t - 0.001), ringBehind)
+    ringT.subVectors(ringAhead, ringBehind).normalize()
+    ringN.crossVectors(ringT, URETER_REF).normalize()
+    ringB.crossVectors(ringT, ringN)
+    for (let j = 0; j <= URETER_RADIAL; j++) {
+      const v = (j / URETER_RADIAL) * Math.PI * 2
+      const sin = Math.sin(v)
+      const cos = -Math.cos(v)
+      const nx = cos * ringN.x + sin * ringB.x
+      const ny = cos * ringN.y + sin * ringB.y
+      const nz = cos * ringN.z + sin * ringB.z
+      nrm[o] = nx; nrm[o + 1] = ny; nrm[o + 2] = nz
+      pos[o] = ringCenter.x + URETER_RADIUS * nx
+      pos[o + 1] = ringCenter.y + URETER_RADIUS * ny
+      pos[o + 2] = ringCenter.z + URETER_RADIUS * nz
+      o += 3
+    }
+  }
+  geo.attributes.position.needsUpdate = true
+  geo.attributes.normal.needsUpdate = true
 }
 
 const outward = new THREE.Vector3()
@@ -119,19 +221,15 @@ function updateUreter(ureter, wallPoint) {
   outward.copy(end).normalize()
   mid.copy(end).addScaledVector(outward, 0.9)
   mid.y += 1.1
-  ureter.curve.updateArcLengths()
+  buildTube(ureter)
+}
 
-  const fresh = new THREE.TubeGeometry(ureter.curve, URETER_SEGMENTS, 0.11, 8, false)
-  ureter.geo.attributes.position.array.set(fresh.attributes.position.array)
-  ureter.geo.attributes.normal.array.set(fresh.attributes.normal.array)
-  ureter.geo.attributes.position.needsUpdate = true
-  ureter.geo.attributes.normal.needsUpdate = true
-  fresh.dispose()
+// A drop at arc-length fraction u along the ureter.
+function ureterPoint(ureter, u, target) {
+  return ureter.curve.getPoint(curveT(ureter.arc, u), target)
 }
 
 export function createOrganRig() {
-  const { diffTex, normTex } = generateVascularAndNormalMaps()
-
   const bladderGeo = new THREE.SphereGeometry(2.35, 64, 48)
   const bPos = bladderGeo.attributes.position
   for (let i = 0; i < bPos.count; i++) {
@@ -144,35 +242,63 @@ export function createOrganRig() {
   // The wall inflates up to ~1.3x, so give raycasting/culling a sphere that always fits.
   bladderGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 4.5)
 
-  // The liquid shares the wall's topology so it can follow every dent and wobble.
-  const fluidGeo = bladderGeo.clone()
-  fluidGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 4.5)
-  const fPos = fluidGeo.attributes.position
-
+  const count = bPos.count
+  const wall = bPos.array
   const baseVertices = []
-  for (let i = 0; i < bPos.count; i++) baseVertices.push(new THREE.Vector3(bPos.getX(i), bPos.getY(i), bPos.getZ(i)))
-  const velocities = baseVertices.map(() => new THREE.Vector3())
-  const dentMemory = new Float32Array(baseVertices.length)
+  for (let i = 0; i < count; i++) baseVertices.push(new THREE.Vector3(bPos.getX(i), bPos.getY(i), bPos.getZ(i)))
+  const base = new Float32Array(wall) // rest shape
+  const velocity = new Float64Array(count * 3)
+  const dentMemory = new Float32Array(count)
+
+  // Per-vertex constants of the deformation below, so a frame only does multiply-adds.
+  const wrinkle = new Float64Array(count) // rugae fold pattern, scaled by wrinkleAmp
+  const jiggleS3 = new Float64Array(count) // sin 3θ · sin 2φ
+  const jiggleC3 = new Float64Array(count) // cos 3θ · sin 2φ
+  const jiggleC2 = new Float64Array(count) // cos 2θ
+  const jiggleS2 = new Float64Array(count) // sin 2θ
   // Smooth per-vertex phase for the strain tremor (the original used per-vertex noise,
-  // which tore the surface into spikes).
-  const tremorPhase = baseVertices.map((v) => v.x * 3.1 + v.y * 2.3 + v.z * 4.7)
+  // which tore the surface into spikes): cos/sin of tp, 1.3 tp and 0.7 tp.
+  const tremor = new Float64Array(count * 6)
+  for (let i = 0; i < count; i++) {
+    const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2]
+    wrinkle[i] = Math.sin(x * 3.5 + y * 4.5) * Math.cos(z * 4.0 + y * 2.5)
+    const theta = Math.atan2(z, x)
+    const sin2phi = Math.sin(Math.acos(Math.max(-1, Math.min(1, y / 2.35))) * 2.0)
+    jiggleS3[i] = Math.sin(theta * 3.0) * sin2phi
+    jiggleC3[i] = Math.cos(theta * 3.0) * sin2phi
+    jiggleC2[i] = Math.cos(theta * 2.0)
+    jiggleS2[i] = Math.sin(theta * 2.0)
+    const tp = x * 3.1 + y * 2.3 + z * 4.7
+    tremor.set([Math.cos(tp), Math.sin(tp), Math.cos(tp * 1.3), Math.sin(tp * 1.3), Math.cos(tp * 0.7), Math.sin(tp * 0.7)], i * 6)
+  }
 
   const sphincterGeo = new THREE.CylinderGeometry(0.35, 0.22, 1.2, 48, 16, false)
   const sPos = sphincterGeo.attributes.position
-  const sphincterBases = []
-  for (let i = 0; i < sPos.count; i++) {
+  const sCount = sPos.count
+  // r, y, cos θ, sin θ, sin 8θ, sin 4θ, cos 4θ per vertex
+  const sphincterBase = new Float64Array(sCount * 7)
+  for (let i = 0; i < sCount; i++) {
     const x = sPos.getX(i), y = sPos.getY(i), z = sPos.getZ(i)
-    sphincterBases.push({ x, y, z, r: Math.hypot(x, z), theta: Math.atan2(z, x) })
+    const theta = Math.atan2(z, x)
+    sphincterBase.set([Math.hypot(x, z), y, Math.cos(theta), Math.sin(theta), Math.sin(theta * 8.0), Math.sin(theta * 4.0), Math.cos(theta * 4.0)], i * 7)
   }
 
   const streamGeo = new THREE.CylinderGeometry(0.12, 0.08, 6.0, 16, STREAM_SEGMENTS, true)
+  const streamPos = streamGeo.attributes.position
+  // The original's stream indexing (segment from i % 24, angle from i / 24) gives its
+  // twisting look; keep it, precomputed.
+  const streamBase = new Float64Array(streamPos.count * 3) // segY, cos θ, sin θ
+  for (let i = 0; i < streamPos.count; i++) {
+    const theta = ((i / STREAM_SEGMENTS) % 16) * (Math.PI * 2 / 16)
+    streamBase.set([(i % STREAM_SEGMENTS) / STREAM_SEGMENTS, Math.cos(theta), Math.sin(theta)], i * 3)
+  }
 
   const splashGeo = new THREE.BufferGeometry()
   const splashPositions = new Float32Array(SPLASH_COUNT * 3)
   for (let i = 0; i < SPLASH_COUNT; i++) splashPositions[i * 3 + 1] = -999
   splashGeo.setAttribute('position', new THREE.BufferAttribute(splashPositions, 3))
 
-  const ureters = { left: createUreter(-1, baseVertices), right: createUreter(1, baseVertices) }
+  const ureters = [createUreter(-1, baseVertices), createUreter(1, baseVertices)]
 
   const cutawayPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0)
 
@@ -181,14 +307,14 @@ export function createOrganRig() {
 
   // Pushes vertices near `local` inward and leaves a slowly recovering dent.
   function impact(local, strength, profile) {
-    for (let i = 0; i < bPos.count; i++) {
-      const vx = bPos.getX(i), vy = bPos.getY(i), vz = bPos.getZ(i)
+    for (let i = 0; i < count; i++) {
+      const vx = wall[i * 3], vy = wall[i * 3 + 1], vz = wall[i * 3 + 2]
       const d = scratch.set(vx, vy, vz).distanceTo(local)
       if (d < profile.radius) {
         const power = (1.0 - d / profile.radius) * strength * profile.powerScale
-        velocities[i].x -= (vx / 2.35) * power * profile.velScale
-        velocities[i].y -= (vy / 2.35) * power * profile.velScale
-        velocities[i].z -= (vz / 2.35) * power * profile.velScale
+        velocity[i * 3] -= (vx / 2.35) * power * profile.velScale
+        velocity[i * 3 + 1] -= (vy / 2.35) * power * profile.velScale
+        velocity[i * 3 + 2] -= (vz / 2.35) * power * profile.velScale
         dentMemory[i] = Math.min(profile.dentCap, dentMemory[i] + power * profile.dentGain)
       }
     }
@@ -229,74 +355,87 @@ export function createOrganRig() {
     const phase = sim.globalJigglePhase
     const jiggle1 = Math.sin(phase) * sim.jiggleIntensity * 0.18
     const jiggle2 = Math.cos(phase * 1.5) * sim.jiggleIntensity * 0.12
+    // sin(3θ + phase)·sin 2φ·j1 + cos(2θ − 1.2 phase)·j2, expanded with the angle-sum identities
+    const jA = Math.cos(phase) * jiggle1
+    const jB = Math.sin(phase) * jiggle1
+    const jC = Math.cos(phase * 1.2) * jiggle2
+    const jD = Math.sin(phase * 1.2) * jiggle2
     const bulgeXZ = Math.sqrt(1.0 / Math.max(0.2, (1.0 - compY * (0.45 + fillRatio * 0.45))))
     const wrinkleAmp = Math.pow(1.0 - Math.min(1.0, fillRatio), 1.6) * 0.28
     const sagFactor = Math.max(0, (1.0 - fillRatio * 2.2)) * 0.45
     const tremorAmp = (sim.sphincterToneStrain > 0.3) ? (sim.sphincterToneStrain * 0.045) : 0.0
+    const tremorHalf = tremorAmp * 0.5
+    const s41 = Math.sin(timeSec * 41.0), c41 = Math.cos(timeSec * 41.0)
+    const s37 = Math.sin(timeSec * 37.0), c37 = Math.cos(timeSec * 37.0)
+    const s43 = Math.sin(timeSec * 43.0), c43 = Math.cos(timeSec * 43.0)
+    const sloshX = Math.sin(sim.sloshAngleX) * 0.22
+    const sloshZ = Math.sin(sim.sloshAngleZ) * 0.22
+    const coreX = sim.fluidCoreOffset.x * 0.35
+    const coreZ = sim.fluidCoreOffset.z * 0.35
+    const lowerSpread = 1.0 + (1.0 - fillRatio) * 0.2
+    const ripples = sim.ripples
+    const springDt = phys.springK * dt
+    const damping = phys.damping
 
     // Water balloon: liquid can't compress, so whatever a dent pushes in bulges out
     // everywhere else. A mean radial dent m loses ~3m of volume; scaling by (1 + m)
     // puts it back.
     let dentSum = 0
-    for (let i = 0; i < dentMemory.length; i++) {
+    for (let i = 0; i < count; i++) {
       dentMemory[i] = Math.max(0, dentMemory[i] - dt * 1.4)
       dentSum += dentMemory[i]
     }
-    const balloonBulge = 1.0 + dentSum / dentMemory.length
+    const balloonBulge = 1.0 + dentSum / count
 
-    for (let i = 0; i < bPos.count; i++) {
-      const base = baseVertices[i]
-      const cx = bPos.getX(i), cy = bPos.getY(i), cz = bPos.getZ(i)
-      const dentOffset = dentMemory[i]
+    for (let i = 0; i < count; i++) {
+      const o = i * 3
+      const bx = base[o], by = base[o + 1], bz = base[o + 2]
+      const yNorm = by / 2.35
 
       // Rugae folds of a deflated bladder: broad enough for the mesh to show smoothly.
-      const wrinkleNoise = (Math.sin(base.x * 3.5 + base.y * 4.5) * Math.cos(base.z * 4.0 + base.y * 2.5)) * wrinkleAmp
-      const sloshPushX = (Math.sin(sim.sloshAngleX) * (base.y / 2.35) * 0.22) + (sim.fluidCoreOffset.x * 0.35)
-      const sloshPushZ = (Math.sin(sim.sloshAngleZ) * (base.y / 2.35) * 0.22) + (sim.fluidCoreOffset.z * 0.35)
-
-      const theta = Math.atan2(base.z, base.x)
-      const phi = Math.acos(Math.max(-1, Math.min(1, base.y / 2.35)))
-      const jiggleWobble = Math.sin(theta * 3.0 + phase) * Math.sin(phi * 2.0) * jiggle1 +
-        Math.cos(theta * 2.0 - phase * 1.2) * jiggle2
+      const wrinkleNoise = wrinkle[i] * wrinkleAmp
+      const sloshPushX = sloshX * yNorm + coreX
+      const sloshPushZ = sloshZ * yNorm + coreZ
+      const jiggleWobble = jiggleS3[i] * jA + jiggleC3[i] * jB + jiggleC2[i] * jC + jiggleS2[i] * jD
 
       let rippleDisp = 0
-      for (let r = 0; r < sim.ripples.length; r++) {
-        const rip = sim.ripples[r]
-        const waveDist = Math.abs(base.distanceTo(rip.center) - rip.radius)
+      for (let r = 0; r < ripples.length; r++) {
+        const rip = ripples[r]
+        const dx = bx - rip.center.x, dy = by - rip.center.y, dz = bz - rip.center.z
+        const waveDist = Math.abs(Math.sqrt(dx * dx + dy * dy + dz * dz) - rip.radius)
         if (waveDist < 0.65) rippleDisp += Math.cos((waveDist / 0.65) * (Math.PI / 2)) * rip.amplitude
       }
 
-      const tp = tremorPhase[i]
-      const tremorX = Math.sin(timeSec * 41.0 + tp) * tremorAmp * 0.5
-      const tremorY = Math.sin(timeSec * 37.0 + tp * 1.3) * tremorAmp * 0.5
-      const tremorZ = Math.sin(timeSec * 43.0 + tp * 0.7) * tremorAmp * 0.5
+      let tremorX = 0, tremorY = 0, tremorZ = 0
+      if (tremorHalf > 0) {
+        const t6 = i * 6
+        tremorX = (s41 * tremor[t6] + c41 * tremor[t6 + 1]) * tremorHalf
+        tremorY = (s37 * tremor[t6 + 2] + c37 * tremor[t6 + 3]) * tremorHalf
+        tremorZ = (s43 * tremor[t6 + 4] + c43 * tremor[t6 + 5]) * tremorHalf
+      }
 
-      const sagY = base.y > 0 ? -sagFactor * (base.y / 2.35) : 0
-      const flaccidSpread = base.y < 0 ? (1.0 + (1.0 - fillRatio) * 0.2) : 1.0
-      const totalRadMod = Math.max(0.2, (1.0 + jiggleWobble + rippleDisp - dentOffset)) * balloonBulge
+      const sagY = by > 0 ? -sagFactor * yNorm : 0
+      const flaccidSpread = by < 0 ? lowerSpread : 1.0
+      const totalRadMod = Math.max(0.2, (1.0 + jiggleWobble + rippleDisp - dentMemory[i])) * balloonBulge
 
-      const tx = ((base.x * flaccidSpread * bulgeXZ + wrinkleNoise) * inflationScale + sloshPushX + tremorX) * totalRadMod
-      const ty = ((base.y * scaleY + sagY + wrinkleNoise * 0.5) * inflationScale + tremorY) * totalRadMod
-      const tz = ((base.z * flaccidSpread * bulgeXZ + wrinkleNoise) * inflationScale + sloshPushZ + tremorZ) * totalRadMod
+      const tx = ((bx * flaccidSpread * bulgeXZ + wrinkleNoise) * inflationScale + sloshPushX + tremorX) * totalRadMod
+      const ty = ((by * scaleY + sagY + wrinkleNoise * 0.5) * inflationScale + tremorY) * totalRadMod
+      const tz = ((bz * flaccidSpread * bulgeXZ + wrinkleNoise) * inflationScale + sloshPushZ + tremorZ) * totalRadMod
 
-      const vel = velocities[i]
-      vel.x = (vel.x + (tx - cx) * phys.springK * dt) * phys.damping
-      vel.y = (vel.y + (ty - cy) * phys.springK * dt) * phys.damping
-      vel.z = (vel.z + (tz - cz) * phys.springK * dt) * phys.damping
-
-      const nx = cx + vel.x * dt
-      const ny = cy + vel.y * dt
-      const nz = cz + vel.z * dt
-      bPos.setXYZ(i, nx, ny, nz)
-      fPos.setXYZ(i, nx * FLUID_INSET, ny * FLUID_INSET, nz * FLUID_INSET)
+      const cx = wall[o], cy = wall[o + 1], cz = wall[o + 2]
+      const vx = (velocity[o] + (tx - cx) * springDt) * damping
+      const vy = (velocity[o + 1] + (ty - cy) * springDt) * damping
+      const vz = (velocity[o + 2] + (tz - cz) * springDt) * damping
+      velocity[o] = vx; velocity[o + 1] = vy; velocity[o + 2] = vz
+      wall[o] = cx + vx * dt
+      wall[o + 1] = cy + vy * dt
+      wall[o + 2] = cz + vz * dt
     }
     bPos.needsUpdate = true
-    fPos.needsUpdate = true
-    bladderGeo.computeVertexNormals()
-    fluidGeo.computeVertexNormals()
+    computeNormals(bladderGeo)
 
     // Ureters stay plugged into the wall as it inflates and wobbles.
-    for (const ureter of [ureters.left, ureters.right]) {
+    for (const ureter of ureters) {
       wallPoint.fromBufferAttribute(bPos, ureter.endIndex)
       updateUreter(ureter, wallPoint)
     }
@@ -304,19 +443,25 @@ export function createOrganRig() {
     // Sphincter
     const dil = sim.isStressLeaking ? 0.35 : sim.sphincterDilation
     const twitchOsc = Math.sin(timeSec * 38.0) * Math.cos(timeSec * 23.0)
-    const twitchAmp = sim.sphincterToneStrain * 0.08
+    const twitch = sim.sphincterToneStrain * 0.08 * twitchOsc
+    const s30 = Math.sin(timeSec * 30.0), c30 = Math.cos(timeSec * 30.0)
     const clenchPucker = sim.isClenching ? 0.65 : 1.0
-    for (let i = 0; i < sPos.count; i++) {
-      const v = sphincterBases[i]
+    const sArr = sPos.array
+    for (let i = 0; i < sCount; i++) {
+      const k = i * 7
+      const r = sphincterBase[k], y = sphincterBase[k + 1]
+      const ripple = sphincterBase[k + 5] * c30 + sphincterBase[k + 6] * s30 // sin(4θ + 30t)
       const funnelRadius = THREE.MathUtils.lerp(
-        (v.r + Math.sin(v.theta * 8.0) * 0.045 * (1.0 - dil) + Math.sin(v.theta * 4.0 + timeSec * 30.0) * twitchAmp * twitchOsc) * clenchPucker,
-        v.r * (1.0 + (v.y > 0 ? 0.9 : 1.6)),
+        (r + sphincterBase[k + 4] * 0.045 * (1.0 - dil) + ripple * twitch) * clenchPucker,
+        r * (1.0 + (y > 0 ? 0.9 : 1.6)),
         dil,
       )
-      sPos.setXYZ(i, Math.cos(v.theta) * funnelRadius, v.y, Math.sin(v.theta) * funnelRadius)
+      sArr[i * 3] = sphincterBase[k + 2] * funnelRadius
+      sArr[i * 3 + 1] = y
+      sArr[i * 3 + 2] = sphincterBase[k + 3] * funnelRadius
     }
     sPos.needsUpdate = true
-    sphincterGeo.computeVertexNormals()
+    computeNormals(sphincterGeo)
 
     if (sphincter) sphincter.position.y = -2.35 * inflationScale * scaleY - 0.45
 
@@ -326,18 +471,20 @@ export function createOrganRig() {
     if (stream) stream.visible = streaming
     if (splash) splash.visible = streaming
     if (streaming) {
-      const streamPos = streamGeo.attributes.position
+      const streamArr = streamPos.array
       const streamRadius = THREE.MathUtils.lerp(0.04, 0.16, dil)
+      const flowScale = 0.5 + Math.min(1.0, sim.flowRate / 30.0) * 0.5
+      const sx = Math.sin(sim.sloshAngleX) * 0.4
+      const sz = Math.sin(sim.sloshAngleZ) * 0.4
       for (let i = 0; i < streamPos.count; i++) {
-        const segY = (i % STREAM_SEGMENTS) / STREAM_SEGMENTS
-        const sloshX = Math.sin(sim.sloshAngleX) * segY * 0.4
-        const sloshZ = Math.sin(sim.sloshAngleZ) * segY * 0.4
-        const r = (streamRadius * (1.0 - segY * 0.35) + Math.sin(timeSec * 24.0 + segY * 18.0) * (0.015 * segY)) * (0.5 + Math.min(1.0, sim.flowRate / 30.0) * 0.5)
-        const theta = ((i / STREAM_SEGMENTS) % 16) * (Math.PI * 2 / 16)
-        streamPos.setXYZ(i, Math.cos(theta) * r + sloshX, exitY - (segY * 5.5), Math.sin(theta) * r + sloshZ)
+        const segY = streamBase[i * 3]
+        const r = (streamRadius * (1.0 - segY * 0.35) + Math.sin(timeSec * 24.0 + segY * 18.0) * (0.015 * segY)) * flowScale
+        streamArr[i * 3] = streamBase[i * 3 + 1] * r + sx * segY
+        streamArr[i * 3 + 1] = exitY - (segY * 5.5)
+        streamArr[i * 3 + 2] = streamBase[i * 3 + 2] * r + sz * segY
       }
       streamPos.needsUpdate = true
-      streamGeo.computeVertexNormals()
+      computeNormals(streamGeo)
 
       const splashBaseY = exitY - 5.5
       for (let i = 0; i < SPLASH_COUNT; i++) {
@@ -351,10 +498,11 @@ export function createOrganRig() {
           splashPositions[i * 3 + 1] -= (6.0 + Math.random() * 4.0) * dt
         }
       }
-    } else {
+      splashGeo.attributes.position.needsUpdate = true
+    } else if (splashPositions[1] !== -999) {
       for (let i = 0; i < SPLASH_COUNT; i++) splashPositions[i * 3 + 1] = -999
+      splashGeo.attributes.position.needsUpdate = true
     }
-    splashGeo.attributes.position.needsUpdate = true
 
     // Drops travelling down the ureters while drinks are being filtered
     const hasBeverage = sim.activeBeverages.length > 0
@@ -364,17 +512,17 @@ export function createOrganRig() {
       if (hasBeverage) {
         const progress1 = (timeSec * 0.8) % 1.0
         const progress2 = ((timeSec * 0.8) + 0.5) % 1.0
-        ureters.left.curve.getPointAt(progress1, leftDrop.position)
+        ureterPoint(ureters[0], progress1, leftDrop.position)
         leftDrop.scale.setScalar(Math.max(0.1, 1.2 * (1.0 - progress1)))
-        ureters.right.curve.getPointAt(progress2, rightDrop.position)
+        ureterPoint(ureters[1], progress2, rightDrop.position)
         rightDrop.scale.setScalar(Math.max(0.1, 1.2 * (1.0 - progress2)))
       }
     }
   }
 
   return {
-    diffTex, normTex, bladderGeo, fluidGeo, sphincterGeo, streamGeo, splashGeo,
-    ureterGeoLeft: ureters.left.geo, ureterGeoRight: ureters.right.geo,
+    bladderGeo, sphincterGeo, streamGeo, splashGeo,
+    ureterGeoLeft: ureters[0].geo, ureterGeoRight: ureters[1].geo,
     cutawayPlane, poke, slap, clearDents, update,
   }
 }

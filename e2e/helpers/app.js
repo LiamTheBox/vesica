@@ -11,9 +11,11 @@ export function collectErrors(page) {
 
 // R3F sizes the canvas with a ResizeObserver after mount; until then it is the
 // browser default 300x150 box. Wait for it to fill the viewport before measuring.
+// The 3D scene is a lazy chunk, so the canvas mounts after the page's load event; on
+// the dev server under two software-rendered pages that can take several seconds.
 export async function canvasBox(page) {
   const canvas = page.locator('canvas').first()
-  await expect(canvas).toBeVisible()
+  await expect(canvas).toBeVisible({ timeout: 20_000 })
   await page.waitForFunction(() => {
     const c = document.querySelector('canvas')
     return c && Math.abs(c.clientWidth - window.innerWidth) < 2 && Math.abs(c.clientHeight - window.innerHeight) < 2
