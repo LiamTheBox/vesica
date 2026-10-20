@@ -2,6 +2,7 @@ import { useHud, useUiStore } from '../../../store/useUiStore'
 import { act } from '../../../sim/engine'
 import { startCommuteChallenge, startPrecisionChallenge } from '../../../sim/sim'
 import { describeBest } from '../../../challenges/bests'
+import Sheet from '../Sheet'
 
 const BADGE = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded'
 const TONES = {
@@ -29,48 +30,38 @@ export default function ChallengesTab() {
   if (currentTab !== 'challenges') return null
 
   return (
-    <div className="absolute inset-0 z-30 pointer-events-auto p-4 flex flex-col justify-center items-center bg-slate-950/80 backdrop-blur-xl">
-      <div className="max-w-2xl w-full glass-modal p-5 rounded-3xl flex flex-col gap-4 border border-slate-700/60">
-        <div className="flex justify-between items-center pb-2 border-b border-slate-700/60">
-          <div>
-            <h2 className="text-sm sm:text-base font-extrabold text-cyan-400 font-mono uppercase tracking-wider">Continence Challenges</h2>
-            <p className="text-xs text-slate-400">Test reflexes against fluid rushes and random disturbances</p>
-          </div>
-          <button onClick={() => setTab('sim')} aria-label="Close" className="text-slate-400 hover:text-white text-lg font-bold min-w-11 min-h-11">✕</button>
+    <Sheet title="Continence Challenges" subtitle="Test reflexes against fluid rushes and random disturbances" titleTone="text-cyan-400" onClose={() => setTab('sim')}>
+      <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
+        <div className="flex justify-between items-center gap-2">
+          <div className="font-extrabold text-xs text-slate-200">🚌 Rush Hour Commute (60s Survival)</div>
+          <StatusBadge
+            running={activeChallenge === 'commute'}
+            runningText={`COMMUTE: ${challengeSeconds}s (${totalLeaked}ml leaked)`}
+            result={results.commute}
+          />
         </div>
-
-        <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
-          <div className="flex justify-between items-center gap-2">
-            <div className="font-extrabold text-xs text-slate-200">🚌 Rush Hour Commute (60s Survival)</div>
-            <StatusBadge
-              running={activeChallenge === 'commute'}
-              runningText={`COMMUTE: ${challengeSeconds}s (${totalLeaked}ml leaked)`}
-              result={results.commute}
-            />
-          </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            High initial volume with sudden potholes and urge contractions. Survive the full 60 seconds with less than 20ml total leakage!
-          </p>
-          {bests.commute && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('commute', bests.commute)}</p>}
-          <button onClick={() => act(startCommuteChallenge)} className="w-full py-2 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
-            Start Commute Run
-          </button>
-        </div>
-
-        <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
-          <div className="flex justify-between items-center gap-2">
-            <div className="font-extrabold text-xs text-slate-200">🎯 Precision Void (Target: Exactly 200ml)</div>
-            <StatusBadge running={activeChallenge === 'precision'} runningText="HOLD TO VOID 200ml" result={results.precision} />
-          </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            Account for latency and flow momentum to void exactly 200ml (±10ml tolerance) in a single continuous hold.
-          </p>
-          {bests.precision && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('precision', bests.precision)}</p>}
-          <button onClick={() => act(startPrecisionChallenge)} className="w-full py-2 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
-            Attempt Precision Void
-          </button>
-        </div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          High initial volume with sudden potholes and urge contractions. Survive the full 60 seconds with less than 20ml total leakage!
+        </p>
+        {bests.commute && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('commute', bests.commute)}</p>}
+        <button onClick={() => act(startCommuteChallenge)} className="w-full py-2 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
+          Start Commute Run
+        </button>
       </div>
-    </div>
+
+      <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
+        <div className="flex justify-between items-center gap-2">
+          <div className="font-extrabold text-xs text-slate-200">🎯 Precision Void (Target: Exactly 200ml)</div>
+          <StatusBadge running={activeChallenge === 'precision'} runningText="HOLD TO VOID 200ml" result={results.precision} />
+        </div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          Account for latency and flow momentum to void exactly 200ml (±10ml tolerance) in a single continuous hold.
+        </p>
+        {bests.precision && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('precision', bests.precision)}</p>}
+        <button onClick={() => act(startPrecisionChallenge)} className="w-full py-2 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
+          Attempt Precision Void
+        </button>
+      </div>
+    </Sheet>
   )
 }

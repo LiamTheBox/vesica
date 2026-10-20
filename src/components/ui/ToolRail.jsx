@@ -15,7 +15,7 @@ export default function ToolRail() {
   const setMode = useUiStore((s) => s.setInteractionMode)
 
   return (
-    <div role="radiogroup" aria-label="Touch tool" className="glass-hud pointer-events-auto flex flex-col gap-1 p-1 rounded-2xl">
+    <div role="radiogroup" aria-label="Touch tool" className="stage-rail glass-hud pointer-events-auto flex flex-col gap-1 p-1 rounded-2xl">
       {TOOLS.map((tool) => (
         <button
           key={tool.key}

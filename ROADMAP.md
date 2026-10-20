@@ -185,21 +185,40 @@ the HUD panels.
 
 ---
 
-## M6 — Mobile layout & installable PWA ☐
+## M6 — Mobile layout & installable PWA ◐ (automated gate passed; phone check pending)
 
-- ☐ `index.html`: proper title, `viewport-fit=cover`, no user zoom, theme colour, Apple web-app tags, fonts.
-- ☐ Safe-area insets (notch, home bar), `100dvh` layout.
-- ☐ Responsive layouts: small portrait phone (360 × 640), large phone, landscape phone (controls move to
-  side rails), tablet.
-- ☐ Tabs become bottom sheets that scroll on short screens.
-- ☐ Hide Fullscreen where the API is unsupported (iPhone).
-- ☐ PWA: manifest with PNG icons (192, 512, maskable, apple-touch-icon), service worker for offline play,
-  working Install button.
-- ☐ Settings persisted locally; screen kept awake during challenges.
+- ☑ `index.html`: title "Vesica 3D", description, `viewport-fit=cover`, no user zoom, theme colour, Apple
+  web-app tags, PNG + SVG favicons; Plus Jakarta Sans / JetBrains Mono fonts wired into Tailwind's theme.
+- ☑ Safe-area insets (notch, home bar) on the HUD and the sheets; sheets are capped at `90dvh`.
+- ☑ Responsive layout as a CSS grid (`.hud-layout`): portrait stacks top bar → telemetry → **stage** → controls →
+  nav; a landscape phone (height ≤ 560 px) moves controls and nav to a right-hand column so the stage keeps the
+  full height. Short screens (≤ 640 px) drop the hold-button hint lines.
+- ☑ The stage is a real layout area: Cutaway / Cough / Shake / Flush moved into a left **action rail**
+  (`ActionRail.jsx`) facing the tool rail; banners and subtitles stack at the top of the stage instead of fixed
+  offsets that covered the telemetry bar.
+- ☑ **Camera framing** (`stageFit.js` + `StageFit.jsx`): the camera distance fits a fully inflated bladder into
+  the stage, and a projection offset centres it on the stage rather than the screen. Starts at the original's
+  camera angle; zoom limits and fog scale with the fitted distance.
+- ☑ Tabs are bottom sheets (`Sheet.jsx`) on phones, centred panels on wider screens; they scroll inside on short screens.
+- ☑ Fullscreen button hidden where the API is missing (iPhone).
+- ☑ PWA (`vite-plugin-pwa` 1.3.0): manifest, PNG icons 192 / 512 / maskable / apple-touch-icon (rendered from
+  `public/icons/icon.svg` by `tools/make-icons.mjs`), auto-updating service worker that precaches the build and
+  caches the fonts on first use; the Install button appears when the browser offers it.
+- ☑ Settings persisted locally (M4); screen kept awake during challenges (Wake Lock API, no-op where unsupported).
+- ☑ `npm run preview:phone`: production build over HTTPS on the LAN, for the install and offline checks
+  (the service worker isn't in the dev server).
 
-**Automated (e2e):** on every device profile there's no horizontal overflow, no overlapping controls
-(bounding-box checks), all controls on screen; manifest and service worker register; works offline after first load.
-**Manual:** add to home screen on your phone, launch offline, rotate.
+**Fixed:** the M0 landscape finding (the expected-failure test is gone; the new test checks the stage centre is
+the canvas), the M4 camera-too-close and subtitle-over-telemetry findings, and the M5 iPhone SE overlap.
+**Automated (unit):** 2 camera-fit tests (`src/components/3d/stageFit.test.js`).
+**Automated (e2e), `e2e/layout.spec.js`** on every device: no horizontal overflow, no overlapping or off-screen
+buttons, no clipped button labels (also while clenching and voiding), the stage gets ≥ 20 % of the screen and
+≥ 150 px height, a full bladder projects inside the stage at ≥ ⅓ of its height, every tab opens as a sheet that
+fits the screen. **`e2e/pwa.spec.js`** against the production build: manifest and icons serve as PNG, the
+service worker takes control, the app loads offline.
+**Gate:** ☑ `npm run check` (0 warnings, 72 unit tests, build) · ☑ e2e 79 passed, 24 skipped (device-scoped).
+**Manual:** ☐ run `npm run preview:phone`, open the printed `https://<LAN-IP>:4173` URL on your phone, add to home
+screen, launch it offline, rotate between portrait and landscape.
 
 ---
 

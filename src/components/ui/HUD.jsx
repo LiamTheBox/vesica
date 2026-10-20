@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import TelemetryBar from './TelemetryBar'
 import ActionButtons from './ActionButtons'
-import { Alerts, Subtitles } from './Alerts'
+import { StageAlerts, Subtitles, Vignette } from './Alerts'
 import { ChallengeBanner, ChallengeResultCard } from './ChallengeStatus'
 import BottomNav from './Tabs/BottomNav'
 import TelemetryTab from './Tabs/TelemetryTab'
@@ -9,23 +9,65 @@ import ChallengesTab from './Tabs/ChallengesTab'
 import SettingsTab from './Tabs/SettingsTab'
 import { useHud, useUiStore } from '../../store/useUiStore'
 import { organStatus } from './status'
-import { act } from '../../sim/engine'
-import { agitate, cough, resetOrgan } from '../../sim/sim'
-import { haptic } from '../../feedback/feedback'
 import { countRender } from '../../debug/devHook'
 import ToolRail from './ToolRail'
+import ActionRail from './ActionRail'
 
-// Toolbar buttons: at least 44 px square, and named for screen readers even when the
-// text label is hidden at phone width.
-const TOOL_BUTTON = 'glass-hud min-w-11 min-h-11 px-2.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1'
+const TOP_BUTTON = 'glass-hud min-w-11 min-h-11 px-2.5 rounded-xl text-xs font-bold active:scale-95 transition flex items-center justify-center gap-1'
+
+// Reports where the stage sits on screen, so the 3D camera can frame the bladder
+// inside it (see StageFit in Scene.jsx).
+function useStageRect(ref) {
+  useEffect(() => {
+    const el = ref.current
+    const report = () => {
+      const r = el.getBoundingClientRect()
+      const rect = { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }
+      const prev = useUiStore.getState().stageRect
+      if (!prev || Object.keys(rect).some((k) => rect[k] !== prev[k])) useUiStore.setState({ stageRect: rect })
+    }
+    report()
+    const observer = new ResizeObserver(report)
+    observer.observe(el)
+    window.addEventListener('resize', report)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', report)
+    }
+  }, [ref])
+}
+
+function StatusCard() {
+  const status = useHud(organStatus)
+  return (
+    <div className="glass-hud px-3 py-1.5 rounded-2xl flex items-center gap-2.5 min-w-0">
+      <div
+        className="w-8 h-8 flex-shrink-0 rounded-xl bg-gradient-to-tr from-rose-600 via-amber-500 to-amber-300 flex items-center justify-center text-sm shadow-md transition-transform duration-150"
+        style={{ transform: `scale(${status.iconScale})` }}
+      >
+        🫁
+      </div>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-100 whitespace-nowrap">Vesica 3D</h1>
+          <span data-testid="status-badge" className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border whitespace-nowrap ${status.badgeTone}`}>
+            {status.badge}
+          </span>
+        </div>
+        <p className="text-[10px] text-slate-400 font-mono truncate">{status.sub}</p>
+      </div>
+    </div>
+  )
+}
 
 export default function HUD() {
   countRender('HUD')
-  const isCutawayActive = useUiStore((s) => s.isCutawayActive)
-  const status = useHud(organStatus)
-  const toggleCutaway = useUiStore((s) => s.toggleCutaway)
+  const stageRef = useRef(null)
+  useStageRect(stageRef)
 
   const [deferredPrompt, setDeferredPrompt] = useState(null)
+  // Fullscreen isn't available on iPhone; hide the button there.
+  const canFullscreen = typeof document !== 'undefined' && document.fullscreenEnabled
 
   useEffect(() => {
     const handleBeforeInstall = (e) => {
@@ -43,87 +85,63 @@ export default function HUD() {
   }
 
   const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {})
-    } else {
-      document.exitFullscreen().catch(() => {})
-    }
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {})
+    else document.exitFullscreen().catch(() => {})
   }
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-10 flex flex-col p-2 sm:p-4 justify-between h-full">
-      <Alerts />
-      <Subtitles />
-      <ChallengeResultCard />
-      
-      {/* Overlay Tabs */}
-      <TelemetryTab />
-      <ChallengesTab />
-      <SettingsTab />
+    <>
+      <Vignette />
 
-      {/* Top Bar */}
-      <div className="w-full flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2 max-w-4xl mx-auto w-full pointer-events-auto flex-wrap sm:flex-nowrap">
-          <div className="glass-hud px-3 py-1.5 rounded-2xl flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-600 via-amber-500 to-amber-300 flex items-center justify-center text-sm shadow-md transition-transform duration-150" style={{ transform: `scale(${status.iconScale})` }}>
-              🫁
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-100">
-                  Vesica 3D
-                </h1>
-                <span data-testid="status-badge" className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${status.badgeTone}`}>
-                  {status.badge}
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400 font-mono">{status.sub}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-end">
+      <div className="hud-layout pointer-events-none z-10">
+        <header className="hud-top w-full max-w-4xl mx-auto flex items-center justify-between gap-2 pointer-events-auto">
+          <StatusCard />
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {deferredPrompt && (
-              <button onClick={installPwa} className={`${TOOL_BUTTON} text-amber-400 border border-amber-400/40 hover:bg-amber-500/10`}>
+              <button onClick={installPwa} className={`${TOP_BUTTON} text-amber-400 border border-amber-400/40 hover:bg-amber-500/10`}>
                 <span>📲</span><span className="text-[11px]">Install</span>
               </button>
             )}
-            
-            <button onClick={toggleFullscreen} aria-label="Toggle fullscreen" className={`${TOOL_BUTTON} text-slate-300 hover:text-amber-400`} title="Toggle Fullscreen">
-              ⛶
-            </button>
-
-            <button onClick={() => { toggleCutaway(); haptic(20) }} aria-label="Cutaway" aria-pressed={isCutawayActive} className={`${TOOL_BUTTON} ${isCutawayActive ? 'bg-sky-500/25 border-sky-400 text-sky-400' : 'text-slate-200 hover:text-sky-400'}`} title="Toggle Sagittal Internal Cutaway">
-              <span>🔬</span><span className="text-[11px] hidden sm:inline">Cutaway</span>
-            </button>
-
-            <button onClick={() => act(cough)} aria-label="Cough" className={`${TOOL_BUTTON} text-slate-200 hover:text-rose-400`}>
-              <span>🤧</span>
-              <span className="text-[11px] hidden sm:inline">Cough</span>
-            </button>
-            <button onClick={() => act(agitate, 3.2)} aria-label="Shake" className={`${TOOL_BUTTON} text-slate-200 hover:text-amber-400`}>
-              <span>📳</span>
-              <span className="text-[11px] hidden sm:inline">Shake</span>
-            </button>
-            <button onClick={() => act(resetOrgan)} aria-label="Flush organ" className={`${TOOL_BUTTON} text-slate-300 hover:text-cyan-400`} title="Flush Organ">
-              🔄
-            </button>
+            {canFullscreen && (
+              <button onClick={toggleFullscreen} aria-label="Toggle fullscreen" title="Toggle Fullscreen" className={`${TOP_BUTTON} text-slate-300 hover:text-amber-400`}>
+                ⛶
+              </button>
+            )}
           </div>
+        </header>
+
+        <div className="hud-telemetry w-full max-w-4xl mx-auto">
+          <TelemetryBar />
         </div>
-        
-        <TelemetryBar />
+
+        {/* The stage: the bladder is framed here. Touches pass through to the 3D canvas. */}
+        <section ref={stageRef} data-testid="stage" className="hud-stage">
+          <div className="absolute inset-x-0 top-0 flex flex-col items-center gap-1.5 px-14">
+            <ChallengeBanner />
+            <StageAlerts />
+            <Subtitles />
+          </div>
+          <div className="absolute left-0 inset-y-0 flex items-center">
+            <ActionRail />
+          </div>
+          <div className="absolute right-0 inset-y-0 flex items-center">
+            <ToolRail />
+          </div>
+        </section>
+
+        <div className="hud-controls w-full max-w-xl mx-auto">
+          <ActionButtons />
+        </div>
+
+        <div className="hud-nav w-full max-w-md mx-auto">
+          <BottomNav />
+        </div>
       </div>
 
-      {/* Touch tool picker, right edge */}
-      <div className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20">
-        <ToolRail />
-      </div>
-
-      {/* Bottom Area */}
-      <div className="mt-auto flex flex-col gap-2">
-        <ChallengeBanner />
-        <ActionButtons />
-        <BottomNav />
-      </div>
-    </div>
+      <ChallengeResultCard />
+      <TelemetryTab />
+      <ChallengesTab />
+      <SettingsTab />
+    </>
   )
 }

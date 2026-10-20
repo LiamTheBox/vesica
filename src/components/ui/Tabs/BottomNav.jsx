@@ -12,7 +12,7 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="max-w-md w-full mx-auto pointer-events-auto glass-hud px-4 py-1.5 rounded-2xl flex items-center justify-around text-[10px] font-mono mt-2">
+    <nav className="max-w-md w-full mx-auto pointer-events-auto glass-hud px-2 py-1 rounded-2xl flex items-center justify-around text-[10px] font-mono">
       {navItems.map(item => (
         <button
           key={item.id}

@@ -21,6 +21,22 @@ export function shakeScreen() {
   setTimeout(() => document.body.classList.remove('shake-active'), 250)
 }
 
+// Keeps the screen on during a challenge, where supported (Wake Lock API).
+let wakeLock = null
+async function keepScreenAwake(on) {
+  try {
+    if (on && !wakeLock && navigator.wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen')
+      wakeLock.addEventListener('release', () => { wakeLock = null })
+    } else if (!on && wakeLock) {
+      await wakeLock.release()
+      wakeLock = null
+    }
+  } catch {
+    // Denied or unsupported: the challenge still works, the screen may just dim.
+  }
+}
+
 function setChallengeResult(challenge, result) {
   useUiStore.setState((state) => ({ challengeResults: { ...state.challengeResults, [challenge]: result } }))
 }
@@ -117,9 +133,11 @@ const handlers = {
   challengeStart: (e) => {
     setChallengeResult(e.challenge, null)
     useUiStore.setState({ lastResult: null })
+    keepScreenAwake(true)
     useUiStore.getState().setTab('sim')
   },
   challengeResult: (e) => {
+    keepScreenAwake(false)
     if (e.challenge === 'commute') {
       finishChallenge(e, e.success ? `VICTORY! (${e.leaked}ml lost)` : `FAILED (${e.leaked}ml lost)`)
       if (e.success) haptic([100, 50, 100])

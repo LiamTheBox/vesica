@@ -53,6 +53,8 @@ export const useUiStore = create((set) => ({
   bests: loadJson('bests', EMPTY_BESTS),
   settings: loadJson('settings', DEFAULT_SETTINGS),
   hud: initialHud,
+  // Where the 3D stage sits on screen ({ x, y, width, height }), for camera framing.
+  stageRect: null,
 
   setTab: (tab) => set({ currentTab: tab }),
   setInteractionMode: (mode) => set({ interactionMode: mode }),

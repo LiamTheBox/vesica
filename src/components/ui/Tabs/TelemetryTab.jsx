@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useHud, useUiStore } from '../../../store/useUiStore'
 import { sim } from '../../../sim/engine'
+import Sheet from '../Sheet'
 
 export default function TelemetryTab() {
   const currentTab = useUiStore((s) => s.currentTab)
@@ -81,35 +82,25 @@ export default function TelemetryTab() {
   if (currentTab !== 'telemetry') return null
 
   return (
-    <div className="absolute inset-0 z-30 pointer-events-auto p-4 flex flex-col justify-center items-center bg-slate-950/80 backdrop-blur-xl">
-      <div className="max-w-2xl w-full glass-modal p-5 rounded-3xl flex flex-col gap-4 border border-slate-700/60">
-        <div className="flex justify-between items-center pb-2 border-b border-slate-700/60">
-          <div>
-            <h2 className="text-sm sm:text-base font-extrabold text-amber-400 font-mono uppercase tracking-wider">Live Cystometry Strip Chart</h2>
-            <p className="text-xs text-slate-400">Intravesical Pressure (cmH₂O) & Volume (ml) Real-time Telemetry</p>
-          </div>
-          <button onClick={() => setTab('sim')} aria-label="Close" className="text-slate-400 hover:text-white text-lg font-bold min-w-11 min-h-11">✕</button>
-        </div>
+    <Sheet title="Live Cystometry Strip Chart" subtitle="Intravesical Pressure (cmH₂O) & Volume (ml) Real-time Telemetry" titleTone="text-amber-400" onClose={() => setTab('sim')}>
+      <div className="relative w-full h-56 bg-slate-950/90 rounded-2xl border border-slate-800 p-2 overflow-hidden flex flex-col justify-between">
+        <canvas ref={canvasRef} className="w-full h-full block"></canvas>
+      </div>
 
-        <div className="relative w-full h-56 bg-slate-950/90 rounded-2xl border border-slate-800 p-2 overflow-hidden flex flex-col justify-between">
-          <canvas ref={canvasRef} className="w-full h-full block"></canvas>
+      <div className="grid grid-cols-3 gap-2 text-center font-mono">
+        <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+          <div className="text-[9px] text-slate-400 uppercase">Compliance</div>
+          <div className="text-xs font-bold text-cyan-400">High (Elastic)</div>
         </div>
-
-        <div className="grid grid-cols-3 gap-2 text-center font-mono">
-          <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-            <div className="text-[9px] text-slate-400 uppercase">Compliance</div>
-            <div className="text-xs font-bold text-cyan-400">High (Elastic)</div>
-          </div>
-          <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-            <div className="text-[9px] text-slate-400 uppercase">Total Leaked</div>
-            <div className="text-xs font-bold text-rose-400">{totalLeaked} ml</div>
-          </div>
-          <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-            <div className="text-[9px] text-slate-400 uppercase">Max Recorded</div>
-            <div className="text-xs font-bold text-amber-400">{maxPressure.toFixed(1)} cmH₂O</div>
-          </div>
+        <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+          <div className="text-[9px] text-slate-400 uppercase">Total Leaked</div>
+          <div className="text-xs font-bold text-rose-400">{totalLeaked} ml</div>
+        </div>
+        <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+          <div className="text-[9px] text-slate-400 uppercase">Max Recorded</div>
+          <div className="text-xs font-bold text-amber-400">{maxPressure.toFixed(1)} cmH₂O</div>
         </div>
       </div>
-    </div>
+    </Sheet>
   )
 }

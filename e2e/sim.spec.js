@@ -101,10 +101,10 @@ test.describe('controls drive the simulation', () => {
     const button = page.getByRole('button', { name: /EMPTY \(HOLD\)|RELAXING VALVE|VOIDING/ })
     await hold(page, button)
     await step(page, 57) // 0.95 s
-    await expect(button).toContainText('RELAXING VALVE...')
+    await expect(button).toContainText('RELAXING VALVE…')
     expect((await portState(page)).isActivelyVoiding).toBe(false)
     await step(page, 6) // 1.05 s
-    await expect(button).toContainText('VOIDING...')
+    await expect(button).toContainText('VOIDING…')
     expect((await portState(page)).flowRate).toBeGreaterThan(0)
     await page.mouse.up()
     await expect(button).toContainText('EMPTY (HOLD)')

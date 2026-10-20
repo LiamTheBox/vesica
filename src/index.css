@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
 @layer base {
   /* A game surface: no page zoom, scrolling, pull-to-refresh, long-press callouts or
      text selection getting in the way of touch play. */
@@ -68,4 +73,61 @@
 
 input[type="range"] {
   accent-color: #f59e0b;
+}
+
+/* HUD layout. Portrait: one column with the 3D stage in the middle. Short landscape
+   screens (phones on their side): controls and nav move to a right-hand column so the
+   stage keeps the full height. Padding respects notches and the home indicator. */
+.hud-layout {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  gap: 6px;
+  padding:
+    max(8px, env(safe-area-inset-top))
+    max(8px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom))
+    max(8px, env(safe-area-inset-left));
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-areas: "top" "telemetry" "stage" "controls" "nav";
+}
+.hud-top { grid-area: top; }
+.hud-telemetry { grid-area: telemetry; }
+.hud-stage { grid-area: stage; position: relative; min-height: 0; }
+.hud-controls { grid-area: controls; }
+.hud-nav { grid-area: nav; }
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .hud-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 40%);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "top controls"
+      "telemetry controls"
+      "stage controls"
+      "stage nav";
+  }
+  .hud-controls { align-self: center; }
+}
+
+/* Short screens: the hold buttons drop their hint lines to give the stage room. */
+@media (max-height: 640px) {
+  .hold-hint { display: none; }
+}
+
+/* Side rails never spill out of the stage; if it's very short they scroll. */
+.stage-rail {
+  max-height: 100%;
+  overflow-y: auto;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.sheet-animate {
+  animation: sheetUp 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
 }

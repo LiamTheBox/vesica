@@ -32,16 +32,12 @@ test('loads, renders the 3D canvas and starts on tap', async ({ page }, testInfo
   expect(errors).toEqual([])
 })
 
-test('bladder at screen centre is not covered by controls', async ({ page }, testInfo) => {
-  // Known layout gap: on a landscape phone the HUD covers the whole bladder. Fixed in M6,
-  // at which point Playwright reports "expected to fail, but passed" and this line goes.
-  test.fail(testInfo.project.name.includes('landscape'), 'HUD covers the bladder in landscape (ROADMAP M6)')
-
-  const box = await startApp(page)
-  const tag = await page.evaluate(
-    ([x, y]) => document.elementFromPoint(x, y)?.tagName,
-    [box.x + box.width / 2, box.y + box.height / 2],
-  )
+test('the middle of the stage is the bladder, not a control', async ({ page }) => {
+  await startApp(page)
+  const tag = await page.evaluate(() => {
+    const r = document.querySelector('[data-testid="stage"]').getBoundingClientRect()
+    return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.tagName
+  })
   expect(tag).toBe('CANVAS')
 })
 

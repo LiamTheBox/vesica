@@ -13,15 +13,6 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
   `computeVertexNormals` on two 3k-vertex meshes per frame, and Three.js r185's transmission pass.
 - **Planned:** M7 (move earlier if a real phone shows the same gap).
 
-### Bladder hidden behind controls on a landscape phone
-- **Seen:** M0 (`e2e/smoke.spec.js` keeps an expected-failure test for it).
-- **Planned:** M6 (landscape layout with side rails).
-
-### Small phones: tool rail overlaps the drinks shelf; 3D view squeezed
-- **Seen:** M5 screenshots on iPhone SE (320 × 568). Related to the M0 landscape issue and the M4 finding that the
-  camera sits too close on portrait screens.
-- **Planned:** M6 (responsive layout, camera fit, and an e2e check that no controls overlap).
-
 ### Real-time waits are unreliable in browser tests
 - **Seen:** M1. Headless WebGL runs at a few fps and each frame advances the sim by at most 0.08 s, so simulated
   time runs far slower than wall-clock time.
@@ -40,3 +31,6 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 | Ureters ran through the inside of the bladder | M2 |
 | Jagged, torn wall at low fill (wrinkles finer than the mesh; per-vertex random tremor) | M2 |
 | Icon-only toolbar buttons had no accessible name; buttons under 44 px | M5 |
+| Bladder hidden behind controls on a landscape phone | M6 |
+| Small phones: tool rail overlapped the drinks shelf; 3D view squeezed; camera too close in portrait | M6 |
+| Subtitle bubble sat on top of the telemetry bar | M6 |

@@ -5,14 +5,16 @@ import Organ from './Organ'
 import { SimLoop } from '../../sim/SimLoop'
 import { useUiStore } from '../../store/useUiStore'
 import { DevBridge } from '../../debug/DevBridge'
+import { StageFit } from './StageFit'
 
 export default function Scene() {
   const mode = useUiStore((s) => s.interactionMode)
 
   return (
     <div className="absolute inset-0 z-0">
+      {/* Starts at the original's camera angle; StageFit sets the distance. */}
       <Canvas
-        camera={{ position: [0, 0, 12], fov: 45 }}
+        camera={{ position: [0, 1.71, 11.88], fov: 45 }}
         gl={{ antialias: true, alpha: false, powerPreference: 'high-performance', localClippingEnabled: true }}
       >
         <color attach="background" args={['#060913']} />
@@ -25,6 +27,7 @@ export default function Scene() {
 
         {import.meta.env.DEV && <DevBridge />}
         <SimLoop />
+        <StageFit />
         <Organ />
         
         {/* One finger/left button uses the current tool; Orbit mode rotates instead.
@@ -34,8 +37,6 @@ export default function Scene() {
           enablePan={false}
           mouseButtons={{ LEFT: mode === 'orbit' ? THREE.MOUSE.ROTATE : null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: null }}
           touches={{ ONE: mode === 'orbit' ? THREE.TOUCH.ROTATE : null, TWO: mode === 'squeeze' ? null : THREE.TOUCH.DOLLY_ROTATE }}
-          minDistance={7}
-          maxDistance={22}
           maxPolarAngle={Math.PI / 1.5}
         />
       </Canvas>
