@@ -88,7 +88,7 @@ export default function TelemetryTab() {
             <h2 className="text-sm sm:text-base font-extrabold text-amber-400 font-mono uppercase tracking-wider">Live Cystometry Strip Chart</h2>
             <p className="text-xs text-slate-400">Intravesical Pressure (cmH₂O) & Volume (ml) Real-time Telemetry</p>
           </div>
-          <button onClick={() => setTab('sim')} className="text-slate-400 hover:text-white text-lg font-bold p-1">✕</button>
+          <button onClick={() => setTab('sim')} aria-label="Close" className="text-slate-400 hover:text-white text-lg font-bold min-w-11 min-h-11">✕</button>
         </div>
 
         <div className="relative w-full h-56 bg-slate-950/90 rounded-2xl border border-slate-800 p-2 overflow-hidden flex flex-col justify-between">

@@ -17,10 +17,10 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 - **Seen:** M0 (`e2e/smoke.spec.js` keeps an expected-failure test for it).
 - **Planned:** M6 (landscape layout with side rails).
 
-### Icon-only toolbar buttons have no accessible name at phone width
-- **Seen:** M2. Cutaway, Cough, Shake and the tool button hide their text below 640 px, leaving only an emoji,
-  so screen readers (and tests) can't name them.
-- **Planned:** M5 (tool picker and tap-target work).
+### Small phones: tool rail overlaps the drinks shelf; 3D view squeezed
+- **Seen:** M5 screenshots on iPhone SE (320 × 568). Related to the M0 landscape issue and the M4 finding that the
+  camera sits too close on portrait screens.
+- **Planned:** M6 (responsive layout, camera fit, and an e2e check that no controls overlap).
 
 ### Real-time waits are unreliable in browser tests
 - **Seen:** M1. Headless WebGL runs at a few fps and each frame advances the sim by at most 0.08 s, so simulated
@@ -39,3 +39,4 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 | Liquid invisible behind the wall; hollow clipped shell inside | M2 |
 | Ureters ran through the inside of the bladder | M2 |
 | Jagged, torn wall at low fill (wrinkles finer than the mesh; per-vertex random tremor) | M2 |
+| Icon-only toolbar buttons had no accessible name; buttons under 44 px | M5 |

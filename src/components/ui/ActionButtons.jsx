@@ -11,12 +11,19 @@ const BEVERAGE_LABELS = {
   beer: { icon: '🍺', name: 'Brew', note: '+480ml', tone: 'text-yellow-400' },
 }
 
-// Hold buttons must not scroll, zoom or select while a finger rests on them.
+// Hold buttons capture their finger, so a thumb drifting off the edge keeps holding,
+// and each finger holds independently (Clench with one thumb, poke with the other).
+// They must not scroll, zoom or select while held.
 const holdProps = (start, stop) => ({
-  onPointerDown: (e) => { e.preventDefault(); act(start) },
+  onPointerDown: (e) => {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    act(start)
+  },
   onPointerUp: (e) => { e.preventDefault(); act(stop) },
-  onPointerLeave: () => act(stop),
   onPointerCancel: () => act(stop),
+  onLostPointerCapture: () => act(stop),
+  onContextMenu: (e) => e.preventDefault(),
 })
 
 export default function ActionButtons() {

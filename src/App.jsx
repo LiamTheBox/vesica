@@ -30,6 +30,11 @@ function App() {
         window.speechSynthesis.speak(utterance)
       }
 
+      // iOS only reports motion after the player grants it, from a gesture like this tap.
+      if (useUiStore.getState().settings.shakeToSlosh && typeof DeviceMotionEvent?.requestPermission === 'function') {
+        DeviceMotionEvent.requestPermission().catch(() => {})
+      }
+
       setStarted(true)
       document.removeEventListener('pointerdown', initAudio)
       document.removeEventListener('keydown', initAudio)
@@ -42,17 +47,22 @@ function App() {
     let lastAx = 0, lastAy = 0, lastAz = 0
     const handleMotion = (e) => {
       const acc = e.accelerationIncludingGravity
-      if (!acc) return
+      if (!acc || !useUiStore.getState().settings.shakeToSlosh) return
       const delta = Math.abs(acc.x - lastAx) + Math.abs(acc.y - lastAy) + Math.abs(acc.z - lastAz)
       if (delta > 14.0) act(agitate, Math.min(4.0, delta * 0.22))
       lastAx = acc.x; lastAy = acc.y; lastAz = acc.z
     }
     window.addEventListener('devicemotion', handleMotion, { passive: true })
 
+    // Long-press menus would interrupt holds and drags.
+    const blockMenu = (e) => e.preventDefault()
+    document.addEventListener('contextmenu', blockMenu)
+
     return () => {
       document.removeEventListener('pointerdown', initAudio)
       document.removeEventListener('keydown', initAudio)
       window.removeEventListener('devicemotion', handleMotion)
+      document.removeEventListener('contextmenu', blockMenu)
     }
   }, [])
 

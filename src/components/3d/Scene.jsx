@@ -1,5 +1,6 @@
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
+import * as THREE from 'three'
 import Organ from './Organ'
 import { SimLoop } from '../../sim/SimLoop'
 import { useUiStore } from '../../store/useUiStore'
@@ -26,11 +27,14 @@ export default function Scene() {
         <SimLoop />
         <Organ />
         
+        {/* One finger/left button uses the current tool; Orbit mode rotates instead.
+            Two fingers zoom and rotate in any tool except Squeeze, where a pinch squeezes. */}
         <OrbitControls
           makeDefault
-          enablePan={false} 
-          enableRotate={mode === 'orbit'}
-          minDistance={7} 
+          enablePan={false}
+          mouseButtons={{ LEFT: mode === 'orbit' ? THREE.MOUSE.ROTATE : null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: null }}
+          touches={{ ONE: mode === 'orbit' ? THREE.TOUCH.ROTATE : null, TWO: mode === 'squeeze' ? null : THREE.TOUCH.DOLLY_ROTATE }}
+          minDistance={7}
           maxDistance={22}
           maxPolarAngle={Math.PI / 1.5}
         />

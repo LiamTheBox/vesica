@@ -82,6 +82,12 @@ export default function SettingsTab() {
             checked={settings.haptics}
             onChange={(v) => updateSettings({ haptics: v })}
           />
+          <Toggle
+            label="🌀 Shake Phone to Slosh"
+            hint="Moving the device sloshes the bladder (asks for motion access on iPhone)"
+            checked={settings.shakeToSlosh}
+            onChange={(v) => updateSettings({ shakeToSlosh: v })}
+          />
         </div>
       </div>
     </div>

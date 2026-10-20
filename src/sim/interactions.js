@@ -62,3 +62,10 @@ export function squeezeCancel(sim) {
 export function orbitDrag(sim, out, dx, dy) {
   impartSloshForce(sim, dx * 0.15, dy * 0.15)
 }
+
+// Two-finger pinch in Squeeze mode (original touchmove handler): fingers closing by
+// `diff` px squeeze harder, spreading them eases off.
+export function squeezePinch(sim, out, diff) {
+  sim.targetSqueezeY = Math.min(0.7, Math.max(0.0, sim.targetSqueezeY + diff * 0.005))
+  out.push({ type: 'squeezeDrag', amount: sim.targetSqueezeY })
+}

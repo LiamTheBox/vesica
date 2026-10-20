@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { useUiStore } from '../../store/useUiStore'
 import { act, onSimEvent, sim } from '../../sim/engine'
 import { physicsOf } from '../../sim/sim'
-import { orbitDrag, pokeAt, slapAt, squeezeCancel, squeezeDrag, squeezeRelease, squeezeStart } from '../../sim/interactions'
+import { orbitDrag, pokeAt, slapAt, squeezeCancel, squeezeDrag, squeezePinch, squeezeRelease, squeezeStart } from '../../sim/interactions'
 import { createOrganRig } from './organRig'
 
 const ndc = new THREE.Vector2()
@@ -34,13 +34,16 @@ export default function Organ() {
     })
   }, [rig])
 
-  // Pointer handling mirrors the original: a press anywhere on the canvas starts a
-  // gesture, and moves/releases are tracked on the window so drags survive leaving
-  // the mesh. Presses that land on the bladder are handled by the mesh below.
+  // Pointer handling, per finger. A press on the canvas starts a gesture; moves and
+  // releases are tracked on the window so a drag survives leaving the mesh (as in the
+  // original). Fingers that started elsewhere (a thumb holding Clench) are ignored.
+  // A second finger on the canvas turns the gesture into a pinch: Squeeze mode
+  // squeezes; other tools leave zoom/rotate to OrbitControls.
   useEffect(() => {
     const canvas = get().gl.domElement
-    let down = false
-    let last = { x: 0, y: 0 }
+    const fingers = new Map() // pointerId -> { x, y }
+    let primaryId = null // the finger driving the one-finger tool, if any
+    let pinchDistance = 0
 
     const hitBladder = (e) => {
       const { camera, raycaster } = get()
@@ -50,36 +53,67 @@ export default function Organ() {
       const hit = raycaster.intersectObject(bladderRef.current)[0]
       return hit ? bladderRef.current.worldToLocal(hit.point.clone()) : null
     }
+    const spread = () => {
+      const [a, b] = [...fingers.values()]
+      return Math.hypot(a.x - b.x, a.y - b.y)
+    }
 
     const onDown = (e) => {
-      down = true
-      last = { x: e.clientX, y: e.clientY }
-    }
-    const onMove = (e) => {
-      if (!down) return
-      const dx = e.clientX - last.x
-      const dy = e.clientY - last.y
-      const speed = Math.hypot(dx, dy)
-      last = { x: e.clientX, y: e.clientY }
+      fingers.set(e.pointerId, { x: e.clientX, y: e.clientY })
       const mode = useUiStore.getState().interactionMode
+
+      if (fingers.size === 1) {
+        primaryId = e.pointerId
+        const local = hitBladder(e)
+        if (!local) return
+        if (mode === 'poke') act(pokeAt, local, physicsOf(sim).squishForce, { touch: true })
+        else if (mode === 'slap') act(slapAt, local, 2.0, { haptic: true })
+        else if (mode === 'squeeze') act(squeezeStart)
+      } else if (fingers.size === 2) {
+        primaryId = null // the one-finger tool stops once a second finger lands
+        pinchDistance = spread()
+      }
+    }
+
+    const onMove = (e) => {
+      const finger = fingers.get(e.pointerId)
+      if (!finger) return
+      const dx = e.clientX - finger.x
+      const dy = e.clientY - finger.y
+      finger.x = e.clientX
+      finger.y = e.clientY
+      const mode = useUiStore.getState().interactionMode
+
+      if (fingers.size >= 2) {
+        if (mode === 'squeeze') {
+          const distance = spread()
+          act(squeezePinch, pinchDistance - distance)
+          pinchDistance = distance
+        }
+        return
+      }
+      if (e.pointerId !== primaryId) return
 
       if (mode === 'orbit') act(orbitDrag, dx, dy)
       else if (mode === 'squeeze') act(squeezeDrag, dx, dy)
       else {
         const local = hitBladder(e)
         if (!local) return
+        const speed = Math.hypot(dx, dy)
         if (mode === 'slap' && speed > 10) act(slapAt, local, Math.min(3.0, speed * 0.14))
         else if (mode === 'poke') act(pokeAt, local, 0.7)
       }
     }
-    const onUp = () => {
-      down = false
-      if (useUiStore.getState().interactionMode === 'squeeze') act(squeezeRelease)
+
+    const release = (e, cancelled) => {
+      if (!fingers.delete(e.pointerId)) return
+      if (e.pointerId === primaryId) primaryId = null
+      if (fingers.size > 0) return
+      if (cancelled) act(squeezeCancel)
+      else if (useUiStore.getState().interactionMode === 'squeeze') act(squeezeRelease)
     }
-    const onCancel = () => {
-      down = false
-      act(squeezeCancel)
-    }
+    const onUp = (e) => release(e, false)
+    const onCancel = (e) => release(e, true)
 
     canvas.addEventListener('pointerdown', onDown)
     window.addEventListener('pointermove', onMove)
@@ -92,14 +126,6 @@ export default function Organ() {
       window.removeEventListener('pointercancel', onCancel)
     }
   }, [get])
-
-  const handlePointerDown = (e) => {
-    const local = bladderRef.current.worldToLocal(e.point.clone())
-    const mode = useUiStore.getState().interactionMode
-    if (mode === 'poke') act(pokeAt, local, physicsOf(sim).squishForce, { touch: true })
-    else if (mode === 'slap') act(slapAt, local, 2.0, { haptic: true })
-    else if (mode === 'squeeze') act(squeezeStart)
-  }
 
   useFrame((state, delta) => {
     rig.update(sim, Math.min(0.08, delta), state.clock.getElapsedTime(), {
@@ -142,7 +168,7 @@ export default function Organ() {
       </mesh>
 
       {/* Wall: a thin translucent membrane that thins out as it stretches. */}
-      <mesh ref={bladderRef} geometry={rig.bladderGeo} renderOrder={10} onPointerDown={handlePointerDown}>
+      <mesh ref={bladderRef} geometry={rig.bladderGeo} renderOrder={10}>
         <meshPhysicalMaterial
           ref={wallMatRef}
           map={rig.diffTex}

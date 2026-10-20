@@ -17,7 +17,8 @@ export default function BottomNav() {
         <button
           key={item.id}
           onClick={() => setTab(item.id)}
-          className={`flex flex-col items-center gap-0.5 transition ${
+          aria-current={currentTab === item.id ? 'page' : undefined}
+          className={`min-w-11 min-h-11 flex flex-col items-center justify-center gap-0.5 transition ${
             currentTab === item.id 
               ? 'text-amber-400 font-bold' 
               : 'text-slate-400 hover:text-slate-200'

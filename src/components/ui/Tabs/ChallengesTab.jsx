@@ -36,7 +36,7 @@ export default function ChallengesTab() {
             <h2 className="text-sm sm:text-base font-extrabold text-cyan-400 font-mono uppercase tracking-wider">Continence Challenges</h2>
             <p className="text-xs text-slate-400">Test reflexes against fluid rushes and random disturbances</p>
           </div>
-          <button onClick={() => setTab('sim')} className="text-slate-400 hover:text-white text-lg font-bold p-1">✕</button>
+          <button onClick={() => setTab('sim')} aria-label="Close" className="text-slate-400 hover:text-white text-lg font-bold min-w-11 min-h-11">✕</button>
         </div>
 
         <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">

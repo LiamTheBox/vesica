@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS = {
   sfxEnabled: true,
   sfxVolume: 0.8,
   haptics: true,
+  shakeToSlosh: true, // device motion sloshes the bladder
 }
 
 export const initialHud = {

@@ -1,10 +1,19 @@
 @import "tailwindcss";
 
 @layer base {
+  /* A game surface: no page zoom, scrolling, pull-to-refresh, long-press callouts or
+     text selection getting in the way of touch play. */
+  html,
+  body {
+    height: 100%;
+    overscroll-behavior: none;
+  }
   body {
     @apply bg-slate-950 text-slate-100 antialiased overflow-hidden select-none;
     touch-action: none;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
   }
 }
 

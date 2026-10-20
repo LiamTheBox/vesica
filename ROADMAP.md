@@ -158,23 +158,30 @@ controls; the subtitle bubble sits on top of the telemetry bar.
 
 ---
 
-## M5 — Touch & tactile input ☐
+## M5 — Touch & tactile input ◐ (automated gate passed; phone check pending)
 
-- ☐ Pointer capture on the bladder: a squeeze/drag doesn't drop when the finger slides off the mesh.
-- ☐ True multi-touch: hold Clench or Empty with one thumb while poking with another finger
-  (track by `pointerId`, capture on buttons so small finger movement doesn't cancel the hold).
-- ☐ Gestures: 1 finger = current tool; 2-finger pinch = squeeze (squeeze tool) or zoom (others);
-  2-finger drag = orbit in any tool.
-- ☐ Tool picker becomes a visible segmented control (Poke / Squeeze / Slap / Orbit), not a cycle button.
-- ☐ Kill mobile browser interference: long-press callout and text selection, double-tap zoom,
-  pull-to-refresh/overscroll, context menu on hold buttons.
-- ☐ All tap targets ≥ 44 × 44 px.
-- ◐ Haptics: ☑ toggle in Settings (M4); ☐ distinct patterns; ☐ silent no-op where unsupported (iOS Safari).
-- ☐ Device motion: request iOS permission on the start tap; "Shake phone to slosh" toggle.
+- ☑ Per-finger tracking on the bladder (`pointerId`): fingers that start on a button are ignored, a second finger
+  turns the gesture into a pinch and stops the one-finger tool, and presses do their own hit-testing so a second
+  finger can never cause a stray poke. Drags keep working off the mesh (M2).
+- ☑ True multi-touch: hold Clench or Empty with one thumb while poking with the other. Hold buttons capture their
+  finger, so drifting off the edge keeps holding.
+- ☑ Gestures: 1 finger = current tool; 2-finger pinch = squeeze (Squeeze tool, original pinch rate) or zoom +
+  rotate (other tools). Orbit tool keeps 1-finger rotate.
+- ☑ Tool picker is a visible rail on the right edge (radio group: Poke / Squeeze / Slap / Orbit); the cycle button is gone.
+- ☑ Browser interference off: page zoom (viewport), pull-to-refresh/overscroll, long-press callout/menu, text selection.
+- ☑ All buttons ≥ 44 × 44 px with accessible names (fixes the icon-only buttons from KNOWN_ISSUES).
+- ☑ Haptics: ☑ settings toggle (M4); patterns per event were already distinct; ☑ silent no-op where `navigator.vibrate`
+  is missing (iOS Safari).
+- ☑ Device motion: iOS permission requested on the start tap; "Shake Phone to Slosh" toggle in Settings.
 
-**Automated (e2e, touch emulation):** tap, two-thumb hold (Clench held while poking) via multi-touch
-events, pinch to squeeze raises pressure, drag off-mesh keeps squeeze, no page scroll/zoom after gestures.
-**Manual:** checklist on a real phone: two-thumb play, pinch, shake-to-slosh, vibration.
+**Automated (e2e), `e2e/touch.spec.js`:** multi-finger touches through the DevTools protocol: two-thumb clench +
+poke, held button survives drifting off, pinch-squeeze up and down, pinch-zoom without pokes, tool rail; on every
+device: all buttons ≥ 44 px and named, gestures never scroll or zoom the page.
+**Gate:** ☑ `npm run check` (0 warnings, 67 unit tests, build) · ☑ e2e 52 passed, 24 skipped (device-scoped).
+**Manual:** ☐ two-thumb play, pinch, shake-to-slosh and vibration on a real phone.
+
+**Found for M6:** on iPhone SE the tool rail overlaps the drinks shelf, and the 3D view is a thin strip between
+the HUD panels.
 
 ---
 
