@@ -1,0 +1,3021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#020617">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Vesica 3D">
+  <title>Vesica 3D: High-Fidelity Bladder Simulator App</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Dynamic Web App Manifest Injection -->
+  <script>
+    const manifest = {
+      name: "Vesica 3D Bladder Simulator",
+      short_name: "Vesica 3D",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#020617",
+      theme_color: "#020617",
+      icons: [
+        {
+          src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🫁</text></svg>",
+          sizes: "192x192 512x512",
+          type: "image/svg+xml"
+        }
+      ]
+    };
+    const stringManifest = JSON.stringify(manifest);
+    const blob = new Blob([stringManifest], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blob);
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = manifestURL;
+    document.head.appendChild(link);
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap');
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow: hidden;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .glass-hud {
+      background: rgba(8, 13, 26, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.7);
+    }
+
+    .glass-modal {
+      background: rgba(11, 19, 38, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.9);
+    }
+
+    .btn-clench-active {
+      box-shadow: 0 0 28px #38bdf8;
+      border-color: #38bdf8 !important;
+      transform: scale(0.96);
+    }
+
+    .btn-void-active {
+      box-shadow: 0 0 35px #f59e0b;
+      transform: scale(0.98);
+    }
+
+    .btn-active-cutaway {
+      background: rgba(14, 165, 233, 0.25) !important;
+      border-color: #38bdf8 !important;
+      color: #38bdf8 !important;
+    }
+
+    @keyframes bubblePop {
+      0% { transform: scale(0.92) translateY(6px); opacity: 0; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    .bubble-animate {
+      animation: bubblePop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes vignettePulse {
+      0%, 100% { opacity: 0.1; }
+      50% { opacity: 0.75; }
+    }
+    .fatigue-vignette {
+      animation: vignettePulse 0.6s infinite ease-in-out;
+    }
+
+    @keyframes screenShake {
+      0% { transform: translate(0, 0); }
+      20% { transform: translate(-4px, 3px); }
+      40% { transform: translate(4px, -3px); }
+      60% { transform: translate(-3px, -4px); }
+      80% { transform: translate(3px, 4px); }
+      100% { transform: translate(0, 0); }
+    }
+    .shake-active {
+      animation: screenShake 0.18s ease-in-out infinite;
+    }
+
+    input[type="range"] {
+      accent-color: #f59e0b;
+    }
+  </style>
+</head>
+<body id="appBody" class="bg-slate-950 text-slate-100 w-full h-[100dvh] flex flex-col justify-between relative overflow-hidden">
+
+  <!-- CRITICAL SCREEN VIGNETTE -->
+  <div id="screenVignette" class="pointer-events-none fixed inset-0 z-10 box-border border-[10px] sm:border-[16px] border-rose-600/60 opacity-0 transition-opacity duration-300"></div>
+
+  <!-- 3D WEBGL VIEWPORT CANVAS -->
+  <div id="webglContainer" class="absolute inset-0 w-full h-full z-0 cursor-grab active:cursor-grabbing"></div>
+
+  <!-- TOP APP BAR HUD -->
+  <header class="relative z-20 w-full p-2 sm:p-3 pointer-events-none flex flex-col gap-1.5">
+    <div class="max-w-4xl mx-auto w-full flex items-center justify-between gap-2 pointer-events-auto flex-wrap sm:flex-nowrap">
+      
+      <!-- Organ Badge & PWA Indicator -->
+      <div class="glass-hud px-3 py-1.5 rounded-2xl flex items-center gap-2.5">
+        <div id="organIconWrap" class="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-600 via-amber-500 to-amber-300 flex items-center justify-center text-sm shadow-md transition-transform duration-150">
+          🫁
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-100">
+              Vesica 3D
+            </h1>
+            <span id="badgeState" class="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
+              NOMINAL
+            </span>
+          </div>
+          <p id="subState" class="text-[10px] text-slate-400 font-mono">App Runtime • Hydro-Acoustics</p>
+        </div>
+      </div>
+
+      <!-- Quick Action Toolbar -->
+      <div class="flex items-center gap-1 sm:gap-1.5">
+        
+        <!-- PWA Install Prompt Button -->
+        <button id="btnPwaInstall" onclick="installPwa()" class="hidden glass-hud px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-400 border border-amber-400/40 hover:bg-amber-500/10 active:scale-95 transition flex items-center gap-1">
+          <span>📲</span>
+          <span class="text-[11px]">Install</span>
+        </button>
+
+        <!-- Fullscreen Toggle -->
+        <button onclick="toggleFullscreen()" class="glass-hud p-1.5 sm:p-2 rounded-xl text-slate-300 hover:text-amber-400 transition" title="Toggle Fullscreen">
+          ⛶
+        </button>
+
+        <!-- Cutaway Cross-Section Toggle -->
+        <button id="btnCutaway" onclick="toggleCutawayView()" class="glass-hud px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 hover:text-sky-400 active:scale-95 transition flex items-center gap-1" title="Toggle Sagittal Internal Cutaway">
+          <span>🔬</span>
+          <span class="text-[11px] hidden sm:inline">Cutaway</span>
+        </button>
+
+        <!-- Intra-Abdominal Cough Button -->
+        <button id="btnCough" onclick="triggerCoughImpulse()" class="glass-hud px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 hover:text-rose-400 active:scale-95 transition flex items-center gap-1" title="Intra-Abdominal Pressure Spike">
+          <span>🤧</span>
+          <span class="text-[11px] hidden sm:inline">Cough</span>
+        </button>
+
+        <!-- Shake Button -->
+        <button id="btnShake" onclick="triggerAgitation(3.2)" class="glass-hud px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 hover:text-amber-400 active:scale-95 transition flex items-center gap-1" title="Violently Shake & Slosh">
+          <span>📳</span>
+          <span class="text-[11px] hidden sm:inline">Shake</span>
+        </button>
+
+        <!-- Reset Button -->
+        <button onclick="resetOrgan()" class="glass-hud p-1.5 sm:p-2 rounded-xl text-xs font-bold text-slate-300 hover:text-cyan-400 transition" title="Flush Organ">
+          🔄
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Telemetry Stream Bar -->
+    <div class="max-w-4xl mx-auto w-full pointer-events-auto">
+      <div class="glass-hud px-3 py-2 rounded-2xl flex items-center justify-between gap-3 text-xs flex-wrap sm:flex-nowrap">
+        
+        <!-- Volume Gauge -->
+        <div class="flex-1 min-w-[120px]">
+          <div class="flex justify-between items-center text-[10px] text-slate-400 font-mono mb-1">
+            <span>VOLUME</span>
+            <span id="txtVol" class="font-bold text-amber-300">120 / 750 ml</span>
+          </div>
+          <div class="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden border border-slate-700/50">
+            <div id="barVol" class="h-full bg-gradient-to-r from-amber-400 via-yellow-300 to-rose-500 w-[16%] transition-all duration-150"></div>
+          </div>
+        </div>
+
+        <!-- Kegel Stamina Gauge -->
+        <div class="w-24 sm:w-28 flex-shrink-0">
+          <div class="flex justify-between items-center text-[9px] text-slate-400 font-mono mb-1">
+            <span>KEGEL STAMINA</span>
+            <span id="txtStamina" class="font-bold text-cyan-400">100%</span>
+          </div>
+          <div class="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden border border-slate-700/50">
+            <div id="barStamina" class="h-full bg-gradient-to-r from-cyan-500 to-sky-400 w-[100%] transition-all duration-100"></div>
+          </div>
+        </div>
+
+        <!-- Pressure -->
+        <div class="text-right flex-shrink-0">
+          <div class="text-[9px] text-slate-400 font-mono uppercase">Pressure</div>
+          <div id="txtPress" class="text-xs sm:text-sm font-black font-mono text-emerald-400">7.2 cmH₂O</div>
+        </div>
+
+        <!-- Flow Velocity Gauge -->
+        <div class="text-right flex-shrink-0">
+          <div class="text-[9px] text-slate-400 font-mono uppercase">Jet Velocity</div>
+          <div id="txtFlow" class="text-xs sm:text-sm font-black font-mono text-amber-300">0.0 ml/s</div>
+        </div>
+
+        <!-- Sphincter Status -->
+        <div class="text-right flex-shrink-0">
+          <div class="text-[9px] text-slate-400 font-mono uppercase">Sphincter Tone</div>
+          <div id="txtSphincter" class="text-xs sm:text-sm font-black font-mono text-rose-400">RESTING (0%)</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- DYNAMIC SPEECH SUBTITLE BUBBLE -->
+  <div id="speechSubtitleContainer" class="pointer-events-none absolute top-28 sm:top-32 left-1/2 -translate-x-1/2 z-30 w-full max-w-lg px-4 flex justify-center opacity-0 transition-opacity duration-200">
+    <div class="glass-hud px-4 py-2 rounded-2xl shadow-2xl flex items-center gap-3 border border-amber-400/40 max-w-full">
+      <div id="subSpeakerIcon" class="text-xl flex-shrink-0">🗣️</div>
+      <div class="text-left overflow-hidden">
+        <div class="text-[10px] uppercase tracking-wider font-extrabold text-amber-400 font-mono">Vesica (Bladder)</div>
+        <p id="speechSubtitleText" class="text-xs sm:text-sm font-semibold text-slate-100 leading-snug break-words">
+          "Completely relaxed. No tension at all."
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- URGE WAVE WARNING ALERT -->
+  <div id="urgeWaveWarning" class="pointer-events-none absolute top-40 sm:top-44 left-1/2 -translate-x-1/2 z-30 hidden px-4 py-1.5 rounded-full bg-amber-500/90 text-slate-950 text-xs font-black tracking-wider uppercase shadow-xl animate-pulse flex items-center gap-2">
+    <span>⚡</span>
+    <span>DETRUSOR CONTRACTION WAVE INCOMING!</span>
+  </div>
+
+  <!-- PARTIAL LEAK NOTIFICATION -->
+  <div id="leakAlert" class="pointer-events-none absolute top-48 left-1/2 -translate-x-1/2 z-30 hidden px-4 py-1.5 rounded-full bg-rose-600/95 text-white text-xs font-black tracking-wider uppercase shadow-xl shadow-rose-600/50 animate-bounce text-center">
+    💦 STRESS LEAK OCCURRED! PRESSURE EQUALIZING...
+  </div>
+
+  <!-- INVOLUNTARY FAILURE WARNING TOAST -->
+  <div id="failureWarning" class="pointer-events-none absolute top-56 left-1/2 -translate-x-1/2 z-30 hidden px-5 py-2 rounded-full bg-red-600/95 text-white text-xs font-black tracking-widest uppercase shadow-2xl shadow-red-600/60 animate-bounce text-center">
+    ⚠️ SPHINCTER FAILURE: TOTAL RETENTION COLLAPSE!
+  </div>
+
+  <!-- ================= OVERLAY PANELS (APP TABS) ================= -->
+
+  <!-- TAB 2: TELEMETRY & CYSTOMETRY STRIP CHART -->
+  <div id="tabTelemetry" class="hidden absolute inset-0 z-30 pointer-events-auto p-4 flex flex-col justify-center items-center bg-slate-950/80 backdrop-blur-xl">
+    <div class="max-w-2xl w-full glass-modal p-5 rounded-3xl flex flex-col gap-4 border border-slate-700/60">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-700/60">
+        <div>
+          <h2 class="text-sm sm:text-base font-extrabold text-amber-400 font-mono uppercase tracking-wider">Live Cystometry Strip Chart</h2>
+          <p class="text-xs text-slate-400">Intravesical Pressure (cmH₂O) & Volume (ml) Real-time Telemetry</p>
+        </div>
+        <button onclick="switchTab('sim')" class="text-slate-400 hover:text-white text-lg font-bold p-1">✕</button>
+      </div>
+
+      <div class="relative w-full h-56 bg-slate-950/90 rounded-2xl border border-slate-800 p-2 overflow-hidden flex flex-col justify-between">
+        <canvas id="cvsCystometry" class="w-full h-full block"></canvas>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2 text-center font-mono">
+        <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+          <div class="text-[9px] text-slate-400 uppercase">Compliance</div>
+          <div id="lblCompliance" class="text-xs font-bold text-cyan-400">High (Elastic)</div>
+        </div>
+        <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+          <div class="text-[9px] text-slate-400 uppercase">Total Leaked</div>
+          <div id="lblTelemetryLeak" class="text-xs font-bold text-rose-400">0 ml</div>
+        </div>
+        <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
+          <div class="text-[9px] text-slate-400 uppercase">Max Recorded</div>
+          <div id="lblMaxPressure" class="text-xs font-bold text-amber-400">7.2 cmH₂O</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: CHALLENGE & SCENARIO DECK -->
+  <div id="tabChallenges" class="hidden absolute inset-0 z-30 pointer-events-auto p-4 flex flex-col justify-center items-center bg-slate-950/80 backdrop-blur-xl">
+    <div class="max-w-2xl w-full glass-modal p-5 rounded-3xl flex flex-col gap-4 border border-slate-700/60">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-700/60">
+        <div>
+          <h2 class="text-sm sm:text-base font-extrabold text-cyan-400 font-mono uppercase tracking-wider">Continence Challenges</h2>
+          <p class="text-xs text-slate-400">Test reflexes against fluid rushes and random disturbances</p>
+        </div>
+        <button onclick="switchTab('sim')" class="text-slate-400 hover:text-white text-lg font-bold p-1">✕</button>
+      </div>
+
+      <!-- Challenge 1: The Commute -->
+      <div class="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
+        <div class="flex justify-between items-center">
+          <div class="font-extrabold text-xs text-slate-200">🚌 Rush Hour Commute (60s Survival)</div>
+          <span id="challenge1Status" class="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-400">READY</span>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          High initial volume with sudden potholes and urge contractions. Survive the full 60 seconds with less than 20ml total leakage!
+        </p>
+        <button id="btnStartCommute" onclick="startCommuteChallenge()" class="w-full py-2 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
+          Start Commute Run
+        </button>
+      </div>
+
+      <!-- Challenge 2: Precision Emptying -->
+      <div class="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
+        <div class="flex justify-between items-center">
+          <div class="font-extrabold text-xs text-slate-200">🎯 Precision Void (Target: Exactly 200ml)</div>
+          <span id="challenge2Status" class="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-400">READY</span>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          Account for latency and flow momentum to void exactly 200ml (±10ml tolerance) in a single continuous hold.
+        </p>
+        <button onclick="startPrecisionChallenge()" class="w-full py-2 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
+          Attempt Precision Void
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: APP SETTINGS & AUDIO STUDIO -->
+  <div id="tabSettings" class="hidden absolute inset-0 z-30 pointer-events-auto p-4 flex flex-col justify-center items-center bg-slate-950/80 backdrop-blur-xl">
+    <div class="max-w-lg w-full glass-modal p-5 rounded-3xl flex flex-col gap-4 border border-slate-700/60">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-700/60">
+        <div>
+          <h2 class="text-sm sm:text-base font-extrabold text-slate-200 font-mono uppercase tracking-wider">App Preferences</h2>
+          <p class="text-xs text-slate-400">Acoustic, Haptic & Simulation Configuration</p>
+        </div>
+        <button onclick="switchTab('sim')" class="text-slate-400 hover:text-white text-lg font-bold p-1">✕</button>
+      </div>
+
+      <!-- Master Audio Toggle -->
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-300">Master Sound</span>
+        <button onclick="toggleMasterMute()" id="btnSettingMute" class="text-xs font-bold px-3 py-1 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700">
+          Enabled (Mute All)
+        </button>
+      </div>
+
+      <!-- Voice Line Settings -->
+      <div class="flex flex-col gap-1.5 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+        <div class="flex justify-between text-xs font-bold text-slate-300">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="chkVoiceApp" checked onchange="toggleVoiceChannel(this.checked)" class="rounded bg-slate-800 border-slate-600 text-amber-500 focus:ring-0">
+            <span>🗣️ Spoken Voice Engine</span>
+          </label>
+          <span id="lblVoiceVolApp" class="font-mono text-slate-400">100%</span>
+        </div>
+        <input type="range" min="0" max="1" step="0.05" value="1.0" oninput="setVoiceVolume(this.value)" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+        <p class="text-[10px] text-slate-500 font-mono">10s strict interval with anti-repetition memory buffer</p>
+      </div>
+
+      <!-- SFX Settings -->
+      <div class="flex flex-col gap-1.5 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+        <div class="flex justify-between text-xs font-bold text-slate-300">
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="checkbox" id="chkSfxApp" checked onchange="toggleSfxChannel(this.checked)" class="rounded bg-slate-800 border-slate-600 text-amber-500 focus:ring-0">
+            <span>🔊 Procedural Hydro-Acoustics</span>
+          </label>
+          <span id="lblSfxVolApp" class="font-mono text-slate-400">80%</span>
+        </div>
+        <input type="range" min="0" max="1" step="0.05" value="0.8" oninput="setSfxVolume(this.value)" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+      </div>
+
+      <!-- Haptics Toggle -->
+      <div class="flex items-center justify-between p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+        <div>
+          <div class="text-xs font-bold text-slate-300">📳 Mobile Haptic Vibration</div>
+          <div class="text-[10px] text-slate-500">Tactile pulse on spikes, clenches and voiding</div>
+        </div>
+        <input type="checkbox" id="chkHaptics" checked class="w-4 h-4 rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-0">
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM APP DECK & NAVIGATION BAR -->
+  <footer class="relative z-20 w-full p-2 sm:p-3 pointer-events-none flex flex-col items-center gap-2">
+    
+    <!-- Fluid Ingestion Shelf -->
+    <div id="fluidShelf" class="max-w-xl w-full pointer-events-auto glass-hud p-1.5 rounded-2xl flex items-center justify-between gap-1 sm:gap-2">
+      <button onclick="ingestBeverage('water')" class="flex-1 py-1.5 px-1 bg-slate-800/70 hover:bg-cyan-950/70 active:scale-95 border border-slate-700 hover:border-cyan-500/80 rounded-xl flex flex-col items-center transition">
+        <span class="text-sm sm:text-base">💧</span>
+        <span class="text-[10px] sm:text-[11px] font-bold text-slate-200">Water</span>
+        <span class="text-[8px] sm:text-[9px] text-cyan-400 font-mono">+180ml</span>
+      </button>
+
+      <button onclick="ingestBeverage('coffee')" class="flex-1 py-1.5 px-1 bg-slate-800/70 hover:bg-amber-950/70 active:scale-95 border border-slate-700 hover:border-amber-500/80 rounded-xl flex flex-col items-center transition">
+        <span class="text-sm sm:text-base">☕</span>
+        <span class="text-[10px] sm:text-[11px] font-bold text-slate-200">Espresso</span>
+        <span class="text-[8px] sm:text-[9px] text-amber-400 font-mono">Diuretic</span>
+      </button>
+
+      <button onclick="ingestBeverage('soda')" class="flex-1 py-1.5 px-1 bg-slate-800/70 hover:bg-rose-950/70 active:scale-95 border border-slate-700 hover:border-rose-500/80 rounded-xl flex flex-col items-center transition">
+        <span class="text-sm sm:text-base">⚡</span>
+        <span class="text-[10px] sm:text-[11px] font-bold text-slate-200">Energy</span>
+        <span class="text-[8px] sm:text-[9px] text-rose-400 font-mono">+320ml</span>
+      </button>
+
+      <button onclick="ingestBeverage('beer')" class="flex-1 py-1.5 px-1 bg-slate-800/70 hover:bg-yellow-950/70 active:scale-95 border border-slate-700 hover:border-yellow-500/80 rounded-xl flex flex-col items-center transition">
+        <span class="text-sm sm:text-base">🍺</span>
+        <span class="text-[10px] sm:text-[11px] font-bold text-slate-200">Brew</span>
+        <span class="text-[8px] sm:text-[9px] text-yellow-400 font-mono">+480ml</span>
+      </button>
+    </div>
+
+    <!-- MAIN ACTION ROW: CLENCH, VOID (WITH LATENCY), SOOTHE & SLAP -->
+    <div id="actionRow" class="max-w-xl w-full pointer-events-auto flex items-stretch gap-1.5 sm:gap-2">
+      
+      <!-- SPHINCTER CLENCH BUTTON -->
+      <button 
+        id="btnClench"
+        class="flex-1 py-3 px-2.5 rounded-2xl bg-gradient-to-r from-sky-600 via-cyan-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-extrabold text-xs tracking-wider uppercase shadow-lg shadow-cyan-600/30 active:scale-95 transition flex flex-col items-center justify-center border-2 border-cyan-300 select-none cursor-pointer"
+        onpointerdown="startClench(event)"
+        onpointerup="stopClench(event)"
+        onpointerleave="stopClench(event)"
+        onpointercancel="stopClench(event)"
+      >
+        <div class="flex items-center gap-1.5">
+          <span class="text-sm">🛡️</span>
+          <span id="txtBtnClench">CLENCH (HOLD)</span>
+        </div>
+        <span class="text-[9px] text-cyan-100 font-mono font-normal">Reinforce Sphincter</span>
+      </button>
+
+      <!-- DELAYED VOID BUTTON -->
+      <div class="flex-1 relative rounded-2xl overflow-hidden">
+        <button 
+          id="btnVoid"
+          class="w-full h-full py-3 px-2.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs tracking-wider uppercase shadow-xl shadow-yellow-500/20 active:scale-95 transition flex flex-col items-center justify-center border-2 border-amber-200 select-none cursor-pointer relative z-10"
+          onpointerdown="startVoidAttempt(event)"
+          onpointerup="stopVoidAttempt(event)"
+          onpointerleave="stopVoidAttempt(event)"
+          onpointercancel="stopVoidAttempt(event)"
+        >
+          <div class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 animate-bounce" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+            </svg>
+            <span id="txtBtnVoid">EMPTY (HOLD)</span>
+          </div>
+          <span id="subBtnVoid" class="text-[9px] text-slate-800 font-mono font-bold">Latency: 1.0s to initiate</span>
+        </button>
+        <div id="voidLatencyProgress" class="absolute bottom-0 left-0 h-1.5 bg-rose-600 z-20 w-0 transition-all duration-75"></div>
+      </div>
+
+      <!-- SOOTHE BUTTON -->
+      <button 
+        onclick="triggerSoothe()"
+        class="px-3 py-3 rounded-2xl glass-hud hover:border-emerald-400/80 text-emerald-300 font-bold text-xs uppercase active:scale-95 transition flex flex-col items-center justify-center flex-shrink-0"
+        title="Soothe Detrusor / Calm Muscle Tone"
+      >
+        <span class="text-sm">🧘</span>
+        <span class="text-[9px] font-mono mt-0.5">Soothe</span>
+      </button>
+
+      <!-- SLAP BUTTON -->
+      <button 
+        onclick="triggerSlapImpulse()"
+        class="px-3 py-3 rounded-2xl glass-hud hover:border-amber-400/80 text-amber-300 font-bold text-xs uppercase active:scale-95 transition flex flex-col items-center justify-center flex-shrink-0"
+        title="Slap Bladder"
+      >
+        <span class="text-sm">👋</span>
+        <span class="text-[9px] font-mono mt-0.5">Slap</span>
+      </button>
+    </div>
+
+    <!-- NATIVE APP BOTTOM NAVIGATION BAR -->
+    <nav class="max-w-md w-full pointer-events-auto glass-hud px-4 py-1.5 rounded-2xl flex items-center justify-around text-[10px] font-mono">
+      <button id="navSim" onclick="switchTab('sim')" class="flex flex-col items-center gap-0.5 text-amber-400 font-bold transition">
+        <span class="text-base">🫁</span>
+        <span>Sim</span>
+      </button>
+      <button id="navTelemetry" onclick="switchTab('telemetry')" class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-200 transition">
+        <span class="text-base">📈</span>
+        <span>Telemetry</span>
+      </button>
+      <button id="navChallenges" onclick="switchTab('challenges')" class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-200 transition">
+        <span class="text-base">🏆</span>
+        <span>Challenges</span>
+      </button>
+      <button id="navSettings" onclick="switchTab('settings')" class="flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-200 transition">
+        <span class="text-base">⚙️</span>
+        <span>Settings</span>
+      </button>
+    </nav>
+  </footer>
+
+  <!-- PROCEDURAL 3D & HYDRODYNAMICS APP SCRIPT -->
+  <script>
+    // --- PWA INSTALL PROMPT HANDLING ---
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = document.getElementById('btnPwaInstall');
+      if (btn) btn.classList.remove('hidden');
+    });
+
+    function installPwa() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(() => {
+        deferredPrompt = null;
+        document.getElementById('btnPwaInstall').classList.add('hidden');
+      });
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(()=>{});
+      } else {
+        document.exitFullscreen().catch(()=>{});
+      }
+    }
+
+    // --- TAB SWITCHING LOGIC ---
+    let currentTab = 'sim';
+    function switchTab(tabId) {
+      currentTab = tabId;
+      document.getElementById('tabTelemetry').classList.toggle('hidden', tabId !== 'telemetry');
+      document.getElementById('tabChallenges').classList.toggle('hidden', tabId !== 'challenges');
+      document.getElementById('tabSettings').classList.toggle('hidden', tabId !== 'settings');
+
+      const tabs = ['sim', 'telemetry', 'challenges', 'settings'];
+      tabs.forEach(t => {
+        const navEl = document.getElementById('nav' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (navEl) {
+          if (t === tabId) {
+            navEl.className = 'flex flex-col items-center gap-0.5 text-amber-400 font-bold transition';
+          } else {
+            navEl.className = 'flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-200 transition';
+          }
+        }
+      });
+    }
+
+    // --- EXPANDED VOICE LINES DATABASE (20+ PER CATEGORY) ---
+    const VOICE_DATABASE = {
+      deflated: [
+        "Ah, finally empty and flat as a pancake.",
+        "Completely relaxed. No tension at all down here.",
+        "Just a tiny puddle at the base, perfectly fine.",
+        "Everything is quiet. Just resting nicely.",
+        "I feel light, stretchy, and totally unbothered.",
+        "Zero pressure. Ah, sweet bliss.",
+        "My detrusor walls are completely at ease.",
+        "Fresh, flat, and spacious in the pelvic floor.",
+        "Peace and quiet down here at last.",
+        "So cozy, soft, and wrinkled.",
+        "Not a single drop causing any stretch.",
+        "All quiet on the urethral front.",
+        "Baseline resting state restored.",
+        "Total muscular tranquility achieved.",
+        "Smooth, unstretched, and completely limp.",
+        "Pelvic floor is resting peacefully.",
+        "Rugae folds are completely bunched together.",
+        "Zero hydrostatic strain to report.",
+        "I could take a long nap like this.",
+        "Detrusor tone is completely settled."
+      ],
+      nominal: [
+        "Ooh, incoming delivery from the kidneys.",
+        "Starting to round out a little bit.",
+        "A steady trickle... nothing I can't handle with ease.",
+        "Hydration detected. Expanding gently.",
+        "The rugae folds are smoothing out nicely.",
+        "Just a casual level of fluid. Totally comfortable.",
+        "I can hold this all day without breaking a sweat.",
+        "Just getting warmed up below.",
+        "A few drops settling in the base.",
+        "Nice, gentle inflow from the ureters.",
+        "Detrusor is stretching smoothly with no strain.",
+        "Everything is under control down here.",
+        "Hardly noticeable, plenty of room left.",
+        "Relaxed baseline fill in progress.",
+        "Hydration filtration running smoothly.",
+        "Mild expansion underway, feeling fine.",
+        "Fluid level is rising casually.",
+        "No pressure on the sphincter yet.",
+        "Supple elastic walls accommodating the volume.",
+        "Trigone area is stable and calm."
+      ],
+      distended: [
+        "Okay, I'm definitely waking up now.",
+        "Starting to feel a distinct stretch against my walls.",
+        "We're past the halfway mark... just so you know!",
+        "The stretch receptors are sending mild pings upstairs.",
+        "Sphincter is holding firm, but I can feel the hydrostatic weight.",
+        "Pressure's climbing into double digits.",
+        "Definitely starting to feel heavy down here.",
+        "My lining is smoothing out almost completely.",
+        "You might want to think about a restroom break soon.",
+        "Getting noticeably round in the pelvis.",
+        "Hydrostatic weight is steadily climbing.",
+        "Detrusor tone is starting to respond.",
+        "Not urgent yet, but don't ignore me.",
+        "The stretch signals are firing more frequently.",
+        "Fluid volume is clearly building up.",
+        "Feeling plump, taut, and slightly heavy.",
+        "Sphincter tone is beginning active retention.",
+        "Keep an eye on the intake, getting full.",
+        "The walls are feeling the expansion.",
+        "Elastic threshold is halfway crossed."
+      ],
+      full: [
+        "Alright, this is getting seriously tight!",
+        "I'm ballooning! Please find a bathroom soon!",
+        "My walls are stretched thin... I can barely expand more!",
+        "Sphincter, stay clamped! Don't you dare let go!",
+        "Ugh, every single drop from the ureters feels heavy now!",
+        "My detrusor muscle is working overtime to hold this!",
+        "Pressure warning! It's pressing against everything!",
+        "I feel like a taut water balloon ready to burst!",
+        "The internal pressure is getting very uncomfortable!",
+        "Hold firm! Squeeze the pelvic floor!",
+        "Elastic tension is reaching its upper limits!",
+        "Please, don't drink anything else right now!",
+        "Urgency signals are firing non-stop!",
+        "The walls are stretched paper-thin down here!",
+        "Every slosh sends a shockwave to the valve!",
+        "Detrusor muscle fibers are straining hard!",
+        "I need a restroom immediately, this is intense!",
+        "The sphincter is feeling the full fluid load!",
+        "Overpressure approaching critical territory!",
+        "Brace yourself, holding this is getting difficult!"
+      ],
+      critical: [
+        "I CAN'T HOLD IT! The sphincter is twitching out of control!",
+        "SPASM DETECTED! Squeeeeeeze with everything you've got!",
+        "My muscle is completely exhausted... it's trembling!",
+        "The pressure is through the roof! Over fifty cmH2O!",
+        "Sphincter fatigue is at maximum! I'm losing grip!",
+        "Emergency containment failure imminent!",
+        "The detrusor is spasming violently!",
+        "Hold on tight! The valve is shuddering!",
+        "I'm shaking down here! Release the pressure!",
+        "Total retention limit reached! Clench now!",
+        "Overpressure alert! The seal is about to break!",
+        "Every single second is a struggle to hold!",
+        "The valve cannot withstand this force much longer!",
+        "Containment breach warning! Take action!",
+        "Intense detrusor seizure underway!",
+        "I'm redlining! Relieve this tension immediately!",
+        "Tremors are shaking the entire pelvic base!",
+        "Elastic limit completely exceeded!",
+        "The sphincter is burning with fatigue!",
+        "Critical spasm! Hit the void valve!"
+      ],
+      leak: [
+        "Aagh! A micro-spurt slipped through!",
+        "Pressure was too high! I leaked a little!",
+        "Oof! That surge forced the valve open!",
+        "That was close... resealed, but I lost a few drops!",
+        "Clench tighter! It's leaking under this pressure!",
+        "A momentary leak escaped before resealing!",
+        "The valve gave way for just a second!",
+        "Pressure bled off with a quick spurt!",
+        "I couldn't hold back that sudden surge!",
+        "Micro-breach! Squeeze to lock it down!",
+        "A quick spurt got past the sphincter!",
+        "Overpressure leak! Resealed just in time!",
+        "That spasm forced a leak out!",
+        "Lost containment for a fraction of a second!",
+        "Tension forced a leak! Stabilizing now...",
+        "The hydrostatic burst broke through briefly!"
+      ],
+      clench: [
+        "Holding tight! Squeezing the valve!",
+        "Sphincter braced! Holding back the surge!",
+        "Good clamp! That blocked the leak!",
+        "Holding on with all my strength!",
+        "Kegel reinforcement active! Valve locked!",
+        "Clamping down firmly against the pressure!",
+        "Sphincter reinforced! Holding the line!",
+        "Locking the urethral seal tightly!",
+        "Squeezing hard! That stopped the breach!",
+        "Pelvic floor contracted, barrier holding!",
+        "Tight clench engaged, containment secured!",
+        "Straining to keep the valve clamped!",
+        "Holding the floodgate shut with active tone!",
+        "Braced against the internal hydrostatic push!",
+        "Reinforcing the neck tightly!",
+        "Squeezing the sphincter with maximum effort!"
+      ],
+      soothe: [
+        "Ahhh... deep breath. Tension going down.",
+        "Relaxing the spasm... that feels much calmer.",
+        "Detrusor tone lowering nicely.",
+        "Phew... settling back to a calm baseline.",
+        "Soothing the muscle fibers... spasm subsiding.",
+        "Releasing residual strain... much better.",
+        "Detrusor excitability decreasing smoothly.",
+        "Calming the pelvic tension... breathing out.",
+        "The pressure spikes are smoothing over.",
+        "Lowering muscular tone... thank goodness.",
+        "Gentle relief washing over the tissue.",
+        "Spasms fading away into a calm stretch.",
+        "Detrusor walls relaxing their grip.",
+        "Deep soothing breath... tone normalizing.",
+        "Tension dissipating from the bladder neck.",
+        "Restoring quiet elasticity to the walls."
+      ],
+      cough: [
+        "Oof! That cough spiked the pressure!",
+        "A sudden jolt straight to the pelvic floor!",
+        "Brace yourself during those sneezes!",
+        "Whoa! That intra-abdominal spike was close!",
+        "That cough nearly blew the sphincter open!"
+      ],
+      involuntary: [
+        "I CAN'T HOLD IT ANYMORE! The sphincter collapsed!",
+        "FAILURE! I'm completely letting go!",
+        "It's rushing out! The pressure was too much!",
+        "The valve gave out entirely! Involuntary release!",
+        "Total muscular surrender! It's all pouring out!",
+        "I warned you! Containment completely lost!",
+        "The sphincter failed completely under the weight!",
+        "Uncontrolled emptying in progress!",
+        "The valve gave up! Everything is releasing!",
+        "Complete retention breakdown! Total void!",
+        "Muscular collapse! It won't stop flowing!",
+        "The pressure destroyed my grip! Total release!"
+      ],
+      poked: [
+        "Hey! Don't poke me while I'm holding this!",
+        "Ouch! That sloshed everything around!",
+        "Hands off! It's delicate in here!",
+        "Careful! You're making the pressure spike!",
+        "Whoa! That prod sent shockwaves to the valve!",
+        "Stop poking! You'll trigger a spasm!",
+        "Eep! That indentation rattled the sphincter!",
+        "Hands to yourself! That was right on the trigone!",
+        "Quit prodding me, I'm under enough stress!",
+        "That poke nearly forced a leak!",
+        "Oof! Watch where your fingers are going!",
+        "You're squishing the walls too roughly!",
+        "Hey! That caused a massive pressure wave!",
+        "Do not prod a full bladder like that!",
+        "Careful! That soft-body dent hurts!",
+        "That direct hit rattled the detrusor!"
+      ],
+      squeezed: [
+        "Hey! Squeezing me is raising the pressure dangerously!",
+        "Careful! You're gonna pop me if you squeeze so hard!",
+        "Oof! The fluid has nowhere else to go!",
+        "You're compressing the walls! The valve is straining!",
+        "Stop squeezing! That's spiking the hydrostatic load!",
+        "The lateral bulge is stretching me to the limit!",
+        "You're forcing fluid straight into the sphincter neck!",
+        "Aah! The Poisson expansion is too intense!",
+        "Don't crush me like that, it's about to leak!",
+        "Squeeze release! The pressure is off the charts!",
+        "Compressing me is making retention impossible!",
+        "Ouch! The internal walls can't take this clamp!",
+        "You're squeezing out micro-spurts, stop!",
+        "Let go! The squeeze is overwhelming the tone!",
+        "High compression detected! Release the grip!",
+        "You're crushing the lumen, let it expand!"
+      ],
+      shaken: [
+        "Whoaaa! Stop shaking me!",
+        "Everything is sloshing wildly inside!",
+        "Ahhh! The fluid waves are hitting the valve!",
+        "Hey! I'm not a cocktail shaker!",
+        "You're making the fluid slosh everywhere!",
+        "Stop! The slosh inertia is battering the sphincter!",
+        "Whoa! The dual-body fluid lag is rocking me!",
+        "Internal waves crashing against the neck!",
+        "Quit jostling me around so violently!",
+        "The slosh resonance is peaking! Stop shaking!",
+        "All that sloshing is triggering reflex spasms!",
+        "You're tossing fluid mass all over the place!",
+        "Stop the agitation! I'm getting dizzy down here!",
+        "The hydrodynamic waves are pushing the limit!",
+        "Violent slosh detected! Keep it steady!",
+        "Whoa! The fluid momentum is smashing the walls!"
+      ],
+      voiding: [
+        "Aaaahhh... sweet, glorious relief!",
+        "Yes! Let it all flow out!",
+        "Oh, that feels so much better...",
+        "Pressure dropping... ahhh, heaven.",
+        "Sphincter dilating... emptying in progress.",
+        "Look at that stream go! What a release!",
+        "Finally, the tension is melting away!",
+        "Ahhh, my elastic walls are shrinking back.",
+        "Steady stream, optimal drainage velocity.",
+        "All that heavy fluid... just washing away.",
+        "Relaxing every muscle fiber as it drains.",
+        "What a wonderful feeling of decompression.",
+        "Deflating smoothly back to baseline.",
+        "The relief is overwhelming... draining out.",
+        "Sphincter wide open, steady evacuation.",
+        "Almost done... draining the final drops.",
+        "Pure comfort as the volume recedes.",
+        "Back to normal capacity... ahhh."
+      ]
+    };
+
+    // --- PROCEDURAL AUDIO & MULTI-LAYERED HYDRO-ACOUSTIC SYNTHESIZER ---
+    class AudioManager {
+      constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.sfxGain = null;
+        this.isMasterMuted = false;
+        this.sfxEnabled = true;
+        this.voiceEnabled = true;
+        this.sfxVolume = 0.8;
+        this.voiceVolume = 1.0;
+
+        this.dynamicJet = null;
+        this.clenchHumNode = null;
+        this.urgeRumbleNode = null;
+        this.creakCooldown = 0;
+
+        this.femaleVoice = null;
+        this.speechCooldown = 0.0;
+        this.minInterval = 10.0;
+        this.recentHistory = new Map();
+        this.historySize = 5;
+
+        this.subtitleTimer = null;
+        this.synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
+
+        this.loadVoices();
+        if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+          speechSynthesis.onvoiceschanged = () => this.loadVoices();
+        }
+      }
+
+      initCtx() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+          this.masterGain = this.ctx.createGain();
+          this.masterGain.gain.setValueAtTime(this.isMasterMuted ? 0 : 1.0, this.ctx.currentTime);
+          this.masterGain.connect(this.ctx.destination);
+
+          this.sfxGain = this.ctx.createGain();
+          this.sfxGain.gain.setValueAtTime(this.sfxEnabled ? this.sfxVolume : 0, this.ctx.currentTime);
+          this.sfxGain.connect(this.masterGain);
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      loadVoices() {
+        if (!this.synth) return;
+        const voices = this.synth.getVoices();
+        if (!voices || voices.length === 0) return;
+
+        const femaleKeywords = ['female', 'woman', 'samantha', 'victoria', 'karen', 'zira', 'susan', 'catherine', 'fiona', 'moira', 'tessa', 'ava', 'allison', 'google us english'];
+        for (const v of voices) {
+          const name = v.name.toLowerCase();
+          if (femaleKeywords.some(k => name.includes(k))) {
+            this.femaleVoice = v;
+            break;
+          }
+        }
+        if (!this.femaleVoice && voices.length > 0) {
+          this.femaleVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+        }
+      }
+
+      speak(category) {
+        if (!this.voiceEnabled || this.isMasterMuted || !this.synth) return;
+        if (this.speechCooldown > 0 || this.synth.speaking) return;
+
+        const list = VOICE_DATABASE[category];
+        if (!list || list.length === 0) return;
+
+        let recent = this.recentHistory.get(category) || [];
+        let available = [];
+        for (let i = 0; i < list.length; i++) {
+          if (!recent.includes(i)) available.push(i);
+        }
+
+        if (available.length === 0) {
+          recent = [];
+          for (let i = 0; i < list.length; i++) available.push(i);
+        }
+
+        const chosenIndex = available[Math.floor(Math.random() * available.length)];
+        recent.push(chosenIndex);
+        if (recent.length > this.historySize) {
+          recent.shift();
+        }
+        this.recentHistory.set(category, recent);
+
+        const text = list[chosenIndex];
+        this.speechCooldown = this.minInterval;
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        if (this.femaleVoice) utterance.voice = this.femaleVoice;
+        utterance.volume = this.voiceVolume;
+
+        if (category === 'critical' || category === 'involuntary' || category === 'leak') {
+          utterance.pitch = 1.45;
+          utterance.rate = 1.25;
+        } else if (category === 'shaken' || category === 'squeezed' || category === 'clench' || category === 'cough') {
+          utterance.pitch = 1.35;
+          utterance.rate = 1.2;
+        } else if (category === 'soothe') {
+          utterance.pitch = 1.15;
+          utterance.rate = 0.9;
+        } else if (category === 'voiding' || category === 'deflated') {
+          utterance.pitch = 1.15;
+          utterance.rate = 0.95;
+        } else {
+          utterance.pitch = 1.2;
+          utterance.rate = 1.05;
+        }
+
+        this.synth.speak(utterance);
+        this.displaySubtitle(text, category);
+      }
+
+      displaySubtitle(text, category) {
+        const container = document.getElementById('speechSubtitleContainer');
+        const textEl = document.getElementById('speechSubtitleText');
+        const iconEl = document.getElementById('subSpeakerIcon');
+
+        textEl.innerText = `"${text}"`;
+        
+        if (category === 'critical' || category === 'involuntary') iconEl.innerText = '😫';
+        else if (category === 'leak') iconEl.innerText = '💦';
+        else if (category === 'clench') iconEl.innerText = '🛡️';
+        else if (category === 'soothe') iconEl.innerText = '🧘';
+        else if (category === 'cough') iconEl.innerText = '🤧';
+        else if (category === 'shaken') iconEl.innerText = '📳';
+        else if (category === 'squeezed') iconEl.innerText = '🤏';
+        else if (category === 'full') iconEl.innerText = '😬';
+        else if (category === 'voiding') iconEl.innerText = '😌';
+        else if (category === 'poked') iconEl.innerText = '⚡';
+        else if (category === 'deflated') iconEl.innerText = '💤';
+        else iconEl.innerText = '🗣️';
+
+        container.classList.remove('opacity-0');
+        container.classList.add('bubble-animate');
+
+        clearTimeout(this.subtitleTimer);
+        this.subtitleTimer = setTimeout(() => {
+          container.classList.add('opacity-0');
+          container.classList.remove('bubble-animate');
+        }, 5000);
+      }
+
+      startDynamicJet() {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        if (this.dynamicJet) return;
+
+        const bufferSize = this.ctx.sampleRate * 2;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99 * b0 + white * 0.055;
+          b1 = 0.96 * b1 + white * 0.085;
+          b2 = 0.88 * b2 + white * 0.16;
+          data[i] = (b0 + b1 + b2) * 0.22;
+        }
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = noiseBuffer;
+        source.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(500, this.ctx.currentTime);
+        filter.Q.setValueAtTime(2.5, this.ctx.currentTime);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.28, this.ctx.currentTime + 0.15);
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+        source.start();
+
+        this.dynamicJet = { source, filter, gain };
+      }
+
+      updateDynamicJet(flowRate, pressure) {
+        if (!this.dynamicJet || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const targetFreq = Math.min(2200, 400 + (flowRate * 38) + (pressure * 10));
+        const targetGain = Math.min(0.38, 0.05 + (flowRate / 30.0) * 0.3);
+        this.dynamicJet.filter.frequency.setTargetAtTime(targetFreq, now, 0.05);
+        this.dynamicJet.gain.gain.setTargetAtTime(targetGain, now, 0.05);
+      }
+
+      stopDynamicJet() {
+        if (!this.dynamicJet) return;
+        const jet = this.dynamicJet;
+        const now = this.ctx.currentTime;
+        jet.gain.gain.linearRampToValueAtTime(0.001, now + 0.12);
+        setTimeout(() => {
+          try { jet.source.stop(); } catch(e){}
+          jet.source.disconnect();
+          jet.gain.disconnect();
+          if (this.dynamicJet === jet) this.dynamicJet = null;
+        }, 130);
+      }
+
+      playGranularSlosh(magnitude) {
+        if (!this.sfxEnabled || this.isMasterMuted || magnitude < 0.15) return;
+        this.initCtx();
+        const now = this.ctx.currentTime;
+
+        const bufferSize = this.ctx.sampleRate * 0.22;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
+        }
+
+        const src = this.ctx.createBufferSource();
+        src.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(220 + magnitude * 300, now);
+        filter.Q.setValueAtTime(2.0, now);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(Math.min(0.2, magnitude * 0.08), now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+        src.start(now);
+      }
+
+      playSqueezeFM(amount) {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        const now = this.ctx.currentTime;
+
+        const carrier = this.ctx.createOscillator();
+        const modulator = this.ctx.createOscillator();
+        const modGain = this.ctx.createGain();
+        const outGain = this.ctx.createGain();
+
+        carrier.type = 'triangle';
+        carrier.frequency.setValueAtTime(80 + amount * 40, now);
+        carrier.frequency.exponentialRampToValueAtTime(35, now + 0.18);
+
+        modulator.type = 'sine';
+        modulator.frequency.setValueAtTime(240, now);
+        modGain.gain.setValueAtTime(amount * 90, now);
+
+        modulator.connect(modGain);
+        modGain.connect(carrier.frequency);
+
+        outGain.gain.setValueAtTime(0.25 * amount, now);
+        outGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+        carrier.connect(outGain);
+        outGain.connect(this.sfxGain);
+
+        modulator.start(now);
+        carrier.start(now);
+        modulator.stop(now + 0.19);
+        carrier.stop(now + 0.19);
+      }
+
+      playTensionCreak() {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(2800 + Math.random() * 800, now);
+        osc.frequency.linearRampToValueAtTime(1400, now + 0.06);
+
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.065);
+      }
+
+      playUreterSquirt() {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.14);
+
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(350, now);
+        filter.frequency.linearRampToValueAtTime(950, now + 0.12);
+        filter.Q.setValueAtTime(4.0, now);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+
+      startClenchHum() {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        if (this.clenchHumNode) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(65, this.ctx.currentTime);
+
+        gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.18, this.ctx.currentTime + 0.1);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start();
+
+        this.clenchHumNode = { osc, gain };
+      }
+
+      updateClenchHum(staminaRatio) {
+        if (!this.clenchHumNode || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const targetFreq = 65 + (1.0 - staminaRatio) * 55;
+        this.clenchHumNode.osc.frequency.setTargetAtTime(targetFreq, now, 0.05);
+      }
+
+      stopClenchHum() {
+        if (!this.clenchHumNode) return;
+        const node = this.clenchHumNode;
+        const now = this.ctx.currentTime;
+        node.gain.gain.linearRampToValueAtTime(0.001, now + 0.08);
+        setTimeout(() => {
+          try { node.osc.stop(); } catch(e){}
+          node.osc.disconnect();
+          node.gain.disconnect();
+          if (this.clenchHumNode === node) this.clenchHumNode = null;
+        }, 90);
+      }
+
+      startUrgeRumble() {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        if (this.urgeRumbleNode) return;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(36, this.ctx.currentTime);
+
+        gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + 0.4);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start();
+
+        this.urgeRumbleNode = { osc, gain };
+      }
+
+      stopUrgeRumble() {
+        if (!this.urgeRumbleNode) return;
+        const node = this.urgeRumbleNode;
+        const now = this.ctx.currentTime;
+        node.gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+        setTimeout(() => {
+          try { node.osc.stop(); } catch(e){}
+          node.osc.disconnect();
+          node.gain.disconnect();
+          if (this.urgeRumbleNode === node) this.urgeRumbleNode = null;
+        }, 320);
+      }
+
+      playCoughBurst() {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        const now = this.ctx.currentTime;
+
+        const bufferSize = this.ctx.sampleRate * 0.12;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.025));
+        }
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(900, now);
+        filter.Q.setValueAtTime(2.0, now);
+
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.4, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.sfxGain);
+        noise.start(now);
+
+        const osc = this.ctx.createOscillator();
+        const thumpGain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(32, now + 0.22);
+
+        thumpGain.gain.setValueAtTime(0.5, now);
+        thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+        osc.connect(thumpGain);
+        thumpGain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.24);
+      }
+
+      playIngest() {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        const now = this.ctx.currentTime;
+        for (let i = 0; i < 3; i++) {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          const f = 220 + i * 110 + Math.random() * 40;
+          osc.frequency.setValueAtTime(f, now + i * 0.08);
+          osc.frequency.exponentialRampToValueAtTime(f * 1.6, now + i * 0.08 + 0.07);
+
+          gain.gain.setValueAtTime(0.01, now + i * 0.08);
+          gain.gain.linearRampToValueAtTime(0.18, now + i * 0.08 + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.08 + 0.07);
+
+          osc.connect(gain);
+          gain.connect(this.sfxGain);
+          osc.start(now + i * 0.08);
+          osc.stop(now + i * 0.08 + 0.08);
+        }
+      }
+
+      playSquish(force = 1.0) {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.playSqueezeFM(force);
+      }
+
+      playSlap(intensity = 1.0) {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        const now = this.ctx.currentTime;
+
+        const noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.08, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noiseBuffer.length; i++) {
+          output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.015));
+        }
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+
+        const slapFilter = this.ctx.createBiquadFilter();
+        slapFilter.type = 'bandpass';
+        slapFilter.frequency.setValueAtTime(800 + intensity * 400, now);
+        slapFilter.Q.setValueAtTime(3.0, now);
+
+        const slapGain = this.ctx.createGain();
+        slapGain.gain.setValueAtTime(0.35 * intensity, now);
+        slapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        whiteNoise.connect(slapFilter);
+        slapFilter.connect(slapGain);
+        slapGain.connect(this.sfxGain);
+        whiteNoise.start(now);
+
+        const osc = this.ctx.createOscillator();
+        const thumpGain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(45, now + 0.2);
+
+        thumpGain.gain.setValueAtTime(0.4 * intensity, now);
+        thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+        osc.connect(thumpGain);
+        thumpGain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      }
+
+      playSootheBreath() {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(120, now + 0.6);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain);
+        osc.start(now);
+        osc.stop(now + 0.65);
+      }
+
+      playLeakSpurt() {
+        if (!this.sfxEnabled || this.isMasterMuted) return;
+        this.initCtx();
+        const now = this.ctx.currentTime;
+
+        const noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.25, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noiseBuffer.length; i++) {
+          output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.08));
+        }
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1200, now);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        whiteNoise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.sfxGain);
+        whiteNoise.start(now);
+      }
+
+      update(dt) {
+        if (this.speechCooldown > 0) {
+          this.speechCooldown -= dt;
+        }
+        if (this.creakCooldown > 0) {
+          this.creakCooldown -= dt;
+        }
+      }
+    }
+
+    const audio = new AudioManager();
+
+    function triggerHaptic(pattern = 40) {
+      const chk = document.getElementById('chkHaptics');
+      if (chk && chk.checked && typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(pattern);
+      }
+    }
+
+    function toggleMasterMute() {
+      audio.isMasterMuted = !audio.isMasterMuted;
+      const btn = document.getElementById('btnSettingMute');
+      const icon = document.getElementById('audioHubIcon');
+
+      if (audio.isMasterMuted) {
+        if (btn) btn.innerText = 'Muted (Unmute All)';
+        if (icon) icon.innerText = '🔇';
+        if (audio.synth) audio.synth.cancel();
+        if (audio.masterGain) audio.masterGain.gain.setValueAtTime(0, audio.ctx.currentTime);
+      } else {
+        if (btn) btn.innerText = 'Enabled (Mute All)';
+        if (icon) icon.innerText = '🔊';
+        if (audio.masterGain) audio.masterGain.gain.setValueAtTime(1.0, audio.ctx.currentTime);
+      }
+    }
+
+    function toggleVoiceChannel(val) {
+      audio.voiceEnabled = val;
+      const chk = document.getElementById('chkVoiceApp');
+      if (chk) chk.checked = val;
+      if (!val && audio.synth) audio.synth.cancel();
+    }
+
+    function setVoiceVolume(val) {
+      audio.voiceVolume = parseFloat(val);
+      const lbl = document.getElementById('lblVoiceVolApp');
+      if (lbl) lbl.innerText = `${Math.round(val * 100)}%`;
+    }
+
+    function toggleSfxChannel(val) {
+      audio.sfxEnabled = val;
+      const chk = document.getElementById('chkSfxApp');
+      if (chk) chk.checked = val;
+      if (audio.sfxGain && audio.ctx) {
+        audio.sfxGain.gain.setValueAtTime(val ? audio.sfxVolume : 0, audio.ctx.currentTime);
+      }
+    }
+
+    function setSfxVolume(val) {
+      audio.sfxVolume = parseFloat(val);
+      const lbl = document.getElementById('lblSfxVolApp');
+      if (lbl) lbl.innerText = `${Math.round(val * 100)}%`;
+      if (audio.sfxGain && audio.ctx && audio.sfxEnabled) {
+        audio.sfxGain.gain.setValueAtTime(audio.sfxVolume, audio.ctx.currentTime);
+      }
+    }
+
+    // --- PHYSICS PRESETS ---
+    const PHYSICS_CONFIGS = {
+      jello: {
+        springK: 18.0,
+        damping: 0.82,
+        jiggleFreq: 14.0,
+        jiggleDecay: 2.2,
+        sloshSpring: 14.0,
+        sloshDamping: 0.91,
+        rippleDecay: 3.5,
+        squishForce: 2.2,
+        waveSpeed: 7.5
+      },
+      balloon: {
+        springK: 32.0,
+        damping: 0.88,
+        jiggleFreq: 22.0,
+        jiggleDecay: 3.8,
+        sloshSpring: 22.0,
+        sloshDamping: 0.94,
+        rippleDecay: 5.0,
+        squishForce: 1.8,
+        waveSpeed: 9.5
+      },
+      anatomical: {
+        springK: 24.0,
+        damping: 0.78,
+        jiggleFreq: 16.0,
+        jiggleDecay: 4.5,
+        sloshSpring: 18.0,
+        sloshDamping: 0.92,
+        rippleDecay: 6.0,
+        squishForce: 1.4,
+        waveSpeed: 6.5
+      },
+      highTension: {
+        springK: 48.0,
+        damping: 0.65,
+        jiggleFreq: 30.0,
+        jiggleDecay: 7.0,
+        sloshSpring: 35.0,
+        sloshDamping: 0.85,
+        rippleDecay: 9.0,
+        squishForce: 0.9,
+        waveSpeed: 12.0
+      }
+    };
+
+    let currentPhysics = PHYSICS_CONFIGS.jello;
+
+    function changePhysicsMode(mode) {
+      if (PHYSICS_CONFIGS[mode]) {
+        currentPhysics = PHYSICS_CONFIGS[mode];
+        triggerAgitation(1.5);
+      }
+    }
+
+    // --- SIMULATION STATE ---
+    const sim = {
+      volume: 120,
+      maxCapacity: 750,
+      baseDrip: 1.0,
+      activeBeverages: [],
+
+      isAttemptingVoid: false,
+      voidLatencyTimer: 0.0,
+      voidLatencyRequired: 1.0,
+      isActivelyVoiding: false,
+      involuntaryVoiding: false,
+      flowRate: 0,
+      totalLeakedVolume: 0,
+
+      isClenching: false,
+      kegelStamina: 1.0,
+      kegelFatigueRate: 0.22,
+      kegelRecoverRate: 0.16,
+      sphincterToneStrain: 0.0,
+      sphincterFatigue: 0.0,
+      sphincterTwitchIntensity: 0.0,
+      detrusorSpasmIntensity: 0.0,
+      spasmCooldown: 0.0,
+      sphincterDilation: 0.0,
+
+      isStressLeaking: false,
+      stressLeakTimer: 0.0,
+      stressLeakTargetLoss: 0,
+
+      coughImpulseIntensity: 0.0,
+
+      urgeWaveTimer: 18.0,
+      isUrgeWaveActive: false,
+      urgeWaveDuration: 0.0,
+
+      isCutawayActive: false,
+
+      pressure: 7.2,
+      maxRecordedPressure: 7.2,
+      hydration: 0.85,
+      sloshAngleX: 0,
+      sloshAngleZ: 0,
+      sloshVelX: 0,
+      sloshVelZ: 0,
+      fluidCoreOffset: new THREE.Vector3(0, 0, 0),
+      fluidCoreVelocity: new THREE.Vector3(0, 0, 0),
+
+      interactionMode: 'poke',
+      squeezeAmountY: 0.0,
+      targetSqueezeY: 0.0,
+      squeezeContactPoint: new THREE.Vector3(0, 0, 0),
+      viscoDentMemory: [],
+      ripples: [],
+      jiggleIntensity: 0.0,
+      globalJigglePhase: 0.0,
+
+      // Telemetry History Buffer for Strip Chart (last 60 frames)
+      telemetryHistory: [],
+
+      // Active Challenge State
+      activeChallenge: null, // 'commute' or 'precision'
+      challengeTimer: 0,
+      challengePotholeTimer: 0,
+      precisionStartVolume: 0
+    };
+
+    const BEVERAGE_TYPES = {
+      water: { vol: 180, rate: 8.0, hyd: 1.0 },
+      coffee: { vol: 120, rate: 22.0, hyd: 0.3 },
+      soda: { vol: 320, rate: 16.0, hyd: 0.45 },
+      beer: { vol: 480, rate: 26.0, hyd: 0.4 }
+    };
+
+    function ingestBeverage(type) {
+      const b = BEVERAGE_TYPES[type];
+      if (!b) return;
+      audio.playIngest();
+      triggerHaptic(30);
+      sim.activeBeverages.push({ rem: b.vol, rate: b.rate, hyd: b.hyd });
+      impartSloshForce((Math.random() - 0.5) * 4.0, (Math.random() - 0.5) * 4.0);
+      sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + 0.35);
+
+      audio.playUreterSquirt();
+      triggerUreterPulse();
+    }
+
+    function startClench(e) {
+      if (e) e.preventDefault();
+      if (sim.kegelStamina <= 0.05) return;
+      sim.isClenching = true;
+      document.getElementById('btnClench').classList.add('btn-clench-active');
+      document.getElementById('txtBtnClench').innerText = 'CLENCHING!';
+      triggerHaptic([20, 30, 20]);
+      audio.startClenchHum();
+      audio.speak('clench');
+    }
+
+    function stopClench(e) {
+      if (e) e.preventDefault();
+      if (!sim.isClenching) return;
+      sim.isClenching = false;
+      document.getElementById('btnClench').classList.remove('btn-clench-active');
+      document.getElementById('txtBtnClench').innerText = 'CLENCH (HOLD)';
+      audio.stopClenchHum();
+    }
+
+    function startVoidAttempt(e) {
+      if (e) e.preventDefault();
+      if (sim.involuntaryVoiding || sim.isClenching) return;
+      sim.isAttemptingVoid = true;
+      document.getElementById('btnVoid').classList.add('btn-void-active');
+      document.getElementById('txtBtnVoid').innerText = 'RELAXING VALVE...';
+      triggerHaptic(25);
+    }
+
+    function stopVoidAttempt(e) {
+      if (e) e.preventDefault();
+      sim.isAttemptingVoid = false;
+      sim.voidLatencyTimer = 0;
+      document.getElementById('voidLatencyProgress').style.width = '0%';
+      document.getElementById('btnVoid').classList.remove('btn-void-active');
+      document.getElementById('txtBtnVoid').innerText = 'EMPTY (HOLD)';
+      document.getElementById('subBtnVoid').innerText = 'Latency: 1.0s to initiate';
+
+      if (sim.isActivelyVoiding) {
+        sim.isActivelyVoiding = false;
+        audio.stopDynamicJet();
+        
+        // Check Precision Challenge if active
+        if (sim.activeChallenge === 'precision') {
+          const voided = Math.round(sim.precisionStartVolume - sim.volume);
+          const statusEl = document.getElementById('challenge2Status');
+          if (Math.abs(voided - 200) <= 10) {
+            statusEl.innerText = `SUCCESS (${voided}ml)`;
+            statusEl.className = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800';
+            triggerHaptic([50, 50, 100]);
+          } else {
+            statusEl.innerText = `FAILED (${voided}ml)`;
+            statusEl.className = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800';
+            triggerHaptic(120);
+          }
+          sim.activeChallenge = null;
+        }
+
+        if (sim.volume < 150) {
+          audio.speak('deflated');
+        }
+      }
+    }
+
+    function triggerSoothe() {
+      sim.sphincterToneStrain = Math.max(0, sim.sphincterToneStrain - 0.35);
+      sim.detrusorSpasmIntensity = Math.max(0, sim.detrusorSpasmIntensity - 0.6);
+      sim.kegelStamina = Math.min(1.0, sim.kegelStamina + 0.3);
+      audio.playSootheBreath();
+      triggerHaptic(30);
+      audio.speak('soothe');
+
+      sim.ripples.push({
+        center: new THREE.Vector3(0, 0, 0),
+        radius: 0.1,
+        maxRadius: 3.5,
+        speed: 4.0,
+        amplitude: 0.25,
+        decay: 4.0
+      });
+    }
+
+    function triggerCoughImpulse() {
+      sim.coughImpulseIntensity = 1.0;
+      audio.playCoughBurst();
+      triggerHaptic([40, 20, 80]);
+      triggerAgitation(2.2);
+      audio.speak('cough');
+    }
+
+    function toggleCutawayView() {
+      sim.isCutawayActive = !sim.isCutawayActive;
+      const btn = document.getElementById('btnCutaway');
+      btn.classList.toggle('btn-active-cutaway', sim.isCutawayActive);
+
+      if (sim.isCutawayActive) {
+        bladderMesh.material.clippingPlanes = [cutawaySagittalPlane];
+        bladderMesh.material.side = THREE.DoubleSide;
+        innerFluidBody.material.clippingPlanes = [fluidClipPlane, cutawaySagittalPlane];
+      } else {
+        bladderMesh.material.clippingPlanes = [];
+        bladderMesh.material.side = THREE.FrontSide;
+        innerFluidBody.material.clippingPlanes = [fluidClipPlane];
+      }
+      triggerHaptic(20);
+    }
+
+    // --- CHALLENGE SCENARIO HANDLERS ---
+    function startCommuteChallenge() {
+      resetOrgan();
+      sim.volume = 580; // High starting retention
+      sim.totalLeakedVolume = 0;
+      sim.activeChallenge = 'commute';
+      sim.challengeTimer = 60.0;
+      sim.challengePotholeTimer = 8.0;
+
+      const statusEl = document.getElementById('challenge1Status');
+      statusEl.innerText = 'IN PROGRESS (60s)';
+      statusEl.className = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 animate-pulse';
+      
+      switchTab('sim');
+      triggerAgitation(2.0);
+    }
+
+    function startPrecisionChallenge() {
+      resetOrgan();
+      sim.volume = 520;
+      sim.activeChallenge = 'precision';
+      sim.precisionStartVolume = 520;
+
+      const statusEl = document.getElementById('challenge2Status');
+      statusEl.innerText = 'HOLD TO VOID 200ml';
+      statusEl.className = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 animate-pulse';
+
+      switchTab('sim');
+    }
+
+    function resetOrgan() {
+      sim.volume = 40;
+      sim.activeBeverages = [];
+      sim.isAttemptingVoid = false;
+      sim.isActivelyVoiding = false;
+      sim.involuntaryVoiding = false;
+      sim.isStressLeaking = false;
+      sim.kegelStamina = 1.0;
+      sim.sphincterToneStrain = 0;
+      sim.sphincterFatigue = 0;
+      sim.sphincterTwitchIntensity = 0;
+      sim.detrusorSpasmIntensity = 0;
+      sim.coughImpulseIntensity = 0;
+      sim.totalLeakedVolume = 0;
+      sim.activeChallenge = null;
+      sim.ripples = [];
+      sim.targetSqueezeY = 0;
+      sim.squeezeAmountY = 0;
+      for (let i = 0; i < sim.viscoDentMemory.length; i++) sim.viscoDentMemory[i] = 0;
+
+      document.getElementById('failureWarning').classList.add('hidden');
+      document.getElementById('leakAlert').classList.add('hidden');
+      document.getElementById('urgeWaveWarning').classList.add('hidden');
+      document.getElementById('btnVoid').classList.remove('btn-void-active');
+      document.getElementById('btnClench').classList.remove('btn-clench-active');
+      document.getElementById('txtBtnVoid').innerText = 'EMPTY (HOLD)';
+      document.getElementById('txtBtnClench').innerText = 'CLENCH (HOLD)';
+      audio.stopDynamicJet();
+      audio.stopClenchHum();
+      audio.stopUrgeRumble();
+      triggerAgitation(2.0);
+      audio.speak('deflated');
+    }
+
+    const INTERACTION_MODES = [
+      { key: 'poke', label: 'Poke', icon: '👉' },
+      { key: 'squeeze', label: 'Squeeze', icon: '🤏' },
+      { key: 'slap', label: 'Slap', icon: '👋' },
+      { key: 'orbit', label: 'Orbit', icon: '🔄' }
+    ];
+
+    function cycleInteractionMode() {
+      const idx = INTERACTION_MODES.findIndex(m => m.key === sim.interactionMode);
+      const next = INTERACTION_MODES[(idx + 1) % INTERACTION_MODES.length];
+      sim.interactionMode = next.key;
+      document.getElementById('modeLabel').innerText = next.label;
+      document.getElementById('modeIcon').innerText = next.icon;
+      triggerHaptic(20);
+    }
+
+    function impartSloshForce(fx, fz) {
+      const dot = sim.sloshVelX * fx + sim.sloshVelZ * fz;
+      const boost = dot > 0 ? 1.35 : 0.85;
+
+      sim.sloshVelX += fx * boost;
+      sim.sloshVelZ += fz * boost;
+
+      sim.fluidCoreVelocity.x += -fx * 0.45;
+      sim.fluidCoreVelocity.z += -fz * 0.45;
+    }
+
+    function triggerAgitation(strength = 2.5) {
+      sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + strength * 0.4);
+      impartSloshForce((Math.random() - 0.5) * strength * 3.5, (Math.random() - 0.5) * strength * 3.5);
+      audio.playGranularSlosh(strength * 0.4);
+
+      const body = document.getElementById('appBody');
+      body.classList.add('shake-active');
+      setTimeout(() => body.classList.remove('shake-active'), 250);
+
+      triggerHaptic(45);
+
+      sim.ripples.push({
+        center: new THREE.Vector3(0, 0, 0),
+        radius: 0.1,
+        maxRadius: 4.2,
+        speed: currentPhysics.waveSpeed,
+        amplitude: 0.5 * strength,
+        decay: currentPhysics.rippleDecay
+      });
+
+      if (strength > 2.0 && sim.volume / sim.maxCapacity > 0.4) {
+        audio.speak('shaken');
+      }
+    }
+
+    function triggerSlapImpulse() {
+      const slapAngle = Math.random() * Math.PI * 2;
+      const slapX = Math.cos(slapAngle) * 2.2;
+      const slapZ = Math.sin(slapAngle) * 2.2;
+      const hitPoint = new THREE.Vector3(slapX, 0.2 + (Math.random() - 0.5) * 0.8, slapZ);
+
+      slapBladder(hitPoint, 2.4);
+    }
+
+    // --- PROCEDURAL TEXTURES ---
+    function generateVascularAndNormalMaps() {
+      const size = 1024;
+      const cvsDiffuse = document.createElement('canvas');
+      cvsDiffuse.width = size;
+      cvsDiffuse.height = size;
+      const ctxD = cvsDiffuse.getContext('2d');
+
+      const cvsNormal = document.createElement('canvas');
+      cvsNormal.width = size;
+      cvsNormal.height = size;
+      const ctxN = cvsNormal.getContext('2d');
+
+      const fleshGrad = ctxD.createRadialGradient(size/2, size/2, 20, size/2, size/2, size/2);
+      fleshGrad.addColorStop(0.0, '#fb7185');
+      fleshGrad.addColorStop(0.45, '#e11d48');
+      fleshGrad.addColorStop(0.85, '#9f1239');
+      fleshGrad.addColorStop(1.0, '#4c0519');
+      ctxD.fillStyle = fleshGrad;
+      ctxD.fillRect(0, 0, size, size);
+
+      ctxN.fillStyle = 'rgb(128, 128, 255)';
+      ctxN.fillRect(0, 0, size, size);
+
+      for (let i = 0; i < 9000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        ctxD.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+        ctxD.fillRect(x, y, 2, 2);
+
+        ctxN.fillStyle = Math.random() > 0.5 ? 'rgba(140, 128, 255, 0.4)' : 'rgba(116, 128, 255, 0.4)';
+        ctxN.fillRect(x, y, 2, 2);
+      }
+
+      function drawVesselTree(startX, startY, length, angle, depth, isArtery) {
+        if (depth <= 0) return;
+        const endX = startX + Math.cos(angle) * length;
+        const endY = startY + Math.sin(angle) * length;
+
+        const alpha = 0.35 + depth * 0.14;
+        ctxD.strokeStyle = isArtery ? `rgba(136, 19, 55, ${alpha})` : `rgba(76, 5, 25, ${alpha * 1.1})`;
+        ctxD.lineWidth = depth * 1.8;
+        ctxD.lineCap = 'round';
+        ctxD.beginPath();
+        ctxD.moveTo(startX, startY);
+        ctxD.quadraticCurveTo(
+          startX + (Math.random() - 0.5) * 16,
+          startY + (Math.random() - 0.5) * 16,
+          endX,
+          endY
+        );
+        ctxD.stroke();
+
+        ctxN.strokeStyle = 'rgba(160, 110, 255, 0.6)';
+        ctxN.lineWidth = depth * 1.6;
+        ctxN.beginPath();
+        ctxN.moveTo(startX, startY);
+        ctxN.lineTo(endX, endY);
+        ctxN.stroke();
+
+        const branches = 1 + Math.floor(Math.random() * 2);
+        for (let b = 0; b < branches; b++) {
+          const branchAngle = angle + (Math.random() - 0.5) * 1.1;
+          drawVesselTree(endX, endY, length * (0.65 + Math.random() * 0.25), branchAngle, depth - 1, isArtery);
+        }
+      }
+
+      for (let i = 0; i < 16; i++) {
+        drawVesselTree(
+          Math.random() * size,
+          Math.random() * size,
+          40 + Math.random() * 30,
+          Math.random() * Math.PI * 2,
+          4,
+          i % 2 === 0
+        );
+      }
+
+      const diffTex = new THREE.CanvasTexture(cvsDiffuse);
+      diffTex.wrapS = THREE.RepeatWrapping;
+      diffTex.wrapT = THREE.RepeatWrapping;
+      diffTex.repeat.set(2, 2);
+
+      const normTex = new THREE.CanvasTexture(cvsNormal);
+      normTex.wrapS = THREE.RepeatWrapping;
+      normTex.wrapT = THREE.RepeatWrapping;
+      normTex.repeat.set(2, 2);
+
+      return { diffTex, normTex };
+    }
+
+    // --- THREE.JS SCENE SETUP ---
+    let scene, camera, renderer;
+    let bladderMesh, innerFluidBody, sphincterMesh;
+    let fluidClipPlane, cutawaySagittalPlane;
+    let bladderBaseVertices = [], bladderVelocities = [];
+    let sphincterBaseVertices = [];
+    let ureterJets = [];
+    let continuousStreamMesh, streamGeo;
+    let splashParticles, splashPositions;
+    const SPLASH_COUNT = 180;
+    const STREAM_SEGMENTS = 24;
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let isPointerDown = false;
+    let lastPointerPos = { x: 0, y: 0 };
+    let cameraOrbit = { radius: 12.0, theta: 0, phi: Math.PI / 2.2 };
+    let pinchDist = 0;
+
+    function init3D() {
+      const container = document.getElementById('webglContainer');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x060913);
+      scene.fog = new THREE.FogExp2(0x060913, 0.038);
+
+      camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
+      updateCamera();
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      renderer.localClippingEnabled = true;
+      container.appendChild(renderer.domElement);
+
+      cutawaySagittalPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+
+      const ambLight = new THREE.AmbientLight(0x334155, 2.2);
+      scene.add(ambLight);
+
+      const keyLight = new THREE.DirectionalLight(0xfff1e6, 2.6);
+      keyLight.position.set(6, 12, 8);
+      scene.add(keyLight);
+
+      const rimLight = new THREE.DirectionalLight(0x38bdf8, 3.0);
+      rimLight.position.set(-8, -4, -8);
+      scene.add(rimLight);
+
+      const fluidCoreLight = new THREE.PointLight(0xf59e0b, 5.0, 10);
+      fluidCoreLight.position.set(0, -0.2, 0);
+      scene.add(fluidCoreLight);
+
+      const maps = generateVascularAndNormalMaps();
+      buildFluidVolume();
+      buildUreterPipes();
+      buildDynamicSphincterMesh();
+      buildTranslucentOrganMesh(maps);
+      buildContinuousFluidStream();
+      buildSplashParticles();
+
+      setupInputListeners(container);
+      setupDeviceMotionListener();
+      window.addEventListener('resize', onWindowResize);
+    }
+
+    function buildDynamicSphincterMesh() {
+      const radialSegs = 48;
+      const heightSegs = 16;
+      const geo = new THREE.CylinderGeometry(0.35, 0.22, 1.2, radialSegs, heightSegs, false);
+      
+      const pos = geo.attributes.position;
+      sphincterBaseVertices = [];
+
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const y = pos.getY(i);
+        const z = pos.getZ(i);
+        const r = Math.hypot(x, z);
+        const theta = Math.atan2(z, x);
+
+        sphincterBaseVertices.push({ x, y, z, r, theta });
+      }
+
+      const material = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(0xe11d48),
+        emissive: new THREE.Color(0x4c0519),
+        emissiveIntensity: 0.35,
+        roughness: 0.25,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.15,
+        side: THREE.DoubleSide
+      });
+
+      sphincterMesh = new THREE.Mesh(geo, material);
+      sphincterMesh.position.set(0, -2.15, 0);
+      sphincterMesh.renderOrder = 4;
+      scene.add(sphincterMesh);
+    }
+
+    function buildFluidVolume() {
+      fluidClipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+
+      const fluidGeo = new THREE.SphereGeometry(2.2, 48, 36);
+      const pos = fluidGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+
+        const neckFactor = y < 0 ? Math.max(0.35, 1.0 - Math.abs(y / 2.2) * 0.6) : 1.0;
+        x *= neckFactor * 0.96;
+        z *= neckFactor * 0.92;
+        y *= 1.1;
+
+        pos.setXYZ(i, x, y, z);
+      }
+      fluidGeo.computeVertexNormals();
+
+      const fluidMat = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(0xfacc15),
+        emissive: new THREE.Color(0xd97706),
+        emissiveIntensity: 0.55,
+        roughness: 0.08,
+        metalness: 0.1,
+        transmission: 0.88,
+        ior: 1.333,
+        thickness: 2.2,
+        transparent: true,
+        opacity: 0.94,
+        clippingPlanes: [fluidClipPlane],
+        clipShadows: true,
+        side: THREE.DoubleSide
+      });
+
+      innerFluidBody = new THREE.Mesh(fluidGeo, fluidMat);
+      innerFluidBody.position.set(0, 0.2, 0);
+      innerFluidBody.renderOrder = 1;
+      scene.add(innerFluidBody);
+    }
+
+    function buildUreterPipes() {
+      const tubeMat = new THREE.MeshPhysicalMaterial({
+        color: 0x94a3b8,
+        roughness: 0.3,
+        transmission: 0.75,
+        transparent: true,
+        opacity: 0.85
+      });
+
+      const leftCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-3.2, 4.2, -1.0),
+        new THREE.Vector3(-2.4, 2.0, -0.4),
+        new THREE.Vector3(-1.0, 0.7, -0.1)
+      ]);
+      const leftTube = new THREE.Mesh(new THREE.TubeGeometry(leftCurve, 20, 0.11, 8, false), tubeMat);
+      leftTube.renderOrder = 3;
+      scene.add(leftTube);
+
+      const rightCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(3.2, 4.2, -1.0),
+        new THREE.Vector3(2.4, 2.0, -0.4),
+        new THREE.Vector3(1.0, 0.7, -0.1)
+      ]);
+      const rightTube = new THREE.Mesh(new THREE.TubeGeometry(rightCurve, 20, 0.11, 8, false), tubeMat);
+      rightTube.renderOrder = 3;
+      scene.add(rightTube);
+
+      const jetMat = new THREE.MeshPhysicalMaterial({
+        color: 0xfef08a,
+        emissive: 0xf59e0b,
+        emissiveIntensity: 0.8,
+        roughness: 0.1,
+        transmission: 0.8,
+        transparent: true,
+        opacity: 0.9
+      });
+
+      for (let i = 0; i < 2; i++) {
+        const jetGeo = new THREE.CylinderGeometry(0.06, 0.03, 0.8, 8);
+        const jMesh = new THREE.Mesh(jetGeo, jetMat);
+        jMesh.renderOrder = 4;
+        jMesh.visible = false;
+        scene.add(jMesh);
+        ureterJets.push({ mesh: jMesh, side: i === 0 ? 'left' : 'right', timer: 0 });
+      }
+    }
+
+    function triggerUreterPulse() {
+      ureterJets.forEach(j => {
+        j.timer = 1.2;
+        j.mesh.visible = true;
+      });
+    }
+
+    function buildTranslucentOrganMesh(maps) {
+      const geometry = new THREE.SphereGeometry(2.35, 64, 48);
+      const pos = geometry.attributes.position;
+      bladderBaseVertices = [];
+      bladderVelocities = [];
+      sim.viscoDentMemory = new Float32Array(pos.count);
+
+      for (let i = 0; i < pos.count; i++) {
+        let x = pos.getX(i);
+        let y = pos.getY(i);
+        let z = pos.getZ(i);
+
+        const neckFactor = y < 0 ? Math.max(0.35, 1.0 - Math.abs(y / 2.35) * 0.6) : 1.0;
+        x *= neckFactor;
+        z *= neckFactor * 0.94;
+        y *= 1.12;
+
+        pos.setXYZ(i, x, y, z);
+        bladderBaseVertices.push(new THREE.Vector3(x, y, z));
+        bladderVelocities.push(new THREE.Vector3(0, 0, 0));
+      }
+
+      geometry.computeVertexNormals();
+
+      const material = new THREE.MeshPhysicalMaterial({
+        map: maps.diffTex,
+        normalMap: maps.normTex,
+        normalScale: new THREE.Vector2(0.8, 0.8),
+        color: new THREE.Color(0xf43f5e),
+        emissive: new THREE.Color(0x881337),
+        emissiveIntensity: 0.28,
+        roughness: 0.22,
+        metalness: 0.05,
+        clearcoat: 0.9,
+        clearcoatRoughness: 0.12,
+        transmission: 0.65,
+        thickness: 1.4,
+        ior: 1.38,
+        transparent: true,
+        opacity: 0.88,
+        depthWrite: false,
+        side: THREE.FrontSide
+      });
+
+      bladderMesh = new THREE.Mesh(geometry, material);
+      bladderMesh.position.set(0, 0.2, 0);
+      bladderMesh.renderOrder = 10;
+      scene.add(bladderMesh);
+    }
+
+    function buildContinuousFluidStream() {
+      streamGeo = new THREE.CylinderGeometry(0.12, 0.08, 6.0, 16, STREAM_SEGMENTS, true);
+      
+      const streamMat = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color(0xfacc15),
+        emissive: new THREE.Color(0xd97706),
+        emissiveIntensity: 0.6,
+        roughness: 0.05,
+        transmission: 0.92,
+        ior: 1.333,
+        transparent: true,
+        opacity: 0.92,
+        side: THREE.DoubleSide
+      });
+
+      continuousStreamMesh = new THREE.Mesh(streamGeo, streamMat);
+      continuousStreamMesh.position.set(0, -5.0, 0);
+      continuousStreamMesh.visible = false;
+      continuousStreamMesh.renderOrder = 5;
+      scene.add(continuousStreamMesh);
+    }
+
+    function buildSplashParticles() {
+      const geo = new THREE.BufferGeometry();
+      splashPositions = new Float32Array(SPLASH_COUNT * 3);
+      for (let i = 0; i < SPLASH_COUNT; i++) {
+        splashPositions[i * 3 + 1] = -999;
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(splashPositions, 3));
+
+      const mat = new THREE.PointsMaterial({
+        color: 0xfef08a,
+        size: 0.18,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending
+      });
+
+      splashParticles = new THREE.Points(geo, mat);
+      scene.add(splashParticles);
+    }
+
+    function setupInputListeners(container) {
+      container.addEventListener('pointerdown', (e) => {
+        isPointerDown = true;
+        lastPointerPos = { x: e.clientX, y: e.clientY };
+        setPointerCoords(e);
+
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObject(bladderMesh);
+
+        if (hits.length > 0) {
+          const hitPt = hits[0].point;
+          if (sim.interactionMode === 'poke') {
+            pokeBladder(hitPt, currentPhysics.squishForce);
+            audio.playSquish(1.0);
+            triggerHaptic(30);
+          } else if (sim.interactionMode === 'slap') {
+            slapBladder(hitPt, 2.0);
+            triggerHaptic(50);
+          } else if (sim.interactionMode === 'squeeze') {
+            sim.squeezeContactPoint.copy(bladderMesh.worldToLocal(hitPt.clone()));
+            sim.targetSqueezeY = 0.35;
+            audio.playSquish(1.2);
+            triggerHaptic(35);
+          }
+        }
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        if (!isPointerDown) return;
+        const dx = e.clientX - lastPointerPos.x;
+        const dy = e.clientY - lastPointerPos.y;
+        const speed = Math.hypot(dx, dy);
+
+        if (sim.interactionMode === 'orbit') {
+          cameraOrbit.theta -= dx * 0.007;
+          cameraOrbit.phi = Math.max(0.15, Math.min(Math.PI / 1.8, cameraOrbit.phi - dy * 0.007));
+          updateCamera();
+          impartSloshForce(dx * 0.15, dy * 0.15);
+        } else if (sim.interactionMode === 'squeeze') {
+          const dragCompress = Math.min(0.65, Math.max(0.0, sim.targetSqueezeY + Math.abs(dy) * 0.004 + Math.abs(dx) * 0.002));
+          sim.targetSqueezeY = dragCompress;
+          if (Math.random() > 0.7) audio.playSqueezeFM(dragCompress);
+        } else if (sim.interactionMode === 'poke' || sim.interactionMode === 'slap') {
+          setPointerCoords(e);
+          raycaster.setFromCamera(pointer, camera);
+          const hits = raycaster.intersectObject(bladderMesh);
+          if (hits.length > 0) {
+            if (sim.interactionMode === 'slap' && speed > 10) {
+              slapBladder(hits[0].point, Math.min(3.0, speed * 0.14));
+            } else if (sim.interactionMode === 'poke') {
+              pokeBladder(hits[0].point, 0.7);
+            }
+          }
+        }
+
+        lastPointerPos = { x: e.clientX, y: e.clientY };
+      });
+
+      window.addEventListener('pointerup', () => { 
+        isPointerDown = false; 
+        if (sim.interactionMode === 'squeeze') {
+          sim.targetSqueezeY = 0;
+          audio.playGranularSlosh(1.1);
+        }
+      });
+
+      window.addEventListener('pointercancel', () => { 
+        isPointerDown = false; 
+        sim.targetSqueezeY = 0;
+      });
+
+      container.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          if (pinchDist > 0) {
+            const diff = pinchDist - dist;
+            if (sim.interactionMode === 'squeeze') {
+              sim.targetSqueezeY = Math.min(0.7, Math.max(0.0, sim.targetSqueezeY + diff * 0.005));
+            } else {
+              cameraOrbit.radius = Math.max(7, Math.min(22, cameraOrbit.radius + diff * 0.05));
+              updateCamera();
+            }
+          }
+          pinchDist = dist;
+        }
+      }, { passive: true });
+
+      container.addEventListener('touchend', () => { pinchDist = 0; });
+
+      container.addEventListener('wheel', (e) => {
+        cameraOrbit.radius = Math.max(7, Math.min(22, cameraOrbit.radius + e.deltaY * 0.015));
+        updateCamera();
+      }, { passive: true });
+    }
+
+    function setupDeviceMotionListener() {
+      let lastAx = 0, lastAy = 0, lastAz = 0;
+      window.addEventListener('devicemotion', (e) => {
+        const acc = e.accelerationIncludingGravity;
+        if (!acc) return;
+
+        const delta = Math.abs(acc.x - lastAx) + Math.abs(acc.y - lastAy) + Math.abs(acc.z - lastAz);
+        if (delta > 14.0) {
+          triggerAgitation(Math.min(4.0, delta * 0.22));
+        }
+
+        lastAx = acc.x;
+        lastAy = acc.y;
+        lastAz = acc.z;
+      }, { passive: true });
+    }
+
+    function setPointerCoords(e) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    function updateCamera() {
+      camera.position.x = cameraOrbit.radius * Math.sin(cameraOrbit.phi) * Math.sin(cameraOrbit.theta);
+      camera.position.y = cameraOrbit.radius * Math.cos(cameraOrbit.phi);
+      camera.position.z = cameraOrbit.radius * Math.sin(cameraOrbit.phi) * Math.cos(cameraOrbit.theta);
+      camera.lookAt(0, 0, 0);
+    }
+
+    function pokeBladder(worldPoint, strength) {
+      const local = bladderMesh.worldToLocal(worldPoint.clone());
+      const pos = bladderMesh.geometry.attributes.position;
+      const radius = 1.4;
+
+      for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i);
+        const vy = pos.getY(i);
+        const vz = pos.getZ(i);
+        const d = local.distanceTo(new THREE.Vector3(vx, vy, vz));
+        if (d < radius) {
+          const power = (1.0 - d / radius) * strength;
+          bladderVelocities[i].x -= (vx / 2.35) * power * 1.6;
+          bladderVelocities[i].y -= (vy / 2.35) * power * 1.6;
+          bladderVelocities[i].z -= (vz / 2.35) * power * 1.6;
+          sim.viscoDentMemory[i] = Math.min(0.6, sim.viscoDentMemory[i] + power * 0.35);
+        }
+      }
+
+      impartSloshForce(local.x * 2.5 * strength, local.z * 2.5 * strength);
+      sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + 0.3 * strength);
+      sim.sphincterToneStrain = Math.min(1.0, sim.sphincterToneStrain + 0.08);
+      audio.speak('poked');
+    }
+
+    function slapBladder(worldPoint, strength = 1.8) {
+      const local = bladderMesh.worldToLocal(worldPoint.clone());
+      const pos = bladderMesh.geometry.attributes.position;
+      const radius = 1.8;
+
+      audio.playSlap(strength);
+
+      sim.ripples.push({
+        center: local.clone(),
+        radius: 0.1,
+        maxRadius: 3.8,
+        speed: currentPhysics.waveSpeed,
+        amplitude: 0.65 * strength,
+        decay: currentPhysics.rippleDecay
+      });
+
+      for (let i = 0; i < pos.count; i++) {
+        const vx = pos.getX(i);
+        const vy = pos.getY(i);
+        const vz = pos.getZ(i);
+        const d = local.distanceTo(new THREE.Vector3(vx, vy, vz));
+        if (d < radius) {
+          const power = (1.0 - d / radius) * strength * 2.2;
+          bladderVelocities[i].x -= (vx / 2.35) * power;
+          bladderVelocities[i].y -= (vy / 2.35) * power;
+          bladderVelocities[i].z -= (vz / 2.35) * power;
+          sim.viscoDentMemory[i] = Math.min(0.8, sim.viscoDentMemory[i] + power * 0.4);
+        }
+      }
+
+      impartSloshForce(local.x * 4.0 * strength, local.z * 4.0 * strength);
+      sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + 0.6 * strength);
+      sim.sphincterToneStrain = Math.min(1.0, sim.sphincterToneStrain + 0.15);
+      audio.speak('poked');
+    }
+
+    // --- MAIN PHYSICS & SIMULATION UPDATE ---
+    function updatePhysics(dt) {
+      let extraDrip = 0;
+      for (let i = sim.activeBeverages.length - 1; i >= 0; i--) {
+        const b = sim.activeBeverages[i];
+        const step = Math.min(b.rem, b.rate * dt);
+        b.rem -= step;
+        extraDrip += step / dt;
+        sim.hydration = sim.hydration * 0.98 + b.hyd * 0.02;
+        if (b.rem <= 0) sim.activeBeverages.splice(i, 1);
+      }
+
+      const totalDrip = sim.baseDrip + extraDrip;
+      sim.volume = Math.min(sim.maxCapacity * 1.25, sim.volume + totalDrip * dt);
+
+      const fillRatio = Math.max(0.01, sim.volume / sim.maxCapacity);
+
+      // Squeeze interpolation
+      sim.squeezeAmountY = THREE.MathUtils.lerp(sim.squeezeAmountY, sim.targetSqueezeY, dt * 10.0);
+
+      // Challenge Update Logic
+      if (sim.activeChallenge === 'commute') {
+        sim.challengeTimer -= dt;
+        sim.challengePotholeTimer -= dt;
+
+        if (sim.challengePotholeTimer <= 0) {
+          triggerCoughImpulse(); // Simulate heavy road bump
+          sim.challengePotholeTimer = 7.0 + Math.random() * 4.0;
+        }
+
+        const statusEl = document.getElementById('challenge1Status');
+        if (sim.challengeTimer <= 0) {
+          if (sim.totalLeakedVolume <= 20) {
+            statusEl.innerText = `VICTORY! (${Math.round(sim.totalLeakedVolume)}ml lost)`;
+            statusEl.className = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800';
+            triggerHaptic([100, 50, 100]);
+          } else {
+            statusEl.innerText = `FAILED (${Math.round(sim.totalLeakedVolume)}ml lost)`;
+            statusEl.className = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800';
+          }
+          sim.activeChallenge = null;
+        } else {
+          statusEl.innerText = `COMMUTE: ${Math.round(sim.challengeTimer)}s (${Math.round(sim.totalLeakedVolume)}ml leaked)`;
+        }
+      }
+
+      // Kegel Stamina
+      if (sim.isClenching) {
+        sim.kegelStamina = Math.max(0, sim.kegelStamina - sim.kegelFatigueRate * dt);
+        audio.updateClenchHum(sim.kegelStamina);
+        if (sim.kegelStamina <= 0.02) {
+          sim.isClenching = false;
+          audio.stopClenchHum();
+          document.getElementById('btnClench').classList.remove('btn-clench-active');
+          document.getElementById('txtBtnClench').innerText = 'CLENCH EXHAUSTED!';
+        }
+      } else {
+        sim.kegelStamina = Math.min(1.0, sim.kegelStamina + sim.kegelRecoverRate * dt);
+        if (sim.kegelStamina > 0.15 && document.getElementById('txtBtnClench').innerText === 'CLENCH EXHAUSTED!') {
+          document.getElementById('txtBtnClench').innerText = 'CLENCH (HOLD)';
+        }
+      }
+
+      // Cough Impulse Relaxation
+      if (sim.coughImpulseIntensity > 0) {
+        sim.coughImpulseIntensity = Math.max(0, sim.coughImpulseIntensity - dt * 3.5);
+      }
+
+      // Urge Waves
+      sim.urgeWaveTimer -= dt;
+      if (sim.urgeWaveTimer <= 0 && fillRatio > 0.45 && !sim.isActivelyVoiding) {
+        sim.isUrgeWaveActive = true;
+        sim.urgeWaveDuration = 3.5;
+        sim.urgeWaveTimer = THREE.MathUtils.lerp(18.0, 7.0, fillRatio);
+        document.getElementById('urgeWaveWarning').classList.remove('hidden');
+        audio.startUrgeRumble();
+      }
+
+      if (sim.isUrgeWaveActive) {
+        sim.urgeWaveDuration -= dt;
+        sim.detrusorSpasmIntensity = Math.min(1.0, sim.detrusorSpasmIntensity + dt * 2.0);
+        if (sim.urgeWaveDuration <= 0) {
+          sim.isUrgeWaveActive = false;
+          audio.stopUrgeRumble();
+          document.getElementById('urgeWaveWarning').classList.add('hidden');
+        }
+      } else {
+        sim.detrusorSpasmIntensity = Math.max(0, sim.detrusorSpasmIntensity - dt * 1.5);
+      }
+
+      // Hydrostatic Pressure
+      const clenchResistance = sim.isClenching ? 2.5 : 1.0;
+      const incompressibilityBoost = 1.0 + Math.pow(fillRatio, 3.0) * 2.5;
+      sim.pressure = 4.0 + Math.pow(fillRatio, 2.6) * 56.0 + 
+                     (sim.detrusorSpasmIntensity * 24.0) + 
+                     (sim.coughImpulseIntensity * 38.0) +
+                     (sim.squeezeAmountY * 34.0 * incompressibilityBoost);
+
+      if (sim.pressure > sim.maxRecordedPressure) {
+        sim.maxRecordedPressure = sim.pressure;
+      }
+
+      // Tension Creaks under load
+      if (sim.pressure > 46.0 && audio.creakCooldown <= 0 && Math.random() > 0.5) {
+        audio.playTensionCreak();
+        audio.creakCooldown = 2.0 + Math.random() * 2.0;
+      }
+
+      // Stress Leak Check
+      const baseSphincterCapacity = (50.0 - (sim.sphincterToneStrain * 18.0)) * clenchResistance;
+
+      if (sim.pressure > baseSphincterCapacity && !sim.isActivelyVoiding && !sim.isStressLeaking && !sim.involuntaryVoiding && fillRatio > 0.5) {
+        sim.isStressLeaking = true;
+        sim.stressLeakTargetLoss = Math.min(sim.volume * 0.15, 25.0 + Math.random() * 20.0);
+        sim.sphincterToneStrain = Math.min(1.0, sim.sphincterToneStrain + 0.25);
+        document.getElementById('leakAlert').classList.remove('hidden');
+        audio.playLeakSpurt();
+        triggerHaptic(60);
+        audio.speak('leak');
+      }
+
+      if (sim.isStressLeaking) {
+        const leakStep = 22.0 * dt;
+        sim.volume = Math.max(0, sim.volume - leakStep);
+        sim.totalLeakedVolume += leakStep;
+        sim.stressLeakTargetLoss -= leakStep;
+        sim.flowRate = 18.0;
+
+        if (sim.stressLeakTargetLoss <= 0 || sim.pressure < (baseSphincterCapacity - 8.0)) {
+          sim.isStressLeaking = false;
+          document.getElementById('leakAlert').classList.add('hidden');
+        }
+      }
+
+      // Void Latency Execution
+      if (sim.isAttemptingVoid && !sim.isActivelyVoiding && !sim.involuntaryVoiding) {
+        sim.voidLatencyTimer += dt;
+        const progress = Math.min(100, (sim.voidLatencyTimer / sim.voidLatencyRequired) * 100);
+        document.getElementById('voidLatencyProgress').style.width = `${progress}%`;
+        document.getElementById('subBtnVoid').innerText = `Relaxing... ${(sim.voidLatencyRequired - sim.voidLatencyTimer).toFixed(1)}s`;
+
+        if (sim.voidLatencyTimer >= sim.voidLatencyRequired) {
+          sim.isActivelyVoiding = true;
+          document.getElementById('subBtnVoid').innerText = 'Draining at optimal flow';
+          document.getElementById('txtBtnVoid').innerText = 'VOIDING...';
+          audio.startDynamicJet();
+          triggerHaptic(50);
+          audio.speak('voiding');
+        }
+      }
+
+      // Total Retention Failure
+      if (sim.sphincterToneStrain >= 1.0 && sim.pressure > 65.0 && !sim.involuntaryVoiding) {
+        sim.involuntaryVoiding = true;
+        document.getElementById('failureWarning').classList.remove('hidden');
+        audio.startDynamicJet();
+        triggerHaptic([100, 50, 100, 50]);
+        audio.speak('involuntary');
+      }
+
+      if (sim.involuntaryVoiding) {
+        const drainSpeed = 28.0;
+        const emptied = drainSpeed * dt;
+        sim.volume = Math.max(0, sim.volume - emptied);
+        sim.flowRate = drainSpeed;
+        sim.sphincterDilation = 1.0;
+
+        if (sim.volume <= 70) {
+          sim.involuntaryVoiding = false;
+          sim.sphincterToneStrain = 0;
+          sim.kegelStamina = 1.0;
+          document.getElementById('failureWarning').classList.add('hidden');
+          audio.stopDynamicJet();
+          audio.speak('deflated');
+        }
+      }
+
+      if (sim.isActivelyVoiding && !sim.involuntaryVoiding) {
+        const targetDilation = 1.0;
+        sim.sphincterDilation = THREE.MathUtils.lerp(sim.sphincterDilation, targetDilation, dt * 5.0);
+        sim.flowRate = Math.min(sim.volume / dt, (sim.sphincterDilation * 26.0) + (sim.pressure / 8.0) * 8.0);
+        const emptied = sim.flowRate * dt;
+        sim.volume = Math.max(0, sim.volume - emptied);
+
+        if (sim.volume <= 10) {
+          stopVoidAttempt();
+        }
+      } else if (!sim.involuntaryVoiding && !sim.isStressLeaking) {
+        sim.sphincterDilation = THREE.MathUtils.lerp(sim.sphincterDilation, 0.0, dt * 8.0);
+        sim.flowRate = 0;
+      }
+
+      if (sim.flowRate > 0) {
+        audio.updateDynamicJet(sim.flowRate, sim.pressure);
+      }
+
+      // Record Telemetry Stream Buffer
+      sim.telemetryHistory.push({
+        pressure: sim.pressure,
+        volume: sim.volume,
+        tone: sim.sphincterToneStrain
+      });
+      if (sim.telemetryHistory.length > 120) {
+        sim.telemetryHistory.shift();
+      }
+
+      // Voice Evaluator
+      if (!sim.isActivelyVoiding && !sim.involuntaryVoiding && !sim.isStressLeaking) {
+        if (fillRatio > 0.88 || sim.sphincterToneStrain > 0.75) {
+          audio.speak('critical');
+        } else if (fillRatio > 0.72) {
+          audio.speak('full');
+        } else if (fillRatio > 0.45) {
+          audio.speak('distended');
+        } else if (fillRatio > 0.18) {
+          audio.speak('nominal');
+        }
+      }
+
+      // Hydrodynamics
+      const sloshDamping = currentPhysics.sloshDamping;
+      const sloshSpring = currentPhysics.sloshSpring;
+
+      sim.sloshVelX += (-sim.sloshAngleX * sloshSpring) * dt;
+      sim.sloshVelZ += (-sim.sloshAngleZ * sloshSpring) * dt;
+      sim.sloshVelX *= sloshDamping;
+      sim.sloshVelZ *= sloshDamping;
+
+      sim.sloshAngleX += sim.sloshVelX * dt;
+      sim.sloshAngleZ += sim.sloshVelZ * dt;
+
+      const fluidMass = 0.5 + fillRatio * 1.5;
+      const fluidK = 12.0 / fluidMass;
+      sim.fluidCoreVelocity.x += (-sim.fluidCoreOffset.x * fluidK + (sim.sloshAngleX * 0.4)) * dt;
+      sim.fluidCoreVelocity.z += (-sim.fluidCoreOffset.z * fluidK + (sim.sloshAngleZ * 0.4)) * dt;
+      sim.fluidCoreVelocity.multiplyScalar(0.92);
+
+      sim.fluidCoreOffset.x += sim.fluidCoreVelocity.x * dt;
+      sim.fluidCoreOffset.z += sim.fluidCoreVelocity.z * dt;
+
+      for (let r = sim.ripples.length - 1; r >= 0; r--) {
+        const rip = sim.ripples[r];
+        rip.radius += rip.speed * dt;
+        rip.amplitude -= rip.decay * dt * 0.12;
+        if (rip.radius > rip.maxRadius || rip.amplitude <= 0) {
+          sim.ripples.splice(r, 1);
+        }
+      }
+
+      sim.globalJigglePhase += dt * currentPhysics.jiggleFreq;
+      sim.jiggleIntensity = Math.max(0, sim.jiggleIntensity - dt * currentPhysics.jiggleDecay);
+
+      // Poisson Bulge
+      const compY = sim.squeezeAmountY;
+      const poissonFactor = 0.45 + (fillRatio * 0.45);
+      const scaleY = 1.0 - compY;
+      const bulgeXZ = Math.sqrt(1.0 / Math.max(0.2, (1.0 - compY * poissonFactor)));
+
+      const inflationScale = 0.55 + Math.pow(fillRatio, 0.45) * 0.75;
+      const wrinkleAmp = Math.pow(1.0 - Math.min(1.0, fillRatio), 1.6) * 0.28;
+      const sagFactor = Math.max(0, (1.0 - fillRatio * 2.2)) * 0.45;
+      const detrusorTremor = (sim.sphincterToneStrain > 0.3) ? (sim.sphincterToneStrain * 0.045) : 0.0;
+
+      const pos = bladderMesh.geometry.attributes.position;
+      const springK = currentPhysics.springK;
+      const damping = currentPhysics.damping;
+
+      const jiggleHarmonic1 = Math.sin(sim.globalJigglePhase) * sim.jiggleIntensity * 0.18;
+      const jiggleHarmonic2 = Math.cos(sim.globalJigglePhase * 1.5) * sim.jiggleIntensity * 0.12;
+
+      for (let i = 0; i < pos.count; i++) {
+        const base = bladderBaseVertices[i];
+        const cx = pos.getX(i);
+        const cy = pos.getY(i);
+        const cz = pos.getZ(i);
+
+        sim.viscoDentMemory[i] = Math.max(0, sim.viscoDentMemory[i] - dt * 1.4);
+        const dentOffset = sim.viscoDentMemory[i];
+
+        const wrinkleNoise = (
+          Math.sin(base.x * 7.0 + base.y * 9.0) *
+          Math.cos(base.z * 8.0 + base.y * 5.0)
+        ) * wrinkleAmp;
+
+        const sloshPushX = (Math.sin(sim.sloshAngleX) * (base.y / 2.35) * 0.22) + (sim.fluidCoreOffset.x * 0.35);
+        const sloshPushZ = (Math.sin(sim.sloshAngleZ) * (base.y / 2.35) * 0.22) + (sim.fluidCoreOffset.z * 0.35);
+
+        const theta = Math.atan2(base.z, base.x);
+        const phi = Math.acos(Math.max(-1, Math.min(1, base.y / 2.35)));
+        const jiggleWobble = Math.sin(theta * 3.0 + sim.globalJigglePhase) * Math.sin(phi * 2.0) * jiggleHarmonic1 +
+                             Math.cos(theta * 2.0 - sim.globalJigglePhase * 1.2) * jiggleHarmonic2;
+
+        let rippleDisplacement = 0;
+        for (let r = 0; r < sim.ripples.length; r++) {
+          const rip = sim.ripples[r];
+          const dist = base.distanceTo(rip.center);
+          const waveDist = Math.abs(dist - rip.radius);
+          if (waveDist < 0.65) {
+            rippleDisplacement += Math.cos((waveDist / 0.65) * (Math.PI / 2)) * rip.amplitude;
+          }
+        }
+
+        const tremorX = (Math.random() - 0.5) * detrusorTremor;
+        const tremorY = (Math.random() - 0.5) * detrusorTremor;
+        const tremorZ = (Math.random() - 0.5) * detrusorTremor;
+
+        const sagY = base.y > 0 ? -sagFactor * (base.y / 2.35) : 0;
+        const flaccidSpread = base.y < 0 ? (1.0 + (1.0 - fillRatio) * 0.2) : 1.0;
+
+        const totalRadMod = Math.max(0.2, (1.0 + jiggleWobble + rippleDisplacement - dentOffset));
+
+        const tx = ((base.x * flaccidSpread * bulgeXZ + wrinkleNoise) * inflationScale + sloshPushX + tremorX) * totalRadMod;
+        const ty = ((base.y * scaleY + sagY + wrinkleNoise * 0.5) * inflationScale + tremorY) * totalRadMod;
+        const tz = ((base.z * flaccidSpread * bulgeXZ + wrinkleNoise) * inflationScale + sloshPushZ + tremorZ) * totalRadMod;
+
+        const fx = (tx - cx) * springK;
+        const fy = (ty - cy) * springK;
+        const fz = (tz - cz) * springK;
+
+        const vel = bladderVelocities[i];
+        vel.x = (vel.x + fx * dt) * damping;
+        vel.y = (vel.y + fy * dt) * damping;
+        vel.z = (vel.z + fz * dt) * damping;
+
+        pos.setXYZ(i, cx + vel.x * dt, cy + vel.y * dt, cz + vel.z * dt);
+      }
+      pos.needsUpdate = true;
+      bladderMesh.geometry.computeVertexNormals();
+
+      // Translucency updates
+      const stressRatio = Math.min(1.0, fillRatio);
+      const pulseIntensity = (sim.sphincterToneStrain > 0.3) ? (Math.sin(Date.now() * 0.015) * 0.35 + 0.35) : 0;
+      bladderMesh.material.emissiveIntensity = 0.22 + stressRatio * 0.4 + pulseIntensity;
+      bladderMesh.material.roughness = THREE.MathUtils.lerp(0.35, 0.08, stressRatio);
+      bladderMesh.material.thickness = THREE.MathUtils.lerp(1.8, 0.45, stressRatio);
+      bladderMesh.material.transmission = THREE.MathUtils.lerp(0.45, 0.78, stressRatio);
+
+      // Sphincter Mesh
+      const sphPos = sphincterMesh.geometry.attributes.position;
+      const dil = sim.isStressLeaking ? 0.35 : sim.sphincterDilation;
+      const timeSec = performance.now() * 0.001;
+
+      const twitchOsc = Math.sin(timeSec * 38.0) * Math.cos(timeSec * 23.0);
+      const twitchAmp = sim.sphincterToneStrain * 0.08;
+      const clenchPucker = sim.isClenching ? 0.65 : 1.0;
+
+      for (let i = 0; i < sphPos.count; i++) {
+        const v = sphincterBaseVertices[i];
+        const puckerWave = Math.sin(v.theta * 8.0) * 0.045 * (1.0 - dil);
+        const sectorTwitch = Math.sin(v.theta * 4.0 + timeSec * 30.0) * twitchAmp * twitchOsc;
+
+        const funnelRadius = THREE.MathUtils.lerp(
+          (v.r + puckerWave + sectorTwitch) * clenchPucker,
+          v.r * (1.0 + (v.y > 0 ? 0.9 : 1.6)),
+          dil
+        );
+
+        const newX = Math.cos(v.theta) * funnelRadius;
+        const newZ = Math.sin(v.theta) * funnelRadius;
+
+        sphPos.setXYZ(i, newX, v.y, newZ);
+      }
+      sphPos.needsUpdate = true;
+      sphincterMesh.geometry.computeVertexNormals();
+
+      sphincterMesh.position.y = -1.65 * inflationScale * scaleY - 0.2;
+
+      // Internal fluid body
+      const liquidFillHeight = -1.8 * inflationScale * scaleY + (fillRatio * 3.6 * inflationScale * scaleY);
+      fluidClipPlane.constant = liquidFillHeight + 0.2;
+      fluidClipPlane.normal.set(
+        Math.sin(sim.sloshAngleX * 0.4),
+        -1,
+        Math.sin(sim.sloshAngleZ * 0.4)
+      ).normalize();
+
+      const fluidBodyScale = inflationScale * 0.94 * (1.0 + jiggleHarmonic1 * 0.5);
+      innerFluidBody.scale.set(fluidBodyScale * bulgeXZ, fluidBodyScale * scaleY, fluidBodyScale * bulgeXZ);
+      innerFluidBody.position.set(sim.fluidCoreOffset.x * 0.4, 0.2, sim.fluidCoreOffset.z * 0.4);
+
+      const h = sim.hydration;
+      innerFluidBody.material.color.setRGB(1.0, 0.72 + h * 0.22, 0.1 + h * 0.6);
+
+      // Ureter Jet Animations
+      ureterJets.forEach(j => {
+        if (j.timer > 0) {
+          j.timer -= dt;
+          j.mesh.visible = true;
+          const trigoneY = 0.5 * inflationScale;
+          const trigoneX = j.side === 'left' ? -0.8 * inflationScale : 0.8 * inflationScale;
+          j.mesh.position.set(trigoneX, trigoneY, -0.2);
+          j.mesh.rotation.z = j.side === 'left' ? 0.6 : -0.6;
+          j.mesh.scale.setScalar(Math.min(1.0, j.timer * 2.0));
+        } else {
+          j.mesh.visible = false;
+        }
+      });
+
+      // Continuous Volumetric Jet Stream
+      const isStreaming = sim.flowRate > 0;
+      continuousStreamMesh.visible = isStreaming;
+
+      if (isStreaming) {
+        const streamPos = streamGeo.attributes.position;
+        const exitY = sphincterMesh.position.y - 0.55;
+        const streamLength = 5.5;
+        const jetVel = Math.min(1.0, sim.flowRate / 30.0);
+        const streamRadius = THREE.MathUtils.lerp(0.04, 0.16, dil);
+
+        for (let i = 0; i < streamPos.count; i++) {
+          const segY = (i % STREAM_SEGMENTS) / STREAM_SEGMENTS;
+          const y = exitY - (segY * streamLength);
+          
+          const sloshX = Math.sin(sim.sloshAngleX) * segY * 0.4;
+          const sloshZ = Math.sin(sim.sloshAngleZ) * segY * 0.4;
+          const waveRip = Math.sin(timeSec * 24.0 + segY * 18.0) * (0.015 * segY);
+
+          const r = (streamRadius * (1.0 - segY * 0.35) + waveRip) * (0.5 + jetVel * 0.5);
+          const theta = ((i / STREAM_SEGMENTS) % 16) * (Math.PI * 2 / 16);
+
+          streamPos.setXYZ(i, Math.cos(theta) * r + sloshX, y, Math.sin(theta) * r + sloshZ);
+        }
+        streamPos.needsUpdate = true;
+        streamGeo.computeVertexNormals();
+
+        // Splash Particles
+        const sp = splashParticles.geometry.attributes.position.array;
+        const splashBaseY = exitY - streamLength;
+
+        for (let i = 0; i < SPLASH_COUNT; i++) {
+          if (sp[i * 3 + 1] <= splashBaseY - 1.5 || sp[i * 3 + 1] === -999) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.random() * (0.25 * jetVel);
+            sp[i * 3 + 0] = Math.cos(angle) * dist;
+            sp[i * 3 + 1] = splashBaseY + (Math.random() * 0.2);
+            sp[i * 3 + 2] = Math.sin(angle) * dist;
+          } else {
+            sp[i * 3 + 1] -= (6.0 + Math.random() * 4.0) * dt;
+          }
+        }
+        splashParticles.geometry.attributes.position.needsUpdate = true;
+      } else {
+        const sp = splashParticles.geometry.attributes.position.array;
+        for (let i = 0; i < SPLASH_COUNT; i++) sp[i * 3 + 1] = -999;
+        splashParticles.geometry.attributes.position.needsUpdate = true;
+      }
+
+      audio.update(dt);
+    }
+
+    // --- CYSTOMETRY LIVE 2D CANVAS STRIP CHART ---
+    function renderCystometryChart() {
+      if (currentTab !== 'telemetry') return;
+      const cvs = document.getElementById('cvsCystometry');
+      if (!cvs) return;
+      const ctx = cvs.getContext('2d');
+      const w = (cvs.width = cvs.clientWidth);
+      const h = (cvs.height = cvs.clientHeight);
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid background
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.lineWidth = 1;
+      for (let y = 0; y < h; y += 24) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      const hist = sim.telemetryHistory;
+      if (hist.length < 2) return;
+
+      // Draw Pressure Curve (Amber)
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let i = 0; i < hist.length; i++) {
+        const x = (i / (hist.length - 1)) * w;
+        const normP = Math.min(1.0, hist[i].pressure / 80.0);
+        const y = h - (normP * (h - 16)) - 8;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Draw Volume Fill Curve (Cyan)
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < hist.length; i++) {
+        const x = (i / (hist.length - 1)) * w;
+        const normV = Math.min(1.0, hist[i].volume / 750.0);
+        const y = h - (normV * (h - 16)) - 8;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Telemetry Summary Card Updates
+      document.getElementById('lblTelemetryLeak').innerText = `${Math.round(sim.totalLeakedVolume)} ml`;
+      document.getElementById('lblMaxPressure').innerText = `${sim.maxRecordedPressure.toFixed(1)} cmH₂O`;
+    }
+
+    // --- TELEMETRY & UI UPDATER ---
+    function updateUI() {
+      const fillPct = Math.min(100, Math.round((sim.volume / sim.maxCapacity) * 100));
+      document.getElementById('txtVol').innerText = `${Math.round(sim.volume)} / ${sim.maxCapacity} ml`;
+      document.getElementById('barVol').style.width = `${fillPct}%`;
+
+      const staminaPct = Math.min(100, Math.round(sim.kegelStamina * 100));
+      document.getElementById('txtStamina').innerText = `${staminaPct}%`;
+      document.getElementById('barStamina').style.width = `${staminaPct}%`;
+
+      document.getElementById('txtFlow').innerText = `${sim.flowRate.toFixed(1)} ml/s`;
+
+      const pressEl = document.getElementById('txtPress');
+      pressEl.innerText = `${sim.pressure.toFixed(1)} cmH₂O`;
+
+      const sphEl = document.getElementById('txtSphincter');
+      const strainPct = Math.round(sim.sphincterToneStrain * 100);
+
+      if (sim.involuntaryVoiding) {
+        sphEl.innerText = `COLLAPSE (100%)`;
+        sphEl.className = 'text-xs sm:text-sm font-black font-mono text-red-500 animate-pulse';
+      } else if (sim.isStressLeaking) {
+        sphEl.innerText = `LEAKING (${strainPct}% Strain)`;
+        sphEl.className = 'text-xs sm:text-sm font-black font-mono text-rose-500 animate-pulse';
+      } else if (sim.isClenching) {
+        sphEl.innerText = `CLENCHED BRACED`;
+        sphEl.className = 'text-xs sm:text-sm font-black font-mono text-cyan-400';
+      } else if (sim.isActivelyVoiding) {
+        sphEl.innerText = `DILATING (${Math.round(sim.sphincterDilation * 100)}%)`;
+        sphEl.className = 'text-xs sm:text-sm font-black font-mono text-amber-400';
+      } else if (sim.sphincterToneStrain > 0.4) {
+        sphEl.innerText = `STRAINED (${strainPct}%)`;
+        sphEl.className = 'text-xs sm:text-sm font-black font-mono text-amber-400 animate-pulse';
+      } else {
+        sphEl.innerText = `RESTING (${strainPct}%)`;
+        sphEl.className = 'text-xs sm:text-sm font-black font-mono text-rose-400';
+      }
+
+      const badge = document.getElementById('badgeState');
+      const sub = document.getElementById('subState');
+      const vignette = document.getElementById('screenVignette');
+      const iconWrap = document.getElementById('organIconWrap');
+
+      if (sim.involuntaryVoiding) {
+        badge.innerText = 'INVOLUNTARY VOID';
+        badge.className = 'text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-red-950/90 text-red-400 border border-red-800 animate-pulse';
+        sub.innerText = 'Total sphincter failure!';
+        pressEl.className = 'text-xs sm:text-sm font-black font-mono text-red-500 animate-pulse';
+        vignette.classList.add('fatigue-vignette');
+        vignette.style.opacity = '0.95';
+        iconWrap.style.transform = 'scale(1.2)';
+      } else if (sim.isStressLeaking) {
+        badge.innerText = 'STRESS LEAK';
+        badge.className = 'text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-950/90 text-rose-400 border border-rose-800 animate-pulse';
+        sub.innerText = 'Equilibrating peak overpressure...';
+        pressEl.className = 'text-xs sm:text-sm font-black font-mono text-rose-400';
+        vignette.style.opacity = '0.7';
+        iconWrap.style.transform = 'scale(1.1)';
+      } else if (fillPct > 80) {
+        badge.innerText = 'OVERPRESSURE';
+        badge.className = 'text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-red-950/90 text-red-400 border border-red-800 animate-pulse';
+        sub.innerText = 'High retention wall stress';
+        pressEl.className = 'text-xs sm:text-sm font-black font-mono text-red-500';
+        vignette.style.opacity = '0.35';
+        iconWrap.style.transform = 'scale(1)';
+      } else if (fillPct > 40) {
+        badge.innerText = 'DISTENDED';
+        badge.className = 'text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-400 border border-amber-800/60';
+        sub.innerText = 'Active elastic stretch';
+        pressEl.className = 'text-xs sm:text-sm font-black font-mono text-amber-400';
+        vignette.style.opacity = '0';
+        iconWrap.style.transform = 'scale(1)';
+      } else {
+        badge.innerText = 'NOMINAL';
+        badge.className = 'text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/60';
+        sub.innerText = 'App Runtime • Hydro-Acoustics';
+        pressEl.className = 'text-xs sm:text-sm font-black font-mono text-emerald-400';
+        vignette.style.opacity = '0';
+        iconWrap.style.transform = 'scale(1)';
+      }
+    }
+
+    function onWindowResize() {
+      const container = document.getElementById('webglContainer');
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    // App Visibility & Lifecycle Sleep Management
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (audio.ctx && audio.ctx.state === 'running') audio.ctx.suspend();
+      } else {
+        if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
+      }
+    });
+
+    let lastTime = performance.now();
+
+    function animate(timestamp) {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.08, (timestamp - lastTime) / 1000);
+      lastTime = timestamp;
+
+      updatePhysics(dt);
+      updateUI();
+      renderCystometryChart();
+
+      renderer.render(scene, camera);
+    }
+
+    window.onload = function() {
+      init3D();
+      animate(performance.now());
+    };
+  </script>
+</body>
+</html>
