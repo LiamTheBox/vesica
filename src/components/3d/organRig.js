@@ -247,6 +247,41 @@ function ureterPoint(ureter, u, target) {
   return ureter.curve.getPoint(curveT(ureter.arc, u), target)
 }
 
+// The sphincter as a surface of revolution, (radius, height) from the bottom up: the
+// urethra down to the outlet, the thick muscular ring at the bladder neck, then the
+// neck rising into the bladder (hidden inside the wall). It spans the same height as
+// the original's tube, so it sits and attaches where that did.
+const SPHINCTER_PROFILE = [
+  [0.1, -0.6], [0.11, -0.48], [0.125, -0.34], [0.15, -0.25],
+  [0.26, -0.17], [0.38, -0.09], [0.43, 0.01], [0.42, 0.1], [0.35, 0.19],
+  [0.28, 0.3], [0.29, 0.45], [0.32, 0.6],
+]
+// Puckered folds around the ring, like a drawstring.
+const SPHINCTER_FOLDS = 14
+const SPHINCTER_COLORS = { neck: 0xe11d48, ring: 0xa30f33, urethra: 0xfb7185 }
+
+// How much a height on the profile belongs to the muscle ring, or to the urethra (0..1).
+export const ringWeight = (y) => THREE.MathUtils.smoothstep(y, -0.27, -0.15) * (1 - THREE.MathUtils.smoothstep(y, 0.16, 0.28))
+export const urethraWeight = (y) => 1 - THREE.MathUtils.smoothstep(y, -0.3, -0.18)
+
+export function createSphincterGeometry() {
+  const curve = new THREE.SplineCurve(SPHINCTER_PROFILE.map(([r, y]) => new THREE.Vector2(r, y)))
+  const geo = new THREE.LatheGeometry(curve.getPoints(40), 48)
+  // Colour by part: deep red muscle ring, pinker urethra.
+  const pos = geo.attributes.position
+  const colors = new Float32Array(pos.count * 3)
+  const neck = new THREE.Color(SPHINCTER_COLORS.neck)
+  const ring = new THREE.Color(SPHINCTER_COLORS.ring)
+  const urethra = new THREE.Color(SPHINCTER_COLORS.urethra)
+  const c = new THREE.Color()
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i)
+    c.copy(neck).lerp(ring, ringWeight(y)).lerp(urethra, urethraWeight(y)).toArray(colors, i * 3)
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  return geo
+}
+
 export function createOrganRig() {
   const bladderGeo = new THREE.SphereGeometry(2.35, 64, 48)
   const bPos = bladderGeo.attributes.position
@@ -290,16 +325,20 @@ export function createOrganRig() {
     tremor.set([Math.cos(tp), Math.sin(tp), Math.cos(tp * 1.3), Math.sin(tp * 1.3), Math.cos(tp * 0.7), Math.sin(tp * 0.7)], i * 6)
   }
 
-  const sphincterGeo = new THREE.CylinderGeometry(0.35, 0.22, 1.2, 48, 16, false)
+  const sphincterGeo = createSphincterGeometry()
   const sPos = sphincterGeo.attributes.position
   const sCount = sPos.count
-  // r, y, cos θ, sin θ, sin 8θ, sin 4θ, cos 4θ per vertex
-  const sphincterBase = new Float64Array(sCount * 7)
+  // r, y, cos θ, sin θ, fold pattern, sin 4θ, cos 4θ, ring weight, urethra weight per vertex
+  const sphincterBase = new Float64Array(sCount * 9)
   for (let i = 0; i < sCount; i++) {
     const x = sPos.getX(i), y = sPos.getY(i), z = sPos.getZ(i)
     const theta = Math.atan2(z, x)
-    sphincterBase.set([Math.hypot(x, z), y, Math.cos(theta), Math.sin(theta), Math.sin(theta * 8.0), Math.sin(theta * 4.0), Math.cos(theta * 4.0)], i * 7)
+    sphincterBase.set([
+      Math.hypot(x, z), y, Math.cos(theta), Math.sin(theta), Math.sin(theta * SPHINCTER_FOLDS),
+      Math.sin(theta * 4.0), Math.cos(theta * 4.0), ringWeight(y), urethraWeight(y),
+    ], i * 9)
   }
+  let clenchLevel = 0 // eases in and out rather than snapping
 
   const streamGeo = new THREE.CylinderGeometry(0.12, 0.08, 6.0, 16, STREAM_SEGMENTS, true)
   const streamPos = streamGeo.attributes.position
@@ -467,25 +506,27 @@ export function createOrganRig() {
       updateUreter(ureter, wallPoint)
     }
 
-    // Sphincter
+    // Sphincter: a clench clamps the ring and deepens its folds, voiding opens it all
+    // up, and strain makes it twitch (the rippling shake of the original's tube).
     const dil = sim.isStressLeaking ? 0.35 : sim.sphincterDilation
     const twitchOsc = Math.sin(timeSec * 38.0) * Math.cos(timeSec * 23.0)
     const twitch = sim.sphincterToneStrain * 0.08 * twitchOsc
     const s30 = Math.sin(timeSec * 30.0), c30 = Math.cos(timeSec * 30.0)
-    const clenchPucker = sim.isClenching ? 0.65 : 1.0
+    clenchLevel += ((sim.isClenching ? 1 : 0) - clenchLevel) * Math.min(1, dt * 14)
+    const foldDepth = (0.02 + 0.03 * clenchLevel) * (1.0 - dil)
     const sArr = sPos.array
     for (let i = 0; i < sCount; i++) {
-      const k = i * 7
+      const k = i * 9
       const r = sphincterBase[k], y = sphincterBase[k + 1]
+      const ring = sphincterBase[k + 7], urethra = sphincterBase[k + 8]
       const ripple = sphincterBase[k + 5] * c30 + sphincterBase[k + 6] * s30 // sin(4θ + 30t)
-      const funnelRadius = THREE.MathUtils.lerp(
-        (r + sphincterBase[k + 4] * 0.045 * (1.0 - dil) + ripple * twitch) * clenchPucker,
-        r * (1.0 + (y > 0 ? 0.9 : 1.6)),
-        dil,
-      )
-      sArr[i * 3] = sphincterBase[k + 2] * funnelRadius
+      const squeeze = 1.0 - clenchLevel * (0.1 + 0.12 * ring + 0.3 * urethra)
+      const closed = (r + sphincterBase[k + 4] * foldDepth * ring + ripple * twitch) * squeeze
+      const open = r * (1.0 + 0.25 * ring + 1.3 * urethra)
+      const radius = THREE.MathUtils.lerp(closed, open, dil)
+      sArr[i * 3] = sphincterBase[k + 2] * radius
       sArr[i * 3 + 1] = y
-      sArr[i * 3 + 2] = sphincterBase[k + 3] * funnelRadius
+      sArr[i * 3 + 2] = sphincterBase[k + 3] * radius
     }
     sPos.needsUpdate = true
     computeNormals(sphincterGeo)

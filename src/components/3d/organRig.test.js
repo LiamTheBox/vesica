@@ -106,3 +106,53 @@ describe('urine inside the wall', () => {
     expect(urineScale(20, 750)).toBeLessThan(0.5)
   })
 })
+
+describe('sphincter', () => {
+  const widest = (rig, inBand) => {
+    const pos = rig.sphincterGeo.attributes.position
+    let max = 0
+    for (let i = 0; i < pos.count; i++) if (inBand(pos.getY(i))) max = Math.max(max, Math.hypot(pos.getX(i), pos.getZ(i)))
+    return max
+  }
+  const ring = (rig) => widest(rig, (y) => Math.abs(y - 0.01) < 0.06)
+  const outlet = (rig) => widest(rig, (y) => y < -0.55)
+  const play = (rig, sim, seconds, from = 0) => {
+    for (let f = 0; f < seconds * 60; f++) rig.update(sim, 1 / 60, from + f / 60, {})
+  }
+
+  it('is a muscular ring above a narrower urethra', () => {
+    const rig = createOrganRig()
+    play(rig, createSimState(), 0.5)
+    expect(ring(rig)).toBeGreaterThan(outlet(rig) * 2.5)
+  })
+
+  it('clamps on a clench and opens to void', () => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    play(rig, sim, 0.5)
+    const rest = { ring: ring(rig), outlet: outlet(rig) }
+    sim.isClenching = true
+    play(rig, sim, 0.5, 0.5)
+    expect(ring(rig)).toBeLessThan(rest.ring * 0.9)
+    sim.isClenching = false
+    sim.sphincterDilation = 1
+    play(rig, sim, 0.5, 1)
+    expect(outlet(rig)).toBeGreaterThan(rest.outlet * 2)
+  })
+
+  it('shakes under strain and holds still without', () => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    const shape = (t) => {
+      rig.update(sim, 1 / 60, t, {})
+      return Array.from(rig.sphincterGeo.attributes.position.array)
+    }
+    play(rig, sim, 0.5)
+    const still = shape(1.0)
+    expect(shape(1.05)).toEqual(still)
+    sim.sphincterToneStrain = 0.85
+    const a = shape(2.0)
+    const b = shape(2.05)
+    expect(Math.max(...a.map((v, i) => Math.abs(v - b[i])))).toBeGreaterThan(0.01)
+  })
+})

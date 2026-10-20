@@ -213,8 +213,9 @@ export default function Organ() {
         />
       </mesh>
 
+      {/* Sphincter: the muscle ring at the bladder neck and the urethra below it. */}
       <mesh ref={sphincterRef} geometry={rig.sphincterGeo} renderOrder={4} position={[0, -2.15, -0.2]}>
-        <meshPhysicalMaterial color={0xe11d48} emissive={0x4c0519} emissiveIntensity={0.35} roughness={0.25} clearcoat={0.8} clearcoatRoughness={0.15} side={THREE.DoubleSide} />
+        <meshPhysicalMaterial vertexColors color={0xffffff} emissive={0x4c0519} emissiveIntensity={0.35} roughness={0.28} clearcoat={0.8} clearcoatRoughness={0.15} side={THREE.DoubleSide} />
       </mesh>
 
       <mesh ref={streamRef} geometry={rig.streamGeo} renderOrder={5} visible={false}>

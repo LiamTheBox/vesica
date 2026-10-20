@@ -61,10 +61,14 @@ test('the stage leaves real room for the bladder', async ({ page }) => {
 
 test('a full bladder is framed inside the stage', async ({ page }, testInfo) => {
   await startApp(page)
-  await page.evaluate(() => window.__vesica.setState({ volume: 750, baseDrip: 0, urgeWaveTimer: 999 }))
-  await page.waitForTimeout(4000) // let the wall inflate (springs run on frame time)
+  // Full and held still: paused, no jiggle or strain tremor, so the wall's springs
+  // settle on one shape (they run on frame time, so how long that takes varies).
+  await page.evaluate(() => {
+    window.__vesica.pause()
+    window.__vesica.setState({ volume: 750, jiggleIntensity: 0, sphincterToneStrain: 0, sloshAngleX: 0, sloshAngleZ: 0 })
+  })
 
-  const { box, stage } = await page.evaluate(() => {
+  const measure = () => page.evaluate(() => {
     const { camera, scene, size } = window.__vesica.three()
     let wall
     scene.traverse((o) => { if (!wall && o.isMesh && o.renderOrder === 10) wall = o })
@@ -80,9 +84,17 @@ test('a full bladder is framed inside the stage', async ({ page }, testInfo) => 
     const r = document.querySelector('[data-testid="stage"]').getBoundingClientRect()
     return { box: { minX, minY, maxX, maxY }, stage: { x: r.x, y: r.y, width: r.width, height: r.height } }
   })
+  let { box, stage } = await measure()
+  for (let tries = 0; tries < 60; tries++) {
+    await page.waitForTimeout(400)
+    const next = await measure()
+    const moved = Math.max(...['minX', 'minY', 'maxX', 'maxY'].map((k) => Math.abs(next.box[k] - box[k])))
+    ;({ box, stage } = next)
+    if (moved < 0.5) break
+  }
   await page.screenshot({ path: testInfo.outputPath('full-bladder.png') })
 
-  const tolerance = 6 // springs still settling
+  const tolerance = 6
   expect(box.minY).toBeGreaterThanOrEqual(stage.y - tolerance)
   expect(box.maxY).toBeLessThanOrEqual(stage.y + stage.height + tolerance)
   expect(box.minX).toBeGreaterThanOrEqual(stage.x - tolerance)

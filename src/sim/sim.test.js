@@ -29,13 +29,25 @@ function quietSim(volume) {
   return sim
 }
 
+// Deliberate departures from the original, each one requested.
+const CHANGED_FROM_ORIGINAL = {
+  kegelRecoverRate: 0.64, // the original's 0.16, made 4x faster
+}
+
 describe('initial state', () => {
-  it('matches every shared field of the original `sim`', () => {
+  it('matches every shared field of the original `sim`, apart from the requested changes', () => {
     const original = extractOriginalConst('sim')
     const port = createSimState()
     const shared = Object.keys(original).filter((key) => key in port)
     expect(shared.length).toBeGreaterThan(40)
-    for (const key of shared) expect(port[key], key).toEqual({ ...original }[key])
+    for (const key of shared) {
+      if (key in CHANGED_FROM_ORIGINAL) {
+        expect(original[key], key).not.toEqual(CHANGED_FROM_ORIGINAL[key])
+        expect(port[key], key).toEqual(CHANGED_FROM_ORIGINAL[key])
+      } else {
+        expect(port[key], key).toEqual({ ...original }[key])
+      }
+    }
   })
 })
 
@@ -55,15 +67,17 @@ describe('pressure', () => {
 })
 
 describe('kegel stamina', () => {
-  it('drains 0.22/s while clenching and recovers 0.16/s after', () => {
+  it('drains 0.22/s while clenching and recovers 0.64/s after (4x the original)', () => {
     const sim = quietSim(150)
     startClench(sim, [])
     run(sim, 1)
     expect(sim.kegelStamina).toBeCloseTo(0.78, 6)
 
     sim.isClenching = false
-    run(sim, 1)
+    run(sim, 0.25)
     expect(sim.kegelStamina).toBeCloseTo(0.94, 6)
+    run(sim, 1)
+    expect(sim.kegelStamina).toBe(1)
   })
 
   it('gives out when exhausted and clears the label above 15%', () => {
@@ -74,9 +88,9 @@ describe('kegel stamina', () => {
     expect(sim.isClenching).toBe(false)
     expect(sim.clenchExhausted).toBe(true)
 
-    run(sim, 0.5)
-    expect(sim.clenchExhausted).toBe(true) // ~0.1 stamina, still below 15%
-    run(sim, 0.5)
+    run(sim, 0.1)
+    expect(sim.clenchExhausted).toBe(true) // ~0.08 stamina, still below 15%
+    run(sim, 0.2)
     expect(sim.clenchExhausted).toBe(false)
   })
 

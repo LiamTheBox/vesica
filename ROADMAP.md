@@ -73,6 +73,9 @@ original's difficulty returning, not a regression.
   first and are scored (commute ≤ 20 ml, precision 200 ± 10 ml), with live status on the challenge cards;
   "VOIDING…" label; the three alert banners show independently, as in the original.
 
+- ☑ **Changed later (requested):** Kegel stamina recovers at 0.64/s, 4× the original's 0.16/s (a full
+  refill takes ~1.5 s instead of ~6 s). The parity test lists it as a deliberate difference.
+
 **Automated (unit), 34 tests in `src/sim/sim.test.js`:** initial state equals the original's `sim` field by field
 (read from the HTML); pressure curve at fill 0.2/0.5/0.8/1.0 and with a cough; stamina 0.22/s drain and 0.16/s
 recovery; exhaustion and the 15 % label reset; 5 % clench floor; void starts between 0.95 s and 1.05 s, can't
@@ -111,6 +114,10 @@ voice no more than every 10 s, challenges report results.
   behind the membrane. In the cutaway, new cut-face shaders (`cutMaterials.js`) replace the flat colour: urine
   in amber that deepens with depth, lit from above, with drifting caustic light, rising bubbles and a pale lining
   at its edge; the wall as fibrous red muscle with a darker outer layer.
+- ☑ **Sphincter redesigned (requested):** the straight red tube is now a thick muscular ring at the bladder
+  neck, puckered with drawstring folds, above a narrower pink urethra (a lathe-turned profile with vertex
+  colours). A clench eases in, clamps the ring and deepens the folds; voiding opens the ring and widens the
+  urethra for the stream; strain keeps the original's rippling twitch.
 
 **Automated (unit):** 9 interaction tests against the original's numbers (13 pokes → strain 1.0; 7 slaps on a
 full bladder + cough → total failure); cutaway plane removes the near half from front, back, side and above.
@@ -330,5 +337,7 @@ Requested: a story mode. A day in the life of one bladder, told in short chapter
 ## M10 — Release (optional) ☐
 
 - ☐ Replace template `README.md` with real docs (run, test, deploy).
-- ☐ Deploy as a static site (HTTPS) for phone access.
+- ◐ Deploy as a static site (HTTPS) for phone access: `.github/workflows/deploy.yml` builds on every push to
+  `main` (lint, unit tests, `vite build --base=/vesica/`) and publishes to https://liamthebox.github.io/vesica/.
+  Needs Settings → Pages → Source: GitHub Actions.
 - ☐ Only if an app-store build is wanted: Capacitor wrapper (native haptics, and native speech on iOS).

@@ -31,7 +31,7 @@ export function createSimState() {
     clenchExhausted: false,
     kegelStamina: 1.0,
     kegelFatigueRate: 0.22,
-    kegelRecoverRate: 0.16,
+    kegelRecoverRate: 0.64, // 4x the original's 0.16 (requested)
     sphincterToneStrain: 0.0,
     detrusorSpasmIntensity: 0.0,
     sphincterDilation: 0.0,
