@@ -1,7 +1,8 @@
 # Vesica 3D
 
 A soft-body bladder simulator for touch screens, built with React, Three.js (React Three Fiber) and Vite.
-Hold on through urges, sneezes and drinks in the arcade, or play freely in the sandbox.
+Hold on through urges, sneezes and drinks in the arcade, play quick microgames about keeping control, or play
+freely in the sandbox. It works offline once installed, and everything plays with one finger or a mouse.
 
 Live: https://liamthebox.github.io/vesica/
 
@@ -50,11 +51,13 @@ Pushing to `main` deploys the app to GitHub Pages.
 ## Where things are
 
 - `src/sim/`: the simulation (physiology, arcade rules, drinks); `src/sim/micro/`: the microgames' rules
-- `src/feedback/`: what the bladder feels (`mood.js`), says (`reactions.js`) and how events sound and buzz
-- `src/audio/`: the sound engine and the voice lines (`lines.js`)
-- `src/components/3d/`: the bladder, sphincter, ureters and stream; `src/components/micro/`: the microgames' drawing
+- `src/feedback/`: what the bladder feels (`mood.js`), says (`reactions.js`) and does (`emotes.js`), what it
+  notices of the camera (`camera.js`), and how events sound and buzz (`feedback.js`)
+- `src/audio/`: the sound effects (`AudioManager.js`), the voice (`voice.js`) and its lines (`lines.js`)
+- `src/components/3d/`: the bladder (`organGeometry.js` its shape, `organRig.js` its movement each frame,
+  `bodyLanguage.js` its moves), the ureters and the stream; `src/components/micro/`: the microgames' drawing
 - `src/components/ui/`: the HUD, buttons and menus
 - `src/stories/`: the optional stories, one Markdown file per chapter
-- `ROADMAP.md`: what's done and what's next; `KNOWN_ISSUES.md`: open problems; `BACKLOG.md`: cleanups and
-  additions nobody has asked for yet
+- `ROADMAP.md`: what's done and the open phone checks; `KNOWN_ISSUES.md`: open problems; `BACKLOG.md`:
+  cleanups and additions nobody has asked for yet
 - `Vesica 3D Mobile Web App.html`: the original single-file game this was ported from (open it in a browser)

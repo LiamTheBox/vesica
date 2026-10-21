@@ -1,496 +1,97 @@
-# Vesica 3D — Port Parity & Mobile Roadmap
+# Vesica 3D — Roadmap
 
-Goal: make the React/Vite port play like the original single-file game
-(`Vesica 3D Mobile Web App.html`), then make it a solid touch-first mobile app (installable PWA).
+Goal: make the React/Vite port play like the original single-file game (`Vesica 3D Mobile Web App.html`), then
+make it a solid touch-first mobile app (installable, offline PWA).
 
-Every milestone ends with a **gate**. A milestone is done only when its gate passes:
-
-1. `npm run check` is green (lint + unit tests + production build).
-2. That milestone's automated checks pass (unit and/or Playwright mobile-emulation tests).
-3. The manual checklist has been run on a real phone (some things, like haptics, speech, device
-   motion and install, can't be emulated).
-4. Work is committed and tagged `m<N>`, so any milestone can be diffed or rolled back.
+Every milestone ended with a **gate**: `npm run check` green, that milestone's automated checks, a manual check on a
+real phone, and a commit tagged `m<N>`. This file keeps what's still open. What each milestone built, and the
+numbers measured on the way, are in its commits (`git log m<N-1>..m<N>`, `git show m<N>`).
 
 Status legend: ☐ todo · ◐ in progress · ☑ done
 
 ## Where things stand (2026-10-21)
 
-- **M0–M7:** code done, automated gates passed, tagged `m0`–`m7`. Every milestone's **phone check is still open**.
-- **After M7 (requested, 2026-10-20):** urine scales with the volume held over a thick muscle wall, with shaded cut
-  faces; the sphincter is a muscle ring above a urethra; Kegel recovers 4× faster and eases sphincter strain while held.
-- **Requested 2026-10-21:** new physiology (slow kidney fill, steeper pressure, tone-gated leaks, freeze and squeeze,
-  20 ml/s flow), **arcade mode as the default**, camera panning and closer zoom, and a new urine stream. See the
-  section below.
-- **From KNOWN_ISSUES (2026-10-21):** the wall keeps a smooth outside at any fill (the rugae fold only the lining,
-  which the urine is drawn with; the lower half eases out below the equator instead of stepping), and the ureters
-  come down behind the bladder and enter low on its back, beside the neck, without poking into the urine.
-- **One organ (requested 2026-10-21):** the bladder wall, neck, sphincter ring and urethra are one surface (no seam
-  or collar; the sphincter's clench, opening and twitch run on its rows), with the neck forward of the middle and
-  the base bulging behind it; the neck keeps its width as the dome fills. The cutaway is an upright section through
-  the neck, so it halves the sphincter and urethra too, from any angle. The detrusor visibly contracts in urge waves
-  and while voiding: taut and rounder, a squeeze running from the dome to the neck, bundles standing out, flushed
-  and thicker.
-- **Ureters and filling (requested 2026-10-21):** pale tan ureters (`ureter.js`) that come down the bladder's back and
-  slip into the wall at a shallow angle, flaring into a root pressed onto it with its rim under the surface. Urine
-  comes down them in amber boluses pushed by a squeeze (peristalsis), every 9 s at rest and up to every second
-  while drinks are filtered; each squirt kicks the wall out where it enters and ripples the urine. A slack
-  bladder folds like a deflated balloon (pleats gathered toward the neck, broad crumples), pulling smooth as it
-  fills or contracts.
-- **Drinks menu (requested 2026-10-21):** a Menu button on the drinks shelf opens a sheet of 40 drinks in six groups
-  (`src/sim/drinks.js`; the shelf's four keep the original's numbers), each showing the ml it adds, how long it takes
-  to arrive and whether it's a diuretic. The sheet scrolls when they don't fit; choosing one drinks it (the arcade's
-  drink bonus counts it) and closes the menu. The game keeps running while it's open, like the other sheets.
-- **Reactions and emotions (requested 2026-10-21, in six phases, one commit each):**
-  - **A, voice priority:** urgent lines (leak, failure, warnings, starting to void) cut in over anything; reactions cut in over
-    chatter and wait briefly for each other; the bladder's own chatter waits its turn (Settings: "Chats on its own
-    at most every", 30 s by default, half when critical). Lines show as subtitles with the voice off too.
-  - **B, the silent moments:** lines for squeezes, each kind of drink, an exhausted clench, a save, a leak ending,
-    a failure's aftermath, urges starting, passing or fading, the arcade's warnings, perfect clenches and level-ups;
-    each ureter squirt is heard from its side as it arrives.
-  - **C, mood** (`src/feedback/mood.js`): sleepy, calm, uneasy, desperate, panic, relieved, embarrassed, annoyed or
-    proud, from fill, strain and what just happened; it's the HUD's face and the subtitles' icon, and picks the
-    lines (a poke tickles empty and alarms full; a run of pokes annoys it; a drink when full is protested).
-  - **D, body language** (on the organ's `body` group, about the neck): breathing by mood, a bounce, a sigh, a huff,
-    a shudder, a droop, a shiver before a warned urge or sneeze, a flash on a creak, a blush while embarrassed.
-  - **E, feel by fill:** slack dents deep and wobbles floppily, full dents a little and springs back fast and
-    carries ripples; a poke or slap jolts the pressure up to 12 cmH2O when full. The flat 5 % strain per poke or
-    slap is unchanged, and the jolt never turns a spurt into a total failure.
-  - **F, the lines** (`src/audio/lines.js`): rewritten short (under 5 words on average, 8 at most), in one voice,
-    without the jargon.
-- **Arcade bladder without a limit (requested 2026-10-21):** in a run it keeps filling past full (the HUD reads
-  "/ ∞ ml"), but past full it feels no fuller: pressure, strain and urge waves hold at full's, so the run lasts as
-  long as the clench holds out, and holding past full keeps paying 5×. It grows without limit: once it outgrows
-  the frame the camera backs off as it grows, and the sphincter, urethra and ureters keep their size beside it. A
-  run that ends overfilled still feels no fuller than full until it's back down to full, so banking doesn't make
-  the gauge leap. The sandbox still stops at 125 %.
-- **Live:** https://liamthebox.github.io/vesica/ (deployed by GitHub Actions on every push to `main`). Check that
-  Settings → Pages → Source is "GitHub Actions", or the old branch publish can overwrite the app.
-- **Tests:** `npm run check` green (205 unit tests). The browser suite is not a requirement for now (the user's
-  choice: it loads the CPU): the specs were updated for the 2026-10-21 rules and `e2e/arcade.spec.js` was added,
-  but none of it has been run (last full run, before these changes: 85 passed). One flaky pinch-zoom test is open
-  (KNOWN_ISSUES).
-- **Microgames (M8, requested 2026-10-21):** a WarioWare-style mode of eleven abstract one-pointer games about
-  controlling the sphincter, each a spike the bladder survives or leaks under (see M8). Every mode plays with one
-  pointer, touch or mouse; Space presses on a keyboard.
-- **Stories (M9, requested 2026-10-21):** six short chapters to read if you want, in their own sheet (📖), never
-  narrated in play (see M9).
-- **Next:** phone checks (on the live site) for M0–M9.
+- **M0–M9:** code done, automated gates passed, tagged `m0`–`m9`. Every **phone check is still open** (below).
+- **Tests:** `npm run check` green (226 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
+  (your choice: it loads the CPU). Its specs follow the code but last ran before the 2026-10-21 changes (85 passed).
+- **Live:** https://liamthebox.github.io/vesica/, deployed by GitHub Actions on every push to `main`.
+- **Rules for everything new** (requested 2026-10-21): fully offline (nothing loaded from the network); every mode
+  plays with one pointer, touch or mouse (tap, hold, drag; Space presses on a keyboard; pinch, wheel and right-drag
+  only move the camera); the minigames are abstract sphincter-control challenges, and any story stays outside them,
+  optional to read. Safe for work: adults, no nudity or sexual framing.
+- **Next:** the phone checks; then whichever of the backlog's bigger additions you want ([BACKLOG.md](BACKLOG.md)).
 
----
+## Done
 
-## Requested 2026-10-21 — physiology, arcade mode, camera, stream ☑ (unit tests green; browser tests not run)
+| | What | Tag |
+|---|---|---|
+| M0 | Baseline; Vitest, and Playwright with phone emulation; the dev hook (`window.__vesica`); constants checked against the original | `m0` |
+| M1 | The original's simulation ported line by line, with an event bus; no React render per frame | `m1` |
+| M2 | Poke and slap as in the original; a water-balloon wall; the cutaway from any angle; a sphincter ring above a urethra | `m2` |
+| M3 | Live challenge banner, result card, best results kept on the device | `m3` |
+| M4 | The original's HUD states and red vignette; settings kept on the device | `m4` |
+| M5 | Per-finger touch, pinch, the tool rail, 44 px buttons, haptics, shake to slosh | `m5` |
+| M6 | Mobile layout grid, camera framed to the stage, bottom sheets, installable PWA | `m6` |
+| M7 | Quality tiers (Auto), per-frame work cut, pause in the background, code split | `m7` |
+| M8 | Microgames: eleven one-pointer games about sphincter control | `m8` |
+| M9 | Stories: six optional chapters in their own sheet | `m9` |
 
-**Physiology** (`src/sim/sim.js`, sandbox and arcade alike):
-- ☑ Kidneys fill at **1 ml / 30 s** (was 1 ml/s). Drinks still arrive in seconds, so they now do most of the filling.
-- ☑ **Pressure rises more**, low while the wall stretches and steep near capacity: 4 + 80·fill³ cmH₂O (was
-  4 + 56·fill^2.6): 14 at half full, 45 at 80 %, 84 at 750 ml, 160 overfull.
-- ☑ **Clench drains 2× slower** (0.11/s): a full hold lasts ~9 s.
-- ☑ **Sphincter tone is the leak gauge.** Urge waves, coughs and squeezes raise it, harder the fuller the bladder
-  (an unclenched wave adds ~29 % at 80 % full, a cough ~14 %); a held clench braces against 75 % of it. **Leaks only
-  start at 100 %**: a 12 ml/s spurt that a clench shuts, or total failure above 65 cmH₂O (as in the original). After
-  a spurt runs out the sphincter regains some grip (85 %). Holding a clench at 100 % against more strain burns stamina.
-- ☑ **Freeze and squeeze** (the missing piece from the realism review): clenching during an urge wave calms the bladder
-  muscle by reflex. The spasm drains while the clench is held and the wave ends early; a clench already held as a wave
-  lands stops it at once.
-- ☑ **Pokes and slaps add 5 %** each (were 8 % and 15 %). A drag pokes on every move, so it adds strain by the
-  distance rubbed, and a swipe counts as one slap at most every 150 ms.
-- ☑ **Voiding peaks at 20 ml/s** and slows over the last ~150 ml (the real flow curve rises fast, then tapers as the
-  emptying bladder's contraction weakens): 300 ml takes ~22 s, 700 ml ~42 s. Voiding eases the strain; total failure
-  empties at the same flow and now counts as leaked (the commute challenge used to miss it).
-- ☑ Capacity stays 750 ml, but it's now reachable: pressure alone no longer forces leaks at ~670 ml.
+Requested along the way, each in its own commits:
 
-**Arcade mode, the default** (`src/sim/arcade.js`): an endless hold on the same simulation.
-- ☑ The start screen begins a run on any tap; a Sandbox button gives free play. The Challenges sheet has Arcade
-  (start/restart, best score) and Sandbox (free play, ends a run) cards above the two challenges.
-- ☑ Drinks are served every 26 → 12 s (bigger ones later); choosing to drink scores 0.5 pt/ml.
-- ☑ Every urge is announced 1.2 s ahead (0.6 s later on) with a banner, a cue and a ring on Clench. Clench during the
-  warning or within 0.35 s of the wave: **perfect** (the wave is calmed at once, 50 × combo, 15 % stamina back);
-  later: 20 pts; no clench: combo lost. From level 2, sneezes are announced 1 s ahead: brace for 40 × combo.
-- ☑ At 100 % strain there's 0.6 s to clench ("SLIPPING!"), +30 for the save; a leak costs 100 and the combo.
-- ☑ Clenching with nothing to hold back costs 3× stamina and eases no strain; after giving out, the clench needs 30 %
-  back. Soothe has a 20 s cooldown.
-- ☑ Every 30 s a level: stronger, closer, later-announced urges that take longer to calm; the pelvic floor tires
-  (less relief, weaker brace).
-- ☑ Scoring: 10 pts/s × fill (×1 under 50 %, ×2, ×3 from 75 %, ×5 overfull). **Emptying banks** the run with a
-  bonus of volume × fill multiplier; total failure ends it unbanked. Best score saved on the device.
-- Balance, from headless bots: never clenching fails in ~1 min; always clenching late (0.35 s after a wave lands)
-  in ~3.5 min; a player who usually uses the warnings but sometimes reacts late or misses one in 3–4 min; holding
-  Clench down permanently in ~4.5 min; a perfect clench on every warning survives (combo bonus capped at ×10).
-- Note: the **commute challenge is much easier** under the new rules (reacting to waves is enough to win).
+- **2026-10-20:** urine scaled to the volume held, over a thick wall, with shaded cut faces; Kegel recovers 4× faster
+  and eases sphincter strain while held.
+- **2026-10-21:** new physiology (slow kidney fill, steeper pressure, tone-gated leaks, freeze and squeeze, 20 ml/s
+  flow); arcade mode as the default; camera pan and closer zoom; a new urine stream; one organ surface with a
+  contracting detrusor; ureters with peristalsis; a 40-drink menu; reactions and emotions (voice priority, lines
+  for the silent moments, mood, body language, feel by fill, rewritten lines); an arcade bladder without a limit;
+  the microgames banner in the telemetry bar's place.
+- **2026-10-21, from the backlog:** offline fonts and voice; the voice in its own module, with a voice picker;
+  subtitles timed to the line; every line chosen in `reactions.js`; drinks with one source; a Wall Feel setting;
+  `organRig.js` split in four; a strained body trembles; at most 12 ripples; reduced motion; body language you can
+  hear; plain words across the app; reactions to the camera; pleading and sulking when held full; a mood strip and
+  line log on the Pressure Chart.
 
-**Camera** (`Scene.jsx`, `StageFit.jsx`): ☑ right-drag pans in any tool; with the Orbit tool a two-finger drag pans
-(pinch still zooms); the wheel zooms toward the pointer; zoom goes 2.5× closer than before (to the sphincter);
-panning stays near the organ; a Recenter button appears once the view has moved.
+## Open: phone checks
 
-**Stream** (`stream.js`, replaces the tube and splash): ☑ a jet from a single narrow opening (the urethra no longer
-widens into a nozzle) that thins as it falls, twists like a ribbon near the outlet, swells and pinches, and breaks
-into drops. Its flow, aim and twist wander, and each wobble travels down with the fluid. Leaks come out in spurts,
-the end of a void dribbles, and the colour follows hydration (pale straw to amber).
+On the live site (or `npm run preview:phone` for installing and offline). Tick them here as you go.
 
-**Automated (unit):** sim rules (31 → 47 tests incl. pressure curve, tone-gated leaks, overload, freeze and squeeze,
-flow taper), 15 arcade tests, 6 stream tests, arcade bests, readout states; 124 in all.
-**Automated (e2e, written, not run):** start helper picks the sandbox unless asked for the arcade; strain expectations
-5 %; the cough-leak scenario rewritten for tone-gated leaks; `e2e/arcade.spec.js` (start, perfect clench, banking).
-**Manual:** ☐ play a few arcade runs on the phone; pan to the sphincter with two fingers; watch a void and a leak.
+- ☐ **M0:** the app loads and the start tap works.
+- ☐ **M1:** urge banner and rumble from ~45 % full, leaks under coughs, chatter no more than every 30 s, challenges
+  report their results.
+- ☐ **M2:** poke and slap feel right; the cutaway reads well from every angle; the urine looks like a filled balloon.
+- ☐ **M3:** play both challenges.
+- ☐ **M4:** listen: creaks and the clench hum behave; the vibration toggle works.
+- ☐ **M5:** two-thumb play, pinch, shake to slosh and vibration.
+- ☐ **M6:** add to the home screen, launch it offline, rotate between portrait and landscape.
+- ☐ **M7:** play 5 minutes: smooth, not hot, acceptable battery drain. See which tier Settings → Graphics Quality
+  chose.
+- ☐ **M8:** a 10-game microgames run with a finger, and one with a mouse.
+- ☐ **M9:** read a chapter: comfortable text size and scrolling.
+- ☐ **2026-10-21:** a few arcade runs; pan to the sphincter with two fingers; watch a void and a leak.
+- ☐ **Backlog work:** Settings → Voice lists the phone's voices and the chosen one talks offline; each Wall Feel
+  feels different; opening the cutaway gets a line and a blush; the Pressure Chart's mood strip fills in.
 
----
+## M10 — Release (optional) ◐
 
-## M0 — Baseline & verification harness ◐ (automated gate passed; phone check pending)
+- ☑ README with real docs (run, test, deploy).
+- ◐ Static site over HTTPS: `.github/workflows/deploy.yml` builds on every push to `main` (lint, unit tests,
+  `vite build --base=/vesica/`) and publishes to GitHub Pages. Check that Settings → Pages → Source is "GitHub
+  Actions", or the old branch publish can overwrite the app.
+- ☐ Only if an app-store build is wanted: a Capacitor wrapper (native haptics, and native speech on iOS).
 
-Set up the tools every later milestone relies on. No gameplay changes.
+## Reference
 
-- ☑ `git init`, commit the current state as `baseline` (tag `baseline`).
-- ☑ `.node-version` (Node 22; it's installed through fnm but not on PATH).
-- ☑ **Vitest** 5.0.5 for unit tests and **Playwright** 1.63.0 for browser tests (that version matches the cached Chromium 1243).
-- ☑ Playwright projects for phone emulation with touch: iPhone SE, iPhone 15 Pro, iPhone 15 Pro landscape, Pixel 7, iPad (gen 7).
-  All run on Chromium; WebGL is software-rendered, so tests use 2 workers and a 60 s timeout.
-- ☑ Dev-only debug hook `window.__vesica` (`getState`, `setState`, `renders`, `resetRenders`); verified absent
-  from production builds. *Stepping N frames moves to M1, since it needs the pure step function.*
-- ☑ Scripts: `test`, `test:e2e`, `check` (lint + test + build), `dev:phone` (HTTPS dev server on the LAN).
-- ☑ Smoke test on every device: loads with no console errors, canvas fills the viewport, the start tap dismisses the overlay,
-  the simulation runs, a poke on the 3D view doesn't throw; screenshots saved.
-- ☑ Parity reference: `src/test/original.js` pulls constants from the original HTML (beverages and physics presets match);
-  `e2e/helpers/original.js` opens the original and reads its live `sim` (resting state matches the port).
+What was measured or learned on the way that the code doesn't show:
 
-**Found and fixed in M0:** `audio.playSquish` was missing from the port, so every poke or squeeze threw before
-its voice line and vibration.
-**Found for M6:** on a landscape phone the HUD covers the whole bladder (an expected-failure test tracks it).
-**Found for M2:** the bladder looks jagged and torn just after a poke; compare with the original when poke strength is reworked.
-**Local setup note:** VS Code runs as a Flatpak and sets `XDG_CACHE_HOME`, so Playwright looked for browsers in
-`~/.var/app/com.visualstudio.code/cache`; that folder now symlinks to `~/.cache/ms-playwright`.
-
-**Gate:** ☑ `npm run check` (lint 0 errors / 29 pre-existing warnings, 2 unit tests, build) · ☑ e2e 11 passed,
-4 skipped, stable across 2 runs.
-**Manual:** ☐ run `npm run dev:phone`, open the printed `https://<LAN-IP>:5173` URL on your phone (accept the
-self-signed certificate warning), check that the app loads and the start tap works.
-
----
-
-## M1 — Simulation core ported from the original + event bus ◐ (automated gate passed; play check pending)
-
-The physics used to live inside an R3F `useFrame`, sounds were triggered by React effects reacting to
-state changes (so a drink sound replayed when a drink finished), and the whole app re-rendered at 60 fps.
-
-**Scope change:** porting `updatePhysics()` faithfully brings back everything inside it, so urge waves,
-creaks, clench exhaustion and challenge scoring landed here instead of M2–M4. Hiding them behind flags for
-one milestone would have been wasted work. The game is therefore **harder than before M1**: that's the
-original's difficulty returning, not a regression.
-
-- ☑ `src/sim/sim.js`: line-by-line port of the original `updatePhysics()` (simulation half) and its action
-  handlers (drink, clench, void, soothe, cough, shake, reset, both challenges). Mutates one `sim` object like
-  the original, returns side effects as events, takes `rng` for deterministic tests.
-- ☑ `src/sim/engine.js`: the live `sim`, event bus, `act(action, …)`, pause/step for tests, and a rounded HUD
-  snapshot published to the UI store only when a displayed value changes.
-- ☑ `src/feedback/feedback.js`: maps events to the original's sounds, voice lines and haptics. Replaces
-  `useAudioAndHaptics.js` (the drink-sound replay bug is gone).
-- ☑ `src/components/3d/organRig.js`: geometry and per-frame deformation moved out of React render.
-- ☑ Debug hook gains `act`, `pause`, `resume`, `step(n)`, an event log and `getUi`.
-- ☑ Lint warnings: 29 → 0.
-- ☑ Restored from the original (pulled forward from M2–M4): urge waves (timer 18 s → 7 s, +24 cmH₂O, rumble,
-  banner); tension creaks; "CLENCH EXHAUSTED!" + clench hum pitch; cough/soothe/shake/reset with full feedback
-  and original strengths; potholes = cough + agitation; voice back to a 10 s gap with no interrupting;
-  "deflated" after voids under 150 ml and after failures; Reset says "deflated"; challenges reset the organ
-  first and are scored (commute ≤ 20 ml, precision 200 ± 10 ml), with live status on the challenge cards;
-  "VOIDING…" label; the three alert banners show independently, as in the original.
-
-- ☑ **Changed later (requested):** Kegel stamina recovers at 0.64/s, 4× the original's 0.16/s (a full
-  refill takes ~1.5 s instead of ~6 s). The parity test lists it as a deliberate difference.
-- ☑ **Added later (requested):** holding the Kegel eases the sphincter strain by 10 % per second held (the original
-  only eased it with Soothe); a full hold (~4.5 s) takes off ~45 %. The readout shows it falling: CLENCHED (n%).
-
-**Automated (unit), 34 tests in `src/sim/sim.test.js`:** initial state equals the original's `sim` field by field
-(read from the HTML); pressure curve at fill 0.2/0.5/0.8/1.0 and with a cough; stamina 0.22/s drain and 0.16/s
-recovery; exhaustion and the 15 % label reset; 5 % clench floor; void starts between 0.95 s and 1.05 s, can't
-start while clenching, stops at 10 ml; leaks only above 50 % fill, blocked by a clench, 22 ml/s; total failure
-drains to 70 ml and recovers; urge waves within 18 s, sooner when fuller, never at ≤ 45 %; creak cooldown;
-water adds 180 ml at 8 ml/s; reset; commute won/lost; precision success/failure; voice thresholds.
-**Automated (e2e), `e2e/sim.spec.js`:** `App` and `HUD` render **0** times in 3 s of idle play (was ~180);
-the same cough and urge scenarios run in the original and the port both leak or show the banner; the Water,
-Clench, Empty and Commute controls drive the sim through the real UI.
-Timing-dependent browser tests pause the loop and step simulated time: headless WebGL is software-rendered at a few fps.
-**Gate:** ☑ `npm run check` (lint 0 warnings, 36 unit tests, build) · ☑ e2e 18 passed, 4 skipped (landscape expected failure as before).
-**Manual:** ☐ play for a few minutes on the phone: urge banner + rumble from ~45 % full, leaks under coughs,
-voice no more than every 10 s, challenges report results.
-
----
-
-## M2 — Bladder interactions + water-balloon visuals ◐ (automated gate passed; play check pending)
-
-- ☑ **Poke/slap match the original exactly** (`src/sim/interactions.js`): +0.08 / +0.15 strain, poke at
-  `squishForce` 2.2, slap power ×2.2, dent caps 0.6 / 0.8, original slosh and jiggle, no ripple on pokes,
-  slap ripples use `waveSpeed`/`rippleDecay`. E2E runs the same touch in both games: strain, slosh and jiggle are identical.
-- ☑ Drag-to-poke (0.7 per move) and swipe-to-slap (speed > 10 px, strength up to 3.0).
-- ☑ Slap button = original `triggerSlapImpulse` (random equator point, 2.4, no touch vibration).
-- ☑ Window-level pointer tracking like the original: squeezes and drags survive leaving the mesh; orbit sloshes.
-- ☑ **See-through (requested):** the cutaway used a fixed world plane, so from behind it did nothing (in the
-  original too). It now always removes the half facing the camera, and clips the ureters with it.
-- ☑ **Water balloon (requested):** the sac is always full of liquid (a real bladder has no air; size shows
-  volume) instead of a hollow shell sliced by a fill-level plane. The wall is a translucent membrane that thins
-  as it stretches; the liquid is one solid body inside; the cutaway shows a flat liquid cross-section.
-  Dents conserve volume (the rest of the wall bulges out); ureters stay attached to the moving wall;
-  rugae folds are broader and the strain tremor is smooth, fixing the torn, spiky look at low fill.
-- ☑ Raycasting uses a bounding sphere that fits the fully inflated bladder (edge taps used to miss).
-- ☑ **Revised after M7 (requested): no urine when empty.** The urine is the wall's shape scaled to the volume
-  actually held (`urineScale`): none at the 10 ml left after voiding, just inside the membrane when full. Still
-  no air: whatever the urine doesn't fill is muscle wall, thick and folded when empty, drawn as opaque tissue
-  behind the membrane. In the cutaway, new cut-face shaders (`cutMaterials.js`) replace the flat colour: urine
-  in amber that deepens with depth, lit from above, with drifting caustic light, rising bubbles and a pale lining
-  at its edge; the wall as fibrous red muscle with a darker outer layer.
-- ☑ **Sphincter redesigned (requested):** the straight red tube is now a thick muscular ring at the bladder
-  neck, puckered with drawstring folds, above a narrower pink urethra (a lathe-turned profile with vertex
-  colours). A clench eases in, clamps the ring and deepens the folds; voiding opens the ring and widens the
-  urethra for the stream; strain keeps the original's rippling twitch.
-
-**Automated (unit):** 9 interaction tests against the original's numbers (13 pokes → strain 1.0; 7 slaps on a
-full bladder + cough → total failure); cutaway plane removes the near half from front, back, side and above.
-**Automated (e2e), `e2e/interactions.spec.js`:** original-vs-port poke and slap; tap/drag poke, tap/swipe slap,
-squeeze hold/drag/off-mesh/release, orbit, Slap button, cutaway from behind.
-**Gate:** ☑ `npm run check` (0 warnings, 48 unit tests, build) · ☑ e2e 27 passed, 4 skipped.
-**Manual:** ☐ poke and slap feel like the original; the cutaway reads well from every angle; the liquid looks like a filled balloon.
-
----
-
-## M3 — Challenge experience ◐ (automated gate passed; play check pending)
-
-- ☑ ~~Reset before start~~, ~~commute and precision scoring~~, ~~live countdown on the card~~: done in M1.
-- ☑ Live challenge banner on the Sim screen above the controls: commute time left + "leaked / 20 ml" (red when
-  over) with a time bar; precision shows the instruction.
-- ☑ Result card on the Sim screen when a run ends (VICTORY/FAILED/SUCCESS text, "★ New best!", Retry, OK).
-  It stays until dismissed, because on a phone the Challenges tab is closed during play.
-- ☑ Best results saved on the device (`src/store/persist.js`, storage failures are harmless): commute = fewest
-  ml lost on a win, precision = closest to 200 ml; shown on the challenge cards.
-
-**Automated (unit):** 4 tests for best-result rules (`src/challenges/bests.test.js`).
-**Automated (e2e), `e2e/challenges.spec.js`:** commute banner → win → result card → best survives a reload;
-precision held through the real Empty button to ~200 ml → SUCCESS → Retry restarts it.
-**Gate:** ☑ `npm run check` (0 warnings, 52 unit tests, build) · ☑ e2e 29 passed, 4 skipped.
-**Manual:** ☐ play both challenges on the phone.
-
----
-
-## M4 — HUD & visual parity ◐ (automated gate passed; play check pending)
-
-- ☑ Sphincter readout states from the original: COLLAPSE / LEAKING / CLENCHED BRACED / DILATING / STRAINED /
-  RESTING, with colours and pulses (`src/components/ui/status.js`).
-- ☑ Pressure colour by state; header status badge + subtitle (NOMINAL → DISTENDED → OVERPRESSURE → STRESS LEAK →
-  INVOLUNTARY VOID); organ icon grows under stress; red vignette 35 % / 70 % / 95 % pulsing.
-- ☑ Bladder wall throbs (emissive pulse) when strain is above 30 %.
-- ☑ Settings saved on the device: master mute, voice on/off + volume, **voice gap 3–30 s** (default 10),
-  effects on/off + volume, **haptics toggle** (from the original's settings; pulled forward from M5).
-- ☑ Starting a challenge no longer says "Just a tiny puddle…" at 580 ml (the original did: its reset spoke).
-- ☑ ~~Fluid body lag~~: superseded by M2's water balloon (the liquid fills the sac; slosh inertia moves the wall).
-- ☑ ~~Clench exhausted~~, ~~hum pitch~~, ~~creaks~~, ~~10 s voice gap~~, ~~deflated lines~~, ~~Reset voice~~: done in M1.
-
-**Automated (unit):** 12 status tests (readout priority, badge/vignette thresholds at the original's 40 % / 80 %
-boundaries); challenge start has no "deflated" line.
-**Automated (e2e), `e2e/hud.spec.js`:** seven states set through the debug hook, asserting badge, subtitle, readout
-and vignette, with screenshots; settings survive a reload.
-**Gate:** ☑ `npm run check` (0 warnings, 67 unit tests, build) · ☑ e2e 37 passed, 4 skipped.
-**Manual:** ☐ listen: voice isn't spammy at the default gap; creaks and hum behave; vibration toggle works.
-
-**Found for M6:** on a portrait phone the camera is so close that the bladder fills the whole screen behind the
-controls; the subtitle bubble sits on top of the telemetry bar.
-
----
-
-## M5 — Touch & tactile input ◐ (automated gate passed; phone check pending)
-
-- ☑ Per-finger tracking on the bladder (`pointerId`): fingers that start on a button are ignored, a second finger
-  turns the gesture into a pinch and stops the one-finger tool, and presses do their own hit-testing so a second
-  finger can never cause a stray poke. Drags keep working off the mesh (M2).
-- ☑ True multi-touch: hold Clench or Empty with one thumb while poking with the other. Hold buttons capture their
-  finger, so drifting off the edge keeps holding.
-- ☑ Gestures: 1 finger = current tool; 2-finger pinch = squeeze (Squeeze tool, original pinch rate) or zoom +
-  rotate (other tools). Orbit tool keeps 1-finger rotate.
-- ☑ Tool picker is a visible rail on the right edge (radio group: Poke / Squeeze / Slap / Orbit); the cycle button is gone.
-- ☑ Browser interference off: page zoom (viewport), pull-to-refresh/overscroll, long-press callout/menu, text selection.
-- ☑ All buttons ≥ 44 × 44 px with accessible names (fixes the icon-only buttons from KNOWN_ISSUES).
-- ☑ Haptics: ☑ settings toggle (M4); patterns per event were already distinct; ☑ silent no-op where `navigator.vibrate`
-  is missing (iOS Safari).
-- ☑ Device motion: iOS permission requested on the start tap; "Shake Phone to Slosh" toggle in Settings.
-
-**Automated (e2e), `e2e/touch.spec.js`:** multi-finger touches through the DevTools protocol: two-thumb clench +
-poke, held button survives drifting off, pinch-squeeze up and down, pinch-zoom without pokes, tool rail; on every
-device: all buttons ≥ 44 px and named, gestures never scroll or zoom the page.
-**Gate:** ☑ `npm run check` (0 warnings, 67 unit tests, build) · ☑ e2e 52 passed, 24 skipped (device-scoped).
-**Manual:** ☐ two-thumb play, pinch, shake-to-slosh and vibration on a real phone.
-
-**Found for M6:** on iPhone SE the tool rail overlaps the drinks shelf, and the 3D view is a thin strip between
-the HUD panels.
-
----
-
-## M6 — Mobile layout & installable PWA ◐ (automated gate passed; phone check pending)
-
-- ☑ `index.html`: title "Vesica 3D", description, `viewport-fit=cover`, no user zoom, theme colour, Apple
-  web-app tags, PNG + SVG favicons; Plus Jakarta Sans / JetBrains Mono fonts wired into Tailwind's theme.
-- ☑ Safe-area insets (notch, home bar) on the HUD and the sheets; sheets are capped at `90dvh`.
-- ☑ Responsive layout as a CSS grid (`.hud-layout`): portrait stacks top bar → telemetry → **stage** → controls →
-  nav; a landscape phone (height ≤ 560 px) moves controls and nav to a right-hand column so the stage keeps the
-  full height. Short screens (≤ 640 px) drop the hold-button hint lines.
-- ☑ The stage is a real layout area: Cutaway / Cough / Shake / Flush moved into a left **action rail**
-  (`ActionRail.jsx`) facing the tool rail; banners and subtitles stack at the top of the stage instead of fixed
-  offsets that covered the telemetry bar.
-- ☑ **Camera framing** (`stageFit.js` + `StageFit.jsx`): the camera distance fits a fully inflated bladder into
-  the stage, and a projection offset centres it on the stage rather than the screen. Starts at the original's
-  camera angle; zoom limits and fog scale with the fitted distance.
-- ☑ Tabs are bottom sheets (`Sheet.jsx`) on phones, centred panels on wider screens; they scroll inside on short screens.
-- ☑ Fullscreen button hidden where the API is missing (iPhone).
-- ☑ PWA (`vite-plugin-pwa` 1.3.0): manifest, PNG icons 192 / 512 / maskable / apple-touch-icon (rendered from
-  `public/icons/icon.svg` by `tools/make-icons.mjs`), auto-updating service worker that precaches the build and
-  caches the fonts on first use; the Install button appears when the browser offers it.
-- ☑ Settings persisted locally (M4); screen kept awake during challenges (Wake Lock API, no-op where unsupported).
-- ☑ `npm run preview:phone`: production build over HTTPS on the LAN, for the install and offline checks
-  (the service worker isn't in the dev server).
-
-**Fixed:** the M0 landscape finding (the expected-failure test is gone; the new test checks the stage centre is
-the canvas), the M4 camera-too-close and subtitle-over-telemetry findings, and the M5 iPhone SE overlap.
-**Automated (unit):** 2 camera-fit tests (`src/components/3d/stageFit.test.js`).
-**Automated (e2e), `e2e/layout.spec.js`** on every device: no horizontal overflow, no overlapping or off-screen
-buttons, no clipped button labels (also while clenching and voiding), the stage gets ≥ 20 % of the screen and
-≥ 150 px height, a full bladder projects inside the stage at ≥ ⅓ of its height, every tab opens as a sheet that
-fits the screen. **`e2e/pwa.spec.js`** against the production build: manifest and icons serve as PNG, the
-service worker takes control, the app loads offline.
-**Gate:** ☑ `npm run check` (0 warnings, 72 unit tests, build) · ☑ e2e 79 passed, 24 skipped (device-scoped).
-**Manual:** ☐ run `npm run preview:phone`, open the printed `https://<LAN-IP>:4173` URL on your phone, add to home
-screen, launch it offline, rotate between portrait and landscape.
-
----
-
-## M7 — Mobile performance ◐ (automated gate passed; phone check pending)
-
-**Measured first** (`npm run test:perf` and the scripts behind it): headless Chromium can reach the real GPU
-(RX 6650 XT through ANGLE/Vulkan), so real-GPU runs with CDP CPU throttling measure the JavaScript cost, and
-software WebGL (SwiftShader), whose frame rate follows GPU work, stands in for a weak phone GPU. Production
-build, Pixel 7 profile:
-
-| | Before M7 | After M7 | Original |
-|---|---|---|---|
-| Real GPU, 4× slower CPU, voiding + pokes | 60 fps, 11.7 ms main thread / frame | 60 fps, 4.8 ms | 60 fps, 8.2 ms |
-| Real GPU, 10× slower CPU, same | — | 57 fps, 14 ms | — |
-| Software GPU, idle (High / Medium / Low) | 3.8 fps | 10 / 37 / 52 fps | 6.9 fps |
-| Software GPU, full + voiding + pokes (High / Medium / Low) | 2.8 fps (dev server, no pokes) | 6.8 / 25 / 38 fps | 7.3 fps |
-
-M1's "15 vs 2.5 fps" came from the dev server. The real gap was GPU work, ~1.8× the original's: Three.js r185's
-**transmission** pass renders the scene again into a multisampled half-float target and builds its mipmaps every
-frame (in the original's r128, `transmission` only lowered alpha), and while voiding the stream's `DoubleSide`
-transmission ran it twice more. Pixel ratio is the next lever (2 → 1 is 2.4× faster); clearcoat, mesh detail and
-material type barely register.
-
-- ☑ **Quality tiers**, Auto by default (`src/settings/quality.js`, `QualityMonitor.jsx`):
-  High = pixel ratio ≤ 2 and refractive liquid with the transmission pass at half resolution (indistinguishable
-  from full); Medium = ≤ 1.5 and the liquid alpha-blended at 0.9 opacity (matched against High by screenshot,
-  and it's what the original's r128 did anyway); Low = 1 and alpha-blended. Auto steps down after two straight 2 s
-  windows under 48 fps, ignoring the first 3 s after a start or change (shader compiles), gaps while hidden, and time
-  with a sheet open (its blur isn't the device's fault). The tier it settles on is saved, so a slow phone starts
-  there next time; Settings → Graphics Quality offers Auto / High / Medium / Low, and picking Auto re-detects.
-- ☑ The stream has no transmission in any tier: invisible on a jet that thin.
-- ☑ ~~Lower sphere detail~~: dropped. Measured CPU cost is low (57 fps even at 10× CPU throttling) and triangles
-  are not where GPU time goes, so it would only cost looks.
-- ☑ Per-frame work (`organRig.js`): the liquid reuses the wall's geometry at 0.965 scale (one deformation, one
-  normals pass and one upload instead of two); per-vertex constants (fold pattern, jiggle angles via angle-sum
-  identities, tremor phases) precomputed; loops on raw arrays; normals computed on raw arrays (same result as
-  Three.js, checked bit for bit); ureter tubes rebuilt in place with an arc-length table instead of a new
-  `TubeGeometry` and ~200 vectors per frame. Wall, normals, sphincter and stream output are bit-identical to before
-  over a 240-frame scripted run.
-- ☑ In the background: rendering stops (`frameloop="never"`, so the simulation waits too), the AudioContext is
-  suspended and the queued voice line dropped, as in the original; on return a running challenge takes the
-  wake lock again (browsers drop it on hide).
-- ☑ Code split: `three` (739 kB), `r3f` (168 kB), `react` (178 kB) and app (63 kB) chunks; the 3D scene loads
-  lazily behind the HUD and start screen; tabs load on first open. All precached for offline play.
-
-**Found and fixed in M7:** Flush during a challenge left the wake lock on; Retry could lose it (an async
-release raced the new request).
-**Automated (unit):** 7 Auto-monitor and tier tests (`src/settings/quality.test.js`); normals equal Three.js's,
-ureters stay on the moving wall, drops move at an even pace (`organRig.test.js`).
-**Automated (e2e), `e2e/lifecycle.spec.js`:** hidden → no rendering, frozen simulation, suspended audio, speech
-cancelled, all back on return; wake lock re-taken on return, released by a reset, exactly one after Retry.
-**`e2e/quality.spec.js`:** each Graphics option sets the pixel ratio, liquid material and transmission scale, and
-survives a reload; Auto re-detects from High.
-**Gate (`npm run test:perf`, production build):** real GPU: worst second ≥ 45 fps with 4× CPU throttling during
-voiding + pokes, Auto stays on High; JS heap, DOM nodes and listeners flat over 2 minutes of drinks, voiding,
-coughs, cutaway and tabs. Software GPU: Auto reaches Low, ≥ 30 fps there, and the next visit starts at Low.
-Measured: 60 fps in every one of the 10 seconds; heap 9.6 → 9.2 MB with 506 → 506 DOM nodes and 222 → 222
-listeners; Low on software GPU 35 fps (worst second 32).
-**Gate:** ☑ `npm run check` (0 warnings, 82 unit tests, build) · ☑ e2e 84 passed, 24 skipped (device-scoped),
-stable across 2 runs · ☑ `npm run test:perf` 3 passed, twice. (The e2e helper now allows 20 s for the canvas:
-the scene is a lazy chunk and mounts after the load event.)
-**Manual:** ☐ play 5 minutes on your phone: smooth, not hot, acceptable battery drain. Check Settings → Graphics
-Quality to see which tier Auto chose.
-
----
-
-## M8 — Microgames (WarioWare-style) ◐ (automated gate passed; phone check pending)
-
-Requested (2026-10-21): short, frantic, abstract challenges about controlling the sphincter. Each one is a pressure
-spike survived with one control action. They don't tell a story or explain themselves beyond a one-word verb.
-
-**Input, in every mode (requested 2026-10-21):** everything plays the same on a phone (touch) and a computer
-(mouse) with one pointer: tap, hold and drag. No right click, multi-touch or tilt is ever needed (pinch, wheel and
-right-drag only move the camera, which is optional). On a keyboard, Space is the press where a press is all a
-game needs, and Clench in the other modes. Offline, like the rest of the game.
-
-- ☑ Runner (`src/sim/micro/runner.js`, drawn by `src/components/micro/`): the verb → a few seconds of play with
-  a fuse → the result → the next game. Four lives; it speeds up
-  every 5 games; every 15th is a boss (three games back to back; winning one gives a life back). The score is
-  games cleared; the best is kept on the device. Starts from the start screen and the Challenges tab; pauses
-  while a sheet is open.
-- ☑ The bladder is the stakes. Each game is a spike: win, and it absorbs it; lose, and a life goes, shown as a
-  small leak, with the sphincter straining a quarter more each time (the strain readout shows it). Out of lives,
-  it gives way: a total failure ends the run. It fills a little every game, with no limit, as in the arcade.
-  Between games the overlay clears to show the 3D bladder react. A run has no urges, sneezes, served drinks,
-  chatter or subtitles of its own.
-- ☑ Microgames (`src/sim/micro/games.js`), one pointer each:
-  - **CLENCH!**: press as each pulse reaches the ring.
-  - **PUSH!**: tap fast to keep the rising pressure below the top.
-  - **SEAL!**: tap each crack on the ring before it opens.
-  - **BALANCE!**: drag sideways to keep the sloshing bladder upright as spikes shove it.
-  - **HOLD!**: hold and slide (higher squeezes harder) to keep the needle in the green band.
-  - **MATCH!**: hold and slide so your ring matches the target as it shrinks and grows.
-  - **STOP!**: press to shut the flow so the level stops in the band (it runs on a moment after).
-  - **RELEASE!**: hold through the spike, and let go in the window after it passes.
-  - **PULSE!**: tap on every beat.
-  - **STEADY!**: hold inside the circle as it drifts; don't slip out or let go.
-  - **DODGE!**: drag sideways to dodge the falling spikes.
-- ☑ One pointer in every mode: the existing modes already were (their actions are taps and holds on buttons, and
-  one finger or the left button on the bladder); Space now holds Clench there too. Dev hook:
-  `window.__vesica.microRun(['hold'])` starts a run of chosen games.
-- Dropped (2026-10-21): BALANCE! on a pedestal by tilting, DODGE! the bus and CARRY! (they told a story or
-  needed tilt).
-
-**Automated (unit):** each microgame wins with scripted good input and loses with bad or no input; the runner's
-timing, lives, speed-up and boss; its effects on the sim (strain, leak, fill, failure).
-**Automated (e2e):** not required for now (the user's choice).
-**Manual:** a 10-game run on a phone and with a mouse: every game playable with one finger or the left button.
-
----
-
-## M9 — Stories (optional reading) ◐ (automated gate passed; phone check pending)
-
-Requested (2026-10-21): the story stays outside the games, for the player to read if they want. Nothing in play
-narrates it.
-
-- ☑ A Stories sheet (📖 in the bottom bar, `StoriesTab.jsx`): the chapters, and a reader that remembers the
-  chapter and the place in it, with a text size control. Every sheet's header (with ✕) now stays pinned while it
-  scrolls, so it can be closed from anywhere in a chapter.
-- ☑ Chapters are Markdown files in `src/stories/`, bundled with the app so they read offline; editing or adding a
-  file edits or adds a chapter (`stories.js` reads a small subset: a `#` title, paragraphs, `---`, `##`,
-  *italic* and **bold**).
-- ☑ Six chapters (about 3,000 words in all), following Mara, a 28-year-old junior architect, through one week:
-  morning coffee → the commute → the long meeting → date night → the concert queue → the road trip. Safe for
-  work: adult characters, no nudity or sexual content.
-- Dropped (2026-10-21): a chapter engine scripting play, and the bladder narrating chapters.
-
-**Automated (unit):** every chapter parses into a title and paragraphs, in order; the reading place is saved and
-restored.
-**Manual:** read a chapter on a phone: comfortable text size and scrolling.
-
----
-
-## M10 — Release (optional) ☐
-
-- ☐ Replace template `README.md` with real docs (run, test, deploy).
-- ◐ Deploy as a static site (HTTPS) for phone access: `.github/workflows/deploy.yml` builds on every push to
-  `main` (lint, unit tests, `vite build --base=/vesica/`) and publishes to https://liamthebox.github.io/vesica/.
-  Needs Settings → Pages → Source: GitHub Actions.
-- ☐ Only if an app-store build is wanted: Capacitor wrapper (native haptics, and native speech on iOS).
+- **Performance (M7, production build, Pixel 7 profile).** Real GPU with a 4× slower CPU, voiding and poking:
+  60 fps at 4.8 ms of main thread a frame (11.7 ms before M7; the original 8.2 ms). Software GPU, a stand-in for a
+  weak phone, same scene: 6.8 / 25 / 38 fps on High / Medium / Low (the original 7.3). The gap was Three.js r185's
+  transmission pass. `npm run test:perf` is the gate: worst second ≥ 45 fps on the real GPU, ≥ 30 fps on Low.
+- **Arcade balance** (headless bots, 2026-10-21): never clenching fails in ~1 min; always clenching late in
+  ~3.5 min; mostly using the warnings, sometimes late, 3–4 min; Clench held down for good ~4.5 min; a perfect
+  clench on every warning survives (combo bonus capped at ×10). The commute challenge is much easier under these
+  rules.
+- **Browser tests:** headless WebGL is software-rendered at a few fps, so timing-dependent specs pause the loop and
+  step simulated time (`window.__vesica.step(n)`).
+- **Local setup:** VS Code runs as a Flatpak and sets `XDG_CACHE_HOME`, so
+  `~/.var/app/com.visualstudio.code/cache/ms-playwright` is a symlink to `~/.cache/ms-playwright`.

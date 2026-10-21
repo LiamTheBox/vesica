@@ -5,6 +5,8 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 
 ## Open
 
+Both are in the browser suite (`npm run test:e2e`), which isn't run for now (it loads the CPU).
+
 ### Real-time waits are unreliable in browser tests
 - **Seen:** M1. Headless WebGL runs at a few fps and each frame advances the sim by at most 0.08 s, so simulated
   time runs far slower than wall-clock time.
@@ -43,3 +45,7 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 | Ureters attached high on the sides; real ones enter low on the back, beside the neck | 2026-10-21 |
 | A tap on the start screen also clicked the control under it (on an iPhone SE, Sandbox also drank an Energy): it started on the press and vanished before the click; it now starts on the click | 2026-10-21 |
 | Other voice lines started while voiding (a drink, a poke, an urge fading, a line already under way or waiting its turn); now it says only the line that starts the void until it stops | 2026-10-21 |
+| Fonts came from Google Fonts, cached only after an online visit, so a first install could show fallback fonts offline; they're bundled now | 2026-10-21 |
+| The voice could pick Chrome's network voice ("Google US English"), which goes quiet offline; Automatic prefers voices on the device | 2026-10-21 |
+| A microgames run hid the strain readout once its banner replaced the telemetry bar; the banner shows STRAIN now | 2026-10-21 |
+| Sheets: whatever scrolled past showed through above the pinned header (it pinned inside the panel's padding) | 2026-10-21 |
