@@ -32,19 +32,31 @@ export const LINES = {
   slipping: ["I'm slipping! Clench!", "Losing it! Squeeze now!", "Help! Clench!", "It's coming out! Squeeze!", "Now! Clench now!"],
   proud: ["Nailed it!", "Perfect timing!", "Ooh, smooth!", "That's my pelvic floor!", "Flawless!", "Textbook!"],
   levelUp: ["Level up! It gets harder, huh?", "Next level. I'm nervous.", "Harder now? Great. Just great.", "New level! Stay with me.", "Levelling up. Hold tight!"],
+  pokeEmpty: ["Hee! That tickles!", "Boop. Hi there.", "Poke away, I'm empty.", "Ooh, a visitor!", "Hehe, stop it!", "I'm all squishy right now."],
+  pokeFull: ["Don't poke me, I'm full!", "Careful! I'm holding a lot!", "Not now! Not now!", "Ow! Everything sloshed!", "Hands off, I'm about to burst!", "You're not helping!"],
+  slapped: ["Ow! Rude!", "Hey! What was that for?", "Slap me again, I dare you.", "Ouch! I felt that.", "Wobble wobble. Not funny."],
+  slapFull: ["Don't slap a full bladder!", "Ow! Do you WANT a leak?", "That wave nearly broke me!", "Stop! I'm sloshing!", "Are you trying to make me leak?"],
+  annoyed: ["Seriously. Stop. Poking.", "I'm not a stress ball!", "Okay, that's enough!", "Find a new hobby!", "Hands. Off.", "I will remember this.", "Do that again. I dare you."],
+  squeezeEmpty: ["Squish away, there's nothing in here.", "Wheee, I'm a stress ball!", "That's oddly relaxing.", "Squishy squishy.", "Go on, I'm empty."],
+  clenchIdle: ["Squeezing... for fun?", "Practising? Okay, I'm flexing!", "Kegel time? Fine.", "Nothing to hold, but sure.", "Look at me flex!"],
+  coughBraced: ["Braced! Nothing got out.", "Ha! Clenched in time!", "Sneeze blocked!", "Bless you. And well braced!", "Didn't even budge!"],
+  drinkFull: ["More?! I'm already full!", "Are you serious right now?", "No more! I'm at the limit!", "You're trying to drown me!", "Not another drop, please!", "Where is that supposed to go?!"],
+  sleepy: ["Zzz... so cozy...", "Mm, nap time.", "Nothing to do. I love it.", "So light... so sleepy...", "Wake me when you drink something.", "Quiet day down here."],
 }
 
 // Who gets to speak (see AudioManager.speak): urgent lines cut in over anything, the
 // bladder's own chatter about how full it is waits its turn, and everything else is a
 // reaction to what just happened.
 export const URGENT = new Set(['leak', 'involuntary', 'slipping', 'saved', 'urgeIncoming', 'sneezeIncoming'])
-export const CHATTER = new Set(['nominal', 'distended', 'full', 'critical'])
+export const CHATTER = new Set(['sleepy', 'nominal', 'distended', 'full', 'critical'])
 
 // How each kind of line is said.
 const FRANTIC = { pitch: 1.45, rate: 1.25 }
 const EXCITED = { pitch: 1.35, rate: 1.2 }
 const RELAXED = { pitch: 1.15, rate: 0.95 }
 const TIRED = { pitch: 1.05, rate: 0.85 }
+const PLAYFUL = { pitch: 1.35, rate: 1.1 }
+const GRUMPY = { pitch: 1.1, rate: 1.1 }
 export const NORMAL_VOICE = { pitch: 1.2, rate: 1.05 }
 export const VOICE_STYLE = {
   critical: FRANTIC, involuntary: FRANTIC, leak: FRANTIC, slipping: FRANTIC, urgeIncoming: FRANTIC, sneezeIncoming: FRANTIC,
@@ -52,4 +64,8 @@ export const VOICE_STYLE = {
   soothe: { pitch: 1.15, rate: 0.9 },
   voiding: RELAXED, deflated: RELAXED, urgePassed: RELAXED, urgeFaded: RELAXED, leakOver: RELAXED,
   exhausted: TIRED, aftermath: TIRED,
+  pokeEmpty: PLAYFUL, squeezeEmpty: PLAYFUL, clenchIdle: PLAYFUL,
+  pokeFull: EXCITED, slapped: EXCITED, slapFull: FRANTIC, drinkFull: FRANTIC, coughBraced: EXCITED,
+  annoyed: GRUMPY,
+  sleepy: { pitch: 1.0, rate: 0.8 },
 }

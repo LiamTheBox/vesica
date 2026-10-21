@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useHud, useUiStore } from '../../store/useUiStore'
 import { organStatus } from './status'
+import { MOOD_FACES } from '../../feedback/mood'
 
+// What a line is about, where that says more than the bladder's face; otherwise the face
+// it said it with.
 const SUBTITLE_ICONS = {
-  critical: '😫', involuntary: '😫', leak: '💦', clench: '🛡️', soothe: '🧘', cough: '🤧',
-  shaken: '📳', squeezed: '🤏', full: '😬', voiding: '😌', poked: '⚡', deflated: '💤',
-  drinkWater: '💧', drinkCaffeine: '☕', drinkAlcohol: '🍺', drinkBig: '🌊', drinkOther: '🥤',
-  exhausted: '🥵', saved: '😅', leakOver: '😳', aftermath: '😳', urge: '⚡', urgePassed: '😮‍💨', urgeFaded: '😮‍💨',
-  urgeIncoming: '⚠️', sneezeIncoming: '🤧', slipping: '💦', proud: '😎', levelUp: '⭐',
+  leak: '💦', slipping: '💦', clench: '🛡️', coughBraced: '🛡️', soothe: '🧘', cough: '🤧', sneezeIncoming: '🤧',
+  shaken: '📳', squeezed: '🤏', squeezeEmpty: '🤏', urge: '⚡', urgeIncoming: '⚠️', levelUp: '⭐', sleepy: '💤',
+  drinkWater: '💧', drinkCaffeine: '☕', drinkAlcohol: '🍺', drinkBig: '🌊', drinkOther: '🥤', drinkFull: '🙅',
 }
 
 // What the bladder just said. Sits in the stage's top stack; fades after 5 s.
@@ -28,7 +29,7 @@ export function Subtitles() {
   return (
     <div className={`pointer-events-none w-full max-w-lg flex justify-center transition-opacity duration-200 ${visible ? 'opacity-100 bubble-animate' : 'opacity-0'}`}>
       <div className="glass-hud px-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-amber-400/40 max-w-full">
-        <div className="text-lg flex-shrink-0">{SUBTITLE_ICONS[subtitle.category] ?? '🗣️'}</div>
+        <div className="text-lg flex-shrink-0">{SUBTITLE_ICONS[subtitle.category] ?? MOOD_FACES[subtitle.mood] ?? '🗣️'}</div>
         <div className="text-left overflow-hidden">
           <div className="text-[9px] uppercase tracking-wider font-extrabold text-amber-400 font-mono">Vesica (Bladder)</div>
           <p className="text-xs sm:text-sm font-semibold text-slate-100 leading-snug break-words">"{subtitle.text}"</p>

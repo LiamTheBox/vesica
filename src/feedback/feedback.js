@@ -1,6 +1,6 @@
 import { audio } from '../audio/AudioManager'
-import { ambientVoiceCategory } from '../sim/sim'
-import { reactionLine } from './reactions'
+import { chatterLine, reactionLine } from './reactions'
+import { createMood, feel, moodOf, stepMood } from './mood'
 import { onSimEvent, onSimTick, sim } from '../sim/engine'
 import { useUiStore } from '../store/useUiStore'
 import { clock, recordResult } from '../challenges/bests'
@@ -192,10 +192,14 @@ const handlers = {
   },
 }
 
-// Each event's sound and haptics, then what the bladder says about it.
+// How the bladder feels (mood.js); the HUD shows it as `mood` in the store.
+const mood = createMood()
+
+// Each event's sound and haptics; then the bladder feels it, and says something about it.
 function onEvent(event) {
   handlers[event.type]?.(event)
-  const line = reactionLine(event)
+  feel(mood, event)
+  const line = reactionLine(event, sim, mood)
   if (line) audio.speak(line)
 }
 
@@ -208,7 +212,10 @@ function onTick(sim, dt) {
   audio.update(dt)
   if (sim.isClenching) audio.updateClenchHum(sim.kegelStamina)
   if (sim.flowRate > 0) audio.updateDynamicJet(sim.flowRate, sim.pressure)
-  const category = ambientVoiceCategory(sim)
+  stepMood(mood, dt)
+  const now = moodOf(mood, sim)
+  if (now !== useUiStore.getState().mood) useUiStore.setState({ mood: now })
+  const category = chatterLine(sim, mood)
   if (category) audio.speak(category)
 }
 
@@ -228,7 +235,7 @@ function onVisibilityChange() {
 
 export function installFeedback() {
   audio.onSubtitle = (text, category) => {
-    useUiStore.setState({ currentSubtitle: { text, category, id: Date.now() } })
+    useUiStore.setState({ currentSubtitle: { text, category, mood: moodOf(mood, sim), id: Date.now() } })
   }
   const offEvent = onSimEvent(onEvent)
   const offTick = onSimTick(onTick)

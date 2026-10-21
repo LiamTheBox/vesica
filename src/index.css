@@ -44,6 +44,11 @@
   .bubble-animate {
     animation: bubblePop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
   }
+  /* The HUD face pops in when the mood changes. */
+  .mood-pop {
+    display: inline-block;
+    animation: moodPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
   .fatigue-vignette {
     animation: vignettePulse 0.6s infinite ease-in-out;
   }
@@ -55,6 +60,11 @@
 @keyframes bubblePop {
   0% { transform: scale(0.92) translateY(6px); opacity: 0; }
   100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes moodPop {
+  0% { transform: scale(0.4) rotate(-12deg); }
+  100% { transform: scale(1) rotate(0); }
 }
 
 @keyframes vignettePulse {

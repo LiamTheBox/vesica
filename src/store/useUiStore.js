@@ -57,6 +57,8 @@ export const useUiStore = create((set) => ({
   interactionMode: 'poke',
   isCutawayActive: false,
   currentSubtitle: null,
+  // How the bladder feels (feedback/mood.js), shown as its face.
+  mood: 'calm',
   // Last result per challenge: { success, text }
   challengeResults: { commute: null, precision: null, arcade: null },
   // Most recent result, shown as a card on the Sim screen: { challenge, success, text, detail, newBest, id }

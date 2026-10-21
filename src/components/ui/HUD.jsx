@@ -6,6 +6,7 @@ import { ChallengeBanner, ChallengeResultCard } from './ChallengeStatus'
 import BottomNav from './Tabs/BottomNav'
 import { useHud, useUiStore } from '../../store/useUiStore'
 import { organStatus } from './status'
+import { MOOD_FACES } from '../../feedback/mood'
 import { countRender } from '../../debug/devHook'
 import ToolRail from './ToolRail'
 import ActionRail from './ActionRail'
@@ -60,13 +61,19 @@ function RecenterButton() {
 
 function StatusCard() {
   const status = useHud(organStatus)
+  // The bladder's face: how it feels right now.
+  const mood = useUiStore((s) => s.mood)
   return (
     <div className="glass-hud px-3 py-1.5 rounded-2xl flex items-center gap-2.5 min-w-0">
       <div
-        className="w-8 h-8 flex-shrink-0 rounded-xl bg-gradient-to-tr from-rose-600 via-amber-500 to-amber-300 flex items-center justify-center text-sm shadow-md transition-transform duration-150"
+        data-testid="mood"
+        role="img"
+        aria-label={`Feeling ${mood}`}
+        title={`Feeling ${mood}`}
+        className="w-8 h-8 flex-shrink-0 rounded-xl bg-gradient-to-tr from-rose-600 via-amber-500 to-amber-300 flex items-center justify-center text-lg shadow-md transition-transform duration-150"
         style={{ transform: `scale(${status.iconScale})` }}
       >
-        🫁
+        <span key={mood} className="mood-pop">{MOOD_FACES[mood]}</span>
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-2">
