@@ -54,5 +54,6 @@ Pushing to `main` deploys the app to GitHub Pages.
 - `src/audio/`: the sound engine and the voice lines (`lines.js`)
 - `src/components/3d/`: the bladder, sphincter, ureters and stream
 - `src/components/ui/`: the HUD, buttons and menus
-- `ROADMAP.md`: what's done and what's next; `KNOWN_ISSUES.md`: open problems
+- `ROADMAP.md`: what's done and what's next; `KNOWN_ISSUES.md`: open problems; `BACKLOG.md`: cleanups and
+  additions nobody has asked for yet
 - `Vesica 3D Mobile Web App.html`: the original single-file game this was ported from (open it in a browser)
