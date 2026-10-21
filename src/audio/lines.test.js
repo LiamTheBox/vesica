@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CHATTER, LINES, URGENT, VOICE_STYLE } from './lines'
-import { AudioManager } from './AudioManager'
+import { Voice } from './voice'
 
 const ALL = Object.values(LINES).flat()
 
@@ -25,12 +25,12 @@ describe('what the bladder says (F)', () => {
   })
 
   it("varies its lines: never the same twice running, and not in a fixed order", () => {
-    const audio = new AudioManager()
+    const voice = new Voice()
     const said = []
-    audio.onSubtitle = (text) => said.push(text)
+    voice.onSubtitle = (text) => said.push(text)
     for (let i = 0; i < 300; i++) {
-      audio.speak('slapped') // five lines
-      audio.update(5)
+      voice.speak('slapped') // five lines
+      voice.update(5)
     }
     expect(said).toHaveLength(300)
     expect(new Set(said).size).toBe(LINES.slapped.length)

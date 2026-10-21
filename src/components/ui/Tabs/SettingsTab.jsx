@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { useUiStore } from '../../../store/useUiStore'
 import { setGraphics, updateSettings } from '../../../settings/settings'
+import { voice } from '../../../audio/voice'
 import { QUALITY_TIERS, TIER_ORDER } from '../../../settings/quality'
 import Sheet from '../Sheet'
 
@@ -28,6 +30,35 @@ function Slider({ label, value, display, min, max, step, onChange }) {
 }
 
 const percent = (v) => `${Math.round(v * 100)}%`
+
+// The installed English voices; the list fills in once the browser has loaded them.
+function useVoices() {
+  const [voices, setVoices] = useState(() => voice.voices())
+  useEffect(() => voice.onVoicesChanged(() => setVoices(voice.voices())), [])
+  return voices
+}
+
+// Automatic picks a voice on the device; online ones go quiet without a connection.
+function VoicePicker() {
+  const voiceName = useUiStore((s) => s.settings.voiceName)
+  const voices = useVoices()
+  if (voices.length === 0) return null
+  const choose = (name) => {
+    updateSettings({ voiceName: name })
+    voice.sample()
+  }
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[11px] text-slate-400">Voice</span>
+      <select value={voiceName} onChange={(e) => choose(e.target.value)} className="min-h-11 rounded-xl bg-slate-800 text-slate-200 text-xs px-2 cursor-pointer">
+        <option value="">Automatic</option>
+        {voices.map((v) => (
+          <option key={v.voiceURI || v.name} value={v.name}>{v.name}{v.localService === false ? ' (online)' : ''}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
 
 const GRAPHICS_OPTIONS = [{ key: 'auto', label: 'Auto' }, ...TIER_ORDER.map((key) => ({ key, label: QUALITY_TIERS[key].label }))]
 
@@ -80,6 +111,7 @@ export default function SettingsTab() {
 
       <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
         <Toggle label="🗣️ Spoken Voice Engine" checked={settings.voiceEnabled} onChange={(v) => updateSettings({ voiceEnabled: v })} />
+        <VoicePicker />
         <Slider label="Voice volume" value={settings.voiceVolume} display={percent(settings.voiceVolume)} min={0} max={1} step={0.05} onChange={(v) => updateSettings({ voiceVolume: v })} />
         <Slider
           label="Chats on its own at most every"

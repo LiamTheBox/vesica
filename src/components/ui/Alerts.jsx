@@ -11,31 +11,38 @@ const SUBTITLE_ICONS = {
   drinkWater: '💧', drinkCaffeine: '☕', drinkAlcohol: '🍺', drinkBig: '🌊', drinkOther: '🥤', drinkFull: '🙅',
 }
 
-// What the bladder just said. Sits in the stage's top stack; fades after 5 s.
+// How long a subtitle stays: the line's spoken length (estimated by the voice) and a
+// beat to read it, 3–8 s.
+const subtitleSeconds = (spoken = 3) => Math.min(8, Math.max(3, 1.5 + 1.5 * spoken))
+
+// What the bladder just said. Sits in the stage's top stack; a newer line replaces it.
+// Screen readers hear it from a hidden live region, as it's said.
 export function Subtitles() {
   const subtitle = useUiStore((s) => s.currentSubtitle)
-  // Each subtitle shows for 5 s; a newer one restarts the timer.
   const [expiredId, setExpiredId] = useState(null)
   const visible = !!subtitle && subtitle.id !== expiredId
 
   useEffect(() => {
     if (!subtitle) return
-    const timer = setTimeout(() => setExpiredId(subtitle.id), 5000)
+    const timer = setTimeout(() => setExpiredId(subtitle.id), subtitleSeconds(subtitle.seconds) * 1000)
     return () => clearTimeout(timer)
   }, [subtitle])
 
-  if (!subtitle) return null
-
   return (
-    <div className={`pointer-events-none w-full max-w-lg flex justify-center transition-opacity duration-200 ${visible ? 'opacity-100 bubble-animate' : 'opacity-0'}`}>
-      <div className="glass-hud px-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-amber-400/40 max-w-full">
-        <div className="text-lg flex-shrink-0">{SUBTITLE_ICONS[subtitle.category] ?? MOOD_FACES[subtitle.mood] ?? '🗣️'}</div>
-        <div className="text-left overflow-hidden">
-          <div className="text-[9px] uppercase tracking-wider font-extrabold text-amber-400 font-mono">Vesica (Bladder)</div>
-          <p className="text-xs sm:text-sm font-semibold text-slate-100 leading-snug break-words">"{subtitle.text}"</p>
+    <>
+      <p aria-live="polite" className="sr-only">{visible ? subtitle.text : ''}</p>
+      {subtitle && (
+        <div aria-hidden="true" className={`pointer-events-none w-full max-w-lg flex justify-center transition-opacity duration-200 ${visible ? 'opacity-100 bubble-animate' : 'opacity-0'}`}>
+          <div className="glass-hud px-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-amber-400/40 max-w-full">
+            <div className="text-lg flex-shrink-0">{SUBTITLE_ICONS[subtitle.category] ?? MOOD_FACES[subtitle.mood] ?? '🗣️'}</div>
+            <div className="text-left overflow-hidden">
+              <div className="text-[9px] uppercase tracking-wider font-extrabold text-amber-400 font-mono">Vesica (Bladder)</div>
+              <p className="text-xs sm:text-sm font-semibold text-slate-100 leading-snug break-words">"{subtitle.text}"</p>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   )
 }
 

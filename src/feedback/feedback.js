@@ -1,4 +1,5 @@
 import { audio } from '../audio/AudioManager'
+import { voice } from '../audio/voice'
 import { chatterLine, reactionLine } from './reactions'
 import { createMood, feel, moodOf, stepMood } from './mood'
 import { onSimEvent, onSimTick, sim } from '../sim/engine'
@@ -221,7 +222,7 @@ function onEvent(event) {
   handlers[event.type]?.(event)
   feel(mood, event)
   const line = reactionLine(event, sim, mood)
-  if (line) audio.speak(line)
+  if (line) voice.speak(line)
 }
 
 // A bolus of urine squirting in from a ureter (organRig): a soft gulp from that side.
@@ -230,14 +231,14 @@ export function ureterSquirt(side) {
 }
 
 function onTick(sim, dt) {
-  audio.update(dt)
+  voice.update(dt)
   if (sim.isClenching) audio.updateClenchHum(sim.kegelStamina)
   if (sim.flowRate > 0) audio.updateDynamicJet(sim.flowRate, sim.pressure)
   stepMood(mood, dt)
   const now = moodOf(mood, sim)
   if (now !== useUiStore.getState().mood) useUiStore.setState({ mood: now })
   const category = chatterLine(sim, mood)
-  if (category) audio.speak(category)
+  if (category) voice.speak(category)
 }
 
 // In the background the game stops: Scene pauses rendering (and with it the
@@ -248,6 +249,7 @@ function onVisibilityChange() {
   useUiStore.setState({ appHidden: hidden })
   if (hidden) {
     audio.suspend()
+    voice.suspend()
   } else {
     audio.resume()
     if (sim.activeChallenge) keepScreenAwake(true)
@@ -255,8 +257,8 @@ function onVisibilityChange() {
 }
 
 export function installFeedback() {
-  audio.onSubtitle = (text, category) => {
-    useUiStore.setState({ currentSubtitle: { text, category, mood: moodOf(mood, sim), id: Date.now() } })
+  voice.onSubtitle = (text, category, seconds) => {
+    useUiStore.setState({ currentSubtitle: { text, category, seconds, mood: moodOf(mood, sim), id: Date.now() } })
   }
   const offEvent = onSimEvent(onEvent)
   const offTick = onSimTick(onTick)
@@ -265,6 +267,6 @@ export function installFeedback() {
     offEvent()
     offTick()
     document.removeEventListener('visibilitychange', onVisibilityChange)
-    audio.onSubtitle = null
+    voice.onSubtitle = null
   }
 }

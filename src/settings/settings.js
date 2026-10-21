@@ -1,15 +1,18 @@
 import { audio } from '../audio/AudioManager'
+import { voice } from '../audio/voice'
 import { feedbackSettings } from '../feedback/feedback'
 import { saveJson } from '../store/persist'
 import { useUiStore } from '../store/useUiStore'
 
-// Pushes settings into the audio engine and haptics. Safe before the AudioContext
+// Pushes settings into the sound, the voice and haptics. Safe before the AudioContext
 // exists: gains are applied when it is created.
 export function applySettings(settings) {
   audio.isMasterMuted = settings.masterMuted
-  audio.voiceEnabled = settings.voiceEnabled
-  audio.voiceVolume = settings.voiceVolume
-  audio.chatGap = settings.chatGap
+  voice.muted = settings.masterMuted
+  voice.enabled = settings.voiceEnabled
+  voice.volume = settings.voiceVolume
+  voice.chatGap = settings.chatGap
+  voice.setVoiceName(settings.voiceName)
   audio.sfxEnabled = settings.sfxEnabled
   audio.sfxVolume = settings.sfxVolume
   feedbackSettings.haptics = settings.haptics
@@ -19,7 +22,7 @@ export function applySettings(settings) {
     audio.masterGain.gain.setValueAtTime(settings.masterMuted ? 0 : 1, now)
     audio.sfxGain.gain.setValueAtTime(settings.sfxEnabled ? settings.sfxVolume : 0, now)
   }
-  if (audio.synth && (settings.masterMuted || !settings.voiceEnabled)) audio.synth.cancel()
+  if (settings.masterMuted || !settings.voiceEnabled) voice.cancel()
 }
 
 export function updateSettings(patch) {
