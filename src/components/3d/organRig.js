@@ -217,7 +217,7 @@ const BLUSH_COLOR = new THREE.Color(0xff2d75)
 
 const EMOTE_FOR = {
   leakStart: 'shudder', failureStart: 'shudder', clenchExhausted: 'droop', creak: 'creak',
-  leakSaved: 'hop', arcadeLevel: 'hop', leakEnd: 'sigh', voidStop: 'sigh', soothe: 'sigh',
+  leakSaved: 'hop', arcadeLevel: 'hop', microWin: 'hop', leakEnd: 'sigh', voidStop: 'sigh', soothe: 'sigh',
 }
 // What the bladder does when `event` happens, feeling `mood` (feedback/mood.js), if anything.
 export function emoteFor(event, mood) {

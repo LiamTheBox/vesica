@@ -2,6 +2,7 @@ import { useHud, useUiStore } from '../../../store/useUiStore'
 import { act } from '../../../sim/engine'
 import { startCommuteChallenge, startPrecisionChallenge } from '../../../sim/sim'
 import { quitArcadeRun, startArcadeRun } from '../../../sim/arcade'
+import { quitMicroRun, startMicroRun } from '../../../sim/micro/runner'
 import { describeBest } from '../../../challenges/bests'
 import Sheet from '../Sheet'
 
@@ -28,9 +29,11 @@ export default function ChallengesTab() {
   const challengeSeconds = useHud((h) => h.challengeSeconds)
   const totalLeaked = useHud((h) => h.totalLeaked)
   const arcadeScore = useHud((h) => h.arcadeScore)
+  const microScore = useHud((h) => h.microScore)
 
   if (currentTab !== 'challenges') return null
   const inArcade = activeChallenge === 'arcade'
+  const inMicro = activeChallenge === 'micro'
 
   return (
     <Sheet title="Continence Challenges" subtitle="Arcade is the default mode; the sandbox and its challenges are below" titleTone="text-cyan-400" onClose={() => setTab('sim')}>
@@ -49,16 +52,31 @@ export default function ChallengesTab() {
         </button>
       </div>
 
+      <div className="p-3.5 bg-slate-900/70 border border-violet-800/60 rounded-2xl flex flex-col gap-2">
+        <div className="flex justify-between items-center gap-2">
+          <div className="font-extrabold text-xs text-slate-200">⚡ Microgames</div>
+          <StatusBadge running={inMicro} runningText={`RUN: ${microScore} CLEARED`} result={results.micro} />
+        </div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          A word, a few seconds, one move: tap, hold or drag. Each game is a spike the sphincter has to take. Four lives,
+          a small leak for each one lost, faster and faster, and a boss every 15.
+        </p>
+        {bests.micro && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('micro', bests.micro)}</p>}
+        <button onClick={() => act(startMicroRun)} className="w-full py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
+          {inMicro ? 'Restart Microgames' : 'Play Microgames'}
+        </button>
+      </div>
+
       <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
         <div className="font-extrabold text-xs text-slate-200">🧪 Sandbox (Free Play)</div>
         <p className="text-[11px] text-slate-400 leading-relaxed">
           The simulation on its own: no score, no served drinks, no warnings. The challenges below run in it.
         </p>
         <button
-          onClick={() => { act(quitArcadeRun); setTab('sim') }}
+          onClick={() => { act(quitArcadeRun); act(quitMicroRun); setTab('sim') }}
           className="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-xs uppercase tracking-wider transition"
         >
-          {inArcade ? 'End Run and Free Play' : 'Free Play'}
+          {inArcade || inMicro ? 'End Run and Free Play' : 'Free Play'}
         </button>
       </div>
 

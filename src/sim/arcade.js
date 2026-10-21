@@ -1,5 +1,6 @@
 import { DRINKS } from './drinks'
-import { cough, fillRatioOf, ingestBeverage, resetOrgan, SANDBOX_RULES, stepSim } from './sim'
+import { cough, fillRatioOf, ingestBeverage, resetOrgan, restoreSandboxRules, stepSim } from './sim'
+import { stepMicro } from './micro/runner'
 
 // Arcade mode, the default: an endless hold on top of the same simulation. The game
 // serves drinks, announces every urge wave and (from level 2) every sneeze, and gets
@@ -83,12 +84,7 @@ export function quitArcadeRun(sim, out) {
 
 function endRules(sim) {
   sim.arcade = null
-  sim.activeChallenge = null
-  sim.coughWarned = false
-  Object.assign(sim, SANDBOX_RULES)
-  // Ended overfilled, it still feels no fuller than full until it's back down to full
-  // (stepSim then restores the sandbox's rule), so the gauge doesn't leap as a bank empties it.
-  if (sim.volume > sim.maxCapacity) sim.fullAt = ARCADE_RULES.fullAt
+  restoreSandboxRules(sim)
 }
 
 function endRun(sim, out, banked) {
@@ -200,10 +196,12 @@ export function scoreArcade(sim, out, from = 0) {
   }
 }
 
-// One frame of the game: the simulation, plus the arcade's rules while a run is on.
+// One frame of the game: the simulation, plus the arcade's or the microgames' rules while
+// a run is on.
 export function stepGame(sim, dt, out, rng = Math.random) {
   const from = out.length
   if (sim.arcade && dt > 0) stepArcade(sim, dt, out, rng)
+  if (sim.micro && dt > 0) stepMicro(sim, dt, out, rng)
   stepSim(sim, dt, out, rng)
   if (sim.arcade) scoreArcade(sim, out, from)
 }

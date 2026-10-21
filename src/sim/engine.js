@@ -86,6 +86,10 @@ function hudOf(s) {
     arcadeCombo: s.arcade ? s.arcade.combo : 0,
     arcadeLevel: s.arcade ? s.arcade.level : 0,
     arcadeSeconds: s.arcade ? Math.floor(s.arcade.time) : 0,
+    micro: !!s.micro,
+    microLives: s.micro ? s.micro.lives : 0,
+    microScore: s.micro ? s.micro.score : 0,
+    microLevel: s.micro ? s.micro.level : 0,
   }
 }
 

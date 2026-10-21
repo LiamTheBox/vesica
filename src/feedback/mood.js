@@ -65,7 +65,11 @@ export function feel(mood, event) {
       if (PROUD_POINTS.has(event.reason)) mood.pride = 1
       break
     case 'arcadeLevel':
-      mood.pride = 1
+    case 'microBoss':
+      if (event.type === 'arcadeLevel' || event.won) mood.pride = 1
+      break
+    case 'microWin':
+      mood.pride = Math.max(mood.pride, 0.5)
       break
     case 'reset':
       Object.assign(mood, createMood())

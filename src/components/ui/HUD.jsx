@@ -10,6 +10,7 @@ import { MOOD_FACES } from '../../feedback/mood'
 import { countRender } from '../../debug/devHook'
 import ToolRail from './ToolRail'
 import ActionRail from './ActionRail'
+import MicroStage from '../micro/MicroStage'
 
 // Tabs load on first open (they're precached for offline play either way).
 const TelemetryTab = lazy(() => import('./Tabs/TelemetryTab'))
@@ -92,6 +93,8 @@ export default function HUD() {
   countRender('HUD')
   const stageRef = useRef(null)
   useStageRect(stageRef)
+  // A microgames run plays in the stage, with nothing else to press.
+  const micro = useHud((h) => h.micro)
 
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   // Fullscreen isn't available on iPhone; hide the button there.
@@ -144,25 +147,32 @@ export default function HUD() {
 
         {/* The stage: the bladder is framed here. Touches pass through to the 3D canvas. */}
         <section ref={stageRef} data-testid="stage" className="hud-stage">
-          <div className="absolute inset-x-0 top-0 flex flex-col items-center gap-1.5 px-14">
+          {micro && <MicroStage />}
+          <div className={`absolute inset-x-0 top-0 flex flex-col items-center gap-1.5 ${micro ? 'px-1' : 'px-14'}`}>
             <ChallengeBanner />
-            <StageAlerts />
-            <Subtitles />
+            {!micro && <StageAlerts />}
+            {!micro && <Subtitles />}
           </div>
-          <div className="absolute left-0 inset-y-0 flex items-center">
-            <ActionRail />
-          </div>
-          <div className="absolute right-0 inset-y-0 flex items-center">
-            <ToolRail />
-          </div>
-          <div className="absolute inset-x-0 bottom-1 flex justify-center pointer-events-none">
-            <RecenterButton />
-          </div>
+          {!micro && (
+            <>
+              <div className="absolute left-0 inset-y-0 flex items-center">
+                <ActionRail />
+              </div>
+              <div className="absolute right-0 inset-y-0 flex items-center">
+                <ToolRail />
+              </div>
+              <div className="absolute inset-x-0 bottom-1 flex justify-center pointer-events-none">
+                <RecenterButton />
+              </div>
+            </>
+          )}
         </section>
 
-        <div className="hud-controls w-full max-w-xl mx-auto">
-          <ActionButtons />
-        </div>
+        {!micro && (
+          <div className="hud-controls w-full max-w-xl mx-auto">
+            <ActionButtons />
+          </div>
+        )}
 
         <div className="hud-nav w-full max-w-md mx-auto">
           <BottomNav />

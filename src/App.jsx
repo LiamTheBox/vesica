@@ -7,6 +7,7 @@ import { useUiStore } from './store/useUiStore'
 import { act } from './sim/engine'
 import { agitate } from './sim/sim'
 import { startArcadeRun } from './sim/arcade'
+import { startMicroRun } from './sim/micro/runner'
 import { countRender } from './debug/devHook'
 
 // The 3D engine (Three.js + R3F, most of the download) loads in its own chunks, so the
@@ -35,11 +36,13 @@ function App() {
   countRender('App')
   const [started, setStarted] = useState(false)
 
-  // Arcade is the default: a tap (or key) anywhere starts a run; the Sandbox button skips it.
+  // Arcade is the default: a tap (or key) anywhere starts a run; the other buttons pick
+  // microgames or the sandbox instead.
   const begin = useCallback((mode) => {
     initFromGesture()
     setStarted(true)
     if (mode === 'arcade') act(startArcadeRun)
+    else if (mode === 'micro') act(startMicroRun)
   }, [])
 
   useEffect(() => {
@@ -94,12 +97,20 @@ function App() {
             <span className="text-[11px] text-slate-400 leading-snug">
               Arcade: clench as each urge lands, brace for sneezes, and hold on. Empty to bank your score.
             </span>
-            <button
-              onPointerDown={(e) => { e.stopPropagation(); begin('sandbox') }}
-              className="mt-2 min-h-11 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold text-slate-200"
-            >
-              🧪 Sandbox (free play)
-            </button>
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              <button
+                onPointerDown={(e) => { e.stopPropagation(); begin('micro') }}
+                className="min-h-11 px-4 rounded-xl bg-violet-900/70 hover:bg-violet-800/70 border border-violet-500/70 text-xs font-bold text-slate-100"
+              >
+                ⚡ Microgames
+              </button>
+              <button
+                onPointerDown={(e) => { e.stopPropagation(); begin('sandbox') }}
+                className="min-h-11 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold text-slate-200"
+              >
+                🧪 Sandbox (free play)
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -51,6 +51,10 @@ export const initialHud = {
   arcadeCombo: 0,
   arcadeLevel: 0,
   arcadeSeconds: 0,
+  micro: false, // a microgames run is on
+  microLives: 0,
+  microScore: 0,
+  microLevel: 0,
 }
 
 export const useUiStore = create((set) => ({
@@ -61,7 +65,7 @@ export const useUiStore = create((set) => ({
   // How the bladder feels (feedback/mood.js), shown as its face.
   mood: 'calm',
   // Last result per challenge: { success, text }
-  challengeResults: { commute: null, precision: null, arcade: null },
+  challengeResults: { commute: null, precision: null, arcade: null, micro: null },
   // Most recent result, shown as a card on the Sim screen: { challenge, success, text, detail, newBest, id }
   lastResult: null,
   // Latest arcade score line, flashed under the score: { text, tone, id }

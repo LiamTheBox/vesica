@@ -131,6 +131,24 @@ const handlers = {
   arcadePoints: (e) => arcadeLine(...ARCADE_LINES[e.reason](e)),
   arcadeLevel: (e) => arcadeLine(`LEVEL ${e.level}`, 'level', 'level'),
   arcadeQuit: () => keepScreenAwake(false),
+  // Microgames: a cue for each verb, then the result's.
+  microPrompt: () => audio.playCue('warning'),
+  microBossStart: () => {
+    audio.playCue('alarm')
+    haptic([30, 30, 30])
+  },
+  microWin: () => {
+    audio.playCue('good')
+    haptic(20)
+  },
+  microLose: () => audio.playCue('miss'),
+  microLevel: () => audio.playCue('level'),
+  microBoss: (e) => {
+    if (!e.won) return
+    audio.playCue('bank')
+    haptic([60, 40, 60])
+  },
+  microQuit: () => keepScreenAwake(false),
   creak: () => audio.playTensionCreak(),
   cough: () => {
     audio.playCoughBurst()
@@ -182,6 +200,9 @@ const handlers = {
       const detail = `${clock(e.seconds)} held · best combo ×${e.bestCombo} · ${e.leaks} leak${e.leaks === 1 ? '' : 's'}`
       finishChallenge(e, e.success ? `BANKED ${pts(e.score)} PTS` : `RUN OVER · ${pts(e.score)} PTS`, detail)
       if (e.success) haptic([100, 50, 100])
+    } else if (e.challenge === 'micro') {
+      finishChallenge(e, `${e.score} CLEARED`, `speed ${e.level} · ${clock(e.seconds)} played`)
+      haptic([100, 50, 100])
     } else if (e.challenge === 'commute') {
       finishChallenge(e, e.success ? `VICTORY! (${e.leaked}ml lost)` : `FAILED (${e.leaked}ml lost)`)
       if (e.success) haptic([100, 50, 100])

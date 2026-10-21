@@ -22,6 +22,15 @@ const clamped = new THREE.Vector3()
 const panMin = new THREE.Vector3()
 const panMax = new THREE.Vector3()
 
+// Scales the view's distance by `k` about the target: the camera, its zoom range and the fog
+// together, so the player's zoom and angle stay as they were.
+function backOff({ camera, controls, scene }, k) {
+  camera.position.sub(controls.target).multiplyScalar(k).add(controls.target)
+  controls.minDistance *= k
+  controls.maxDistance *= k
+  if (scene.fog) scene.fog.density /= k
+}
+
 // `growth`: how far an overfilled bladder has outgrown the frame (see overfillGrowth); the
 // fitted distance backs off by as much.
 function frameStage({ camera, controls, scene, size, stage, growth }) {
@@ -70,7 +79,7 @@ export function StageFit() {
   }, [stage, size, camera, controls, scene, resetId])
 
   // Backs off (or comes back in) as the bladder grows (or empties), easing over a second
-  // or so: the camera, its zoom range and the fog all scale about the target together.
+  // or so.
   useFrame((_, delta) => {
     if (!controls || fitDistance.current === 0) return
     const target = overfillGrowth(sim.volume / sim.maxCapacity)
@@ -78,11 +87,8 @@ export function StageFit() {
     const k = next / growth.current
     if (Math.abs(k - 1) < 1e-5) return
     growth.current = next
-    camera.position.sub(controls.target).multiplyScalar(k).add(controls.target)
-    controls.minDistance *= k
-    controls.maxDistance *= k
     fitDistance.current *= k
-    if (scene.fog) scene.fog.density /= k
+    backOff({ camera, controls, scene }, k)
   })
 
   useEffect(() => {

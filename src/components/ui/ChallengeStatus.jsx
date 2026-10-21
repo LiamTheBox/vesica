@@ -3,6 +3,7 @@ import { useHud, useUiStore } from '../../store/useUiStore'
 import { act } from '../../sim/engine'
 import { startCommuteChallenge, startPrecisionChallenge } from '../../sim/sim'
 import { startArcadeRun } from '../../sim/arcade'
+import { MAX_LIVES, startMicroRun } from '../../sim/micro/runner'
 import { clock } from '../../challenges/bests'
 
 const COMMUTE_LIMIT_ML = 20
@@ -48,6 +49,23 @@ function ArcadeBanner() {
   )
 }
 
+// A microgames run: its speed, the lives left and the games cleared.
+function MicroBanner() {
+  const lives = useHud((h) => h.microLives)
+  const score = useHud((h) => h.microScore)
+  const level = useHud((h) => h.microLevel)
+  return (
+    <div data-testid="challenge-banner" className="glass-hud w-full max-w-xl mx-auto px-3 py-1.5 rounded-2xl pointer-events-auto font-mono text-[11px] flex justify-between items-center gap-2">
+      <span className="font-bold text-fuchsia-300 whitespace-nowrap">⚡ SPEED {level}</span>
+      <span role="img" aria-label={`${lives} of ${MAX_LIVES} lives`} className="text-sm tracking-widest whitespace-nowrap">
+        <span className="text-rose-400">{'♥'.repeat(lives)}</span>
+        <span className="text-slate-600">{'♥'.repeat(MAX_LIVES - lives)}</span>
+      </span>
+      <span data-testid="micro-score" className="font-black text-amber-300 text-xs whitespace-nowrap">★ {score}</span>
+    </div>
+  )
+}
+
 // Live status of the running challenge, shown on the Sim screen above the controls.
 export function ChallengeBanner() {
   const activeChallenge = useHud((h) => h.activeChallenge)
@@ -55,6 +73,7 @@ export function ChallengeBanner() {
   const leaked = useHud((h) => h.totalLeaked)
 
   if (activeChallenge === 'arcade') return <ArcadeBanner />
+  if (activeChallenge === 'micro') return <MicroBanner />
 
   if (activeChallenge === 'commute') {
     const over = leaked > COMMUTE_LIMIT_ML
@@ -85,8 +104,8 @@ export function ChallengeBanner() {
   return null
 }
 
-const RETRY = { commute: startCommuteChallenge, precision: startPrecisionChallenge, arcade: startArcadeRun }
-const TITLES = { commute: '🚌 Rush Hour Commute', precision: '🎯 Precision Void', arcade: '🕹️ Arcade Run' }
+const RETRY = { commute: startCommuteChallenge, precision: startPrecisionChallenge, arcade: startArcadeRun, micro: startMicroRun }
+const TITLES = { commute: '🚌 Rush Hour Commute', precision: '🎯 Precision Void', arcade: '🕹️ Arcade Run', micro: '⚡ Microgames' }
 
 // The finished challenge's result. Stays until dismissed: on a phone the Challenges
 // tab is closed while playing, so this is where the result is seen.

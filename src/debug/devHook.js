@@ -13,12 +13,19 @@ export function countRender(name) {
   if (import.meta.env.DEV) renders[name] = (renders[name] || 0) + 1
 }
 
-// Plain, serialisable copy of the simulation (history summarised by length).
+// Plain, serialisable copy of the simulation (history summarised by length, a microgames
+// run's games by their ids).
 function snapshot() {
   const out = {}
   for (const [key, value] of Object.entries(sim)) {
     if (key === 'telemetryHistory') out.telemetryLength = value.length
-    else out[key] = structuredClone(value)
+    else if (key === 'micro' && value) {
+      const { games, game, boss, ...rest } = value
+      out.micro = structuredClone({
+        ...rest, games: games.map((g) => g.id), game: game?.id ?? null,
+        boss: boss && { ...boss, queue: boss.queue.map((g) => g.id) },
+      })
+    } else out[key] = structuredClone(value)
   }
   return out
 }

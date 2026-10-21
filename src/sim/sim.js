@@ -140,6 +140,7 @@ export function createSimState() {
     challengePotholeTimer: 0,
     precisionStartVolume: 0,
     arcade: null, // the arcade run's score and timers (arcade.js)
+    micro: null, // the microgames run (micro/runner.js)
 
     ...SANDBOX_RULES,
   }
@@ -279,6 +280,7 @@ export function resetOrgan(sim, out, rng = Math.random, { silent = false } = {})
   sim.totalLeakedVolume = 0
   sim.activeChallenge = null
   sim.arcade = null
+  sim.micro = null
   Object.assign(sim, SANDBOX_RULES)
   sim.sootheCooldown = 0
   sim.ripples = []
@@ -292,6 +294,17 @@ export function resetOrgan(sim, out, rng = Math.random, { silent = false } = {})
   out.push({ type: 'reset' })
   agitate(sim, out, 2.0, rng)
   if (!silent) out.push({ type: 'voice', category: 'deflated' })
+}
+
+// Back to the sandbox's rules when a run (arcade or microgames) ends. Ended overfilled, it
+// still feels no fuller than full until it's back down to full (stepSim then restores the
+// sandbox's rule), so the gauge doesn't leap as it empties.
+export function restoreSandboxRules(sim) {
+  sim.activeChallenge = null
+  sim.coughWarned = false
+  const overfull = sim.volume > sim.maxCapacity
+  Object.assign(sim, SANDBOX_RULES)
+  if (overfull) sim.fullAt = 1
 }
 
 export function startCommuteChallenge(sim, out, rng = Math.random) {

@@ -46,6 +46,8 @@ const LINE_FOR = {
   squeezeStart: (e, sim, mood) => touchLine(sim, mood, 'squeezeEmpty', 'squeezed', 'squeezed'),
   arcadePoints: (e) => POINTS_LINES[e.reason] ?? null,
   arcadeLevel: () => 'levelUp',
+  microLevel: () => 'levelUp',
+  microBoss: (e) => (e.won ? 'proud' : null),
   voice: (e, sim) => (e.category === 'cough' && sim.isClenching ? 'coughBraced' : e.category),
 }
 
@@ -65,6 +67,7 @@ export function reactionLine(event, sim, mood) {
 // the middle of a feeling (an embarrassment, the relief, the pride) or a strop.
 const QUIET_MOODS = new Set(['embarrassed', 'relieved', 'proud', 'annoyed'])
 export function chatterLine(sim, mood) {
+  if (sim.micro) return null // microgames speak for themselves
   const now = moodOf(mood, sim)
   if (now === 'sleepy') return 'sleepy'
   return QUIET_MOODS.has(now) ? null : ambientVoiceCategory(sim)
