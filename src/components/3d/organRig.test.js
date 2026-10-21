@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
+import { createOrganRig } from './organRig'
 import {
-  BLADDER_VERTICES, computeNormals, createOrganRig, emoteFor, FLUID_INSET, NECK_ROW, ORGAN_CENTER, orientCutaway, RESIDUAL_ML, RING_VERTICES,
-  overfillGrowth, urineScale, WALL_EMISSIVE,
-} from './organRig'
+  BLADDER_VERTICES, FLUID_INSET, NECK_ROW, ORGAN_CENTER, orientCutaway, overfillGrowth, RESIDUAL_ML, RING_VERTICES, urineScale,
+} from './organGeometry'
+import { WALL_EMISSIVE } from './bodyLanguage'
+import { emoteFor } from '../../feedback/emotes'
+import { computeNormals } from './normals'
 import { ORGAN_HALF_HEIGHT } from './stageFit'
 import { FLARE_RINGS, URETER_RING } from './ureter'
 import { createSimState } from '../../sim/sim'
@@ -533,6 +536,24 @@ describe('body language (D)', () => {
     expect(moved(0.5, 6)).toBeLessThan(1e-4)
     sim.urgeWarned = true
     expect(moved(0.5, 6.5)).toBeGreaterThan(0.01)
+  })
+
+  it('trembles when strained, and shakes less with reduced motion asked for (A4)', () => {
+    const { rig, sim, body } = settled()
+    const moved = (seconds, from, objects) => swing(track(rig, sim, seconds, from, { body, ...objects }, () => at(rig, body, SIDE).x))
+    sim.sphincterToneStrain = 0.25
+    expect(moved(0.5, 6)).toBeLessThan(1e-3)
+    sim.sphincterToneStrain = 0.9
+    const strained = moved(0.5, 6.5)
+    expect(strained).toBeGreaterThan(0.01)
+
+    sim.sphincterToneStrain = 0
+    play(rig, sim, 1, 7)
+    rig.emote('shudder')
+    const shudder = moved(0.3, 8)
+    play(rig, sim, 1, 8.3)
+    rig.emote('shudder')
+    expect(moved(0.3, 9.3, { reducedMotion: true })).toBeLessThan(shudder * 0.5)
   })
 
   it('moves the stream with it, from the opening', () => {

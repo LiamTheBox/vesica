@@ -178,11 +178,20 @@ export function impartSloshForce(sim, fx, fz) {
   sim.fluidCoreVelocity.z += -fz * 0.45
 }
 
+// At most this many ripples run at once (a swipe adds one on every move, a hard shake one
+// per motion event); the oldest, widest and faintest, give way. Each costs a pass over the
+// wall every frame.
+export const MAX_RIPPLES = 12
+export function addRipple(sim, ripple) {
+  sim.ripples.push(ripple)
+  if (sim.ripples.length > MAX_RIPPLES) sim.ripples.shift()
+}
+
 export function agitate(sim, out, strength = 2.5, rng = Math.random) {
   const phys = physicsOf(sim)
   sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + strength * 0.4)
   impartSloshForce(sim, (rng() - 0.5) * strength * 3.5, (rng() - 0.5) * strength * 3.5)
-  sim.ripples.push({
+  addRipple(sim, {
     center: { x: 0, y: 0, z: 0 },
     radius: 0.1,
     maxRadius: 4.2,
@@ -243,7 +252,7 @@ export function soothe(sim, out) {
   sim.detrusorSpasmIntensity = Math.max(0, sim.detrusorSpasmIntensity - 0.6)
   sim.kegelStamina = Math.min(1.0, sim.kegelStamina + 0.3)
   sim.sootheCooldown = sim.sootheCooldownTime
-  sim.ripples.push({ center: { x: 0, y: 0, z: 0 }, radius: 0.1, maxRadius: 3.5, speed: 4.0, amplitude: 0.25, decay: 4.0 })
+  addRipple(sim, { center: { x: 0, y: 0, z: 0 }, radius: 0.1, maxRadius: 3.5, speed: 4.0, amplitude: 0.25, decay: 4.0 })
   out.push({ type: 'soothe' })
 }
 

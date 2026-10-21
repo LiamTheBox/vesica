@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useUiStore } from '../../store/useUiStore'
 import { sim } from '../../sim/engine'
-import { overfillGrowth } from './organRig'
+import { overfillGrowth } from './organGeometry'
 import { stageFit } from './stageFit'
 
 // The original's fog was tuned for a camera 12 units away; keep its look at any distance.

@@ -1,4 +1,4 @@
-import { impartSloshForce, physicsOf, touchJolt } from './sim'
+import { addRipple, impartSloshForce, physicsOf, touchJolt } from './sim'
 
 // Direct touches on the bladder, ported from the original's pokeBladder(), slapBladder(),
 // squeeze and orbit handlers. `local` is the hit point in the bladder mesh's own space.
@@ -23,7 +23,7 @@ export function pokeAt(sim, out, local, strength, { touch = false, strain = POKE
 // strength: 2.0 for a tap in slap mode, 2.4 for the Slap button, up to 3.0 for a swipe.
 export function slapAt(sim, out, local, strength = 1.8, { haptic = false, strain = SLAP_STRAIN } = {}) {
   const phys = physicsOf(sim)
-  sim.ripples.push({
+  addRipple(sim, {
     center: point(local),
     radius: 0.1,
     maxRadius: 3.8,

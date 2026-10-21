@@ -81,6 +81,15 @@
   100% { transform: translate(0, 0); }
 }
 
+/* Reduced motion (the system setting): no screen shake or bouncing banners. Unlayered, so
+   it wins over the utilities. The 3D body language shakes less too (bodyLanguage.js). */
+@media (prefers-reduced-motion: reduce) {
+  .shake-active,
+  .animate-bounce {
+    animation: none;
+  }
+}
+
 input[type="range"] {
   accent-color: #f59e0b;
 }

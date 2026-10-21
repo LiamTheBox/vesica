@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createSimState, fillPressure, stepSim, TOUCH_PRESSURE } from './sim'
+import { createSimState, fillPressure, MAX_RIPPLES, stepSim, TOUCH_PRESSURE } from './sim'
 import { orbitDrag, pokeAt, slapAt, slapRandom, squeezeCancel, squeezeDrag, squeezeRelease, squeezeStart } from './interactions'
 import { extractOriginalConst } from '../test/original'
 
@@ -56,6 +56,14 @@ describe('slap (original slapBladder)', () => {
     expect(out[0].local.z).toBeCloseTo(2.2, 9)
     expect(out[0].local.y).toBeCloseTo(-0.2, 9)
     expect(out[0]).toMatchObject({ strength: 2.4, haptic: false })
+  })
+
+  it('keeps at most a dozen ripples running, the newest (C12)', () => {
+    const sim = createSimState()
+    for (let i = 0; i < 40; i++) slapAt(sim, [], { x: i, y: 0, z: 0 }, 2.0)
+    expect(sim.ripples).toHaveLength(MAX_RIPPLES)
+    expect(sim.ripples.at(-1).center.x).toBe(39)
+    expect(sim.ripples[0].center.x).toBe(40 - MAX_RIPPLES)
   })
 
   it('twenty slaps on a full bladder end in total failure', () => {

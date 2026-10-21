@@ -8,9 +8,15 @@ import { physicsOf } from '../../sim/sim'
 import {
   orbitDrag, POKE_STRAIN, pokeAt, SLAP_STRAIN, slapAt, squeezeCancel, squeezeDrag, squeezePinch, squeezeRelease, squeezeStart,
 } from '../../sim/interactions'
-import { createOrganRig, createOrganTextures, emoteFor, WALL_EMISSIVE } from './organRig'
+import { createOrganRig } from './organRig'
+import { createOrganTextures } from './textures'
+import { WALL_EMISSIVE } from './bodyLanguage'
+import { emoteFor } from '../../feedback/emotes'
 import { createCutMaterials } from './cutMaterials'
 import { ureterSquirt } from '../../feedback/feedback'
+
+// The system's reduce-motion setting (live): the body language's shakes get smaller.
+const reducedMotion = typeof window !== 'undefined' ? window.matchMedia?.('(prefers-reduced-motion: reduce)') : null
 
 const ndc = new THREE.Vector2()
 // Liquid opacity without transmission. Transmission only replaces the diffuse light and
@@ -171,6 +177,7 @@ export default function Organ() {
       camera: state.camera,
       cutaway: isCutawayActive,
       mood: useUiStore.getState().mood,
+      reducedMotion: !!reducedMotion?.matches,
       onSquirt: ureterSquirt,
     })
     cut.update(sim, dt, rig.cutawayPlane, isCutawayActive)
