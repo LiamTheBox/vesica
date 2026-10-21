@@ -82,15 +82,15 @@ export default function SettingsTab() {
         <Toggle label="🗣️ Spoken Voice Engine" checked={settings.voiceEnabled} onChange={(v) => updateSettings({ voiceEnabled: v })} />
         <Slider label="Voice volume" value={settings.voiceVolume} display={percent(settings.voiceVolume)} min={0} max={1} step={0.05} onChange={(v) => updateSettings({ voiceVolume: v })} />
         <Slider
-          label="Talks at most every"
-          value={settings.voiceGap}
-          display={`${settings.voiceGap}s`}
-          min={3}
-          max={30}
-          step={1}
-          onChange={(v) => updateSettings({ voiceGap: v })}
+          label="Chats on its own at most every"
+          value={settings.chatGap}
+          display={`${settings.chatGap}s`}
+          min={10}
+          max={90}
+          step={5}
+          onChange={(v) => updateSettings({ chatGap: v })}
         />
-        <p className="text-[10px] text-slate-500 font-mono">Anti-repetition memory: the last 5 lines of each mood aren't repeated</p>
+        <p className="text-[10px] text-slate-500 font-mono">Reactions to what you do don't wait. Lines show as subtitles with the voice off too, and the last 5 of each kind aren't repeated.</p>
       </div>
 
       <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">

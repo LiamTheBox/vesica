@@ -39,13 +39,13 @@ test.describe('HUD shows the organ state', () => {
   }
 })
 
-test('settings persist across a reload and change the voice gap', async ({ page }) => {
+test('settings persist across a reload and change the chat gap', async ({ page }) => {
   await startApp(page)
   await page.getByRole('button', { name: /Settings/ }).click()
   const haptics = page.getByLabel(/Mobile Haptic Vibration/)
   await expect(haptics).toBeChecked()
   await haptics.uncheck()
-  await page.getByLabel(/Talks at most every/).fill('20')
+  await page.getByLabel(/Chats on its own at most every/).fill('20')
   await expect(page.getByText('20s')).toBeVisible()
 
   await page.reload()

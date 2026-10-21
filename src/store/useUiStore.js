@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS = {
   masterMuted: false,
   voiceEnabled: true,
   voiceVolume: 1.0,
-  voiceGap: 10, // seconds between spoken lines, at least
+  chatGap: 30, // seconds between the bladder's own chatter, at least (reactions don't wait for it)
   sfxEnabled: true,
   sfxVolume: 0.8,
   haptics: true,

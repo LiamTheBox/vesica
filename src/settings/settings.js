@@ -9,7 +9,7 @@ export function applySettings(settings) {
   audio.isMasterMuted = settings.masterMuted
   audio.voiceEnabled = settings.voiceEnabled
   audio.voiceVolume = settings.voiceVolume
-  audio.minInterval = settings.voiceGap
+  audio.chatGap = settings.chatGap
   audio.sfxEnabled = settings.sfxEnabled
   audio.sfxVolume = settings.sfxVolume
   feedbackSettings.haptics = settings.haptics

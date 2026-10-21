@@ -1,19 +1,17 @@
-const VOICE_DATABASE = {
-  deflated: ["Ah, finally empty and flat as a pancake.", "Completely relaxed. No tension at all down here.", "Just a tiny puddle at the base, perfectly fine.", "Everything is quiet. Just resting nicely.", "I feel light, stretchy, and totally unbothered.", "Zero pressure. Ah, sweet bliss.", "My detrusor walls are completely at ease.", "Fresh, flat, and spacious in the pelvic floor.", "Peace and quiet down here at last.", "So cozy, soft, and wrinkled.", "Not a single drop causing any stretch.", "All quiet on the urethral front.", "Baseline resting state restored.", "Total muscular tranquility achieved.", "Smooth, unstretched, and completely limp.", "Pelvic floor is resting peacefully.", "Rugae folds are completely bunched together.", "Zero hydrostatic strain to report.", "I could take a long nap like this.", "Detrusor tone is completely settled."],
-  nominal: ["Ooh, incoming delivery from the kidneys.", "Starting to round out a little bit.", "A steady trickle... nothing I can't handle with ease.", "Hydration detected. Expanding gently.", "The rugae folds are smoothing out nicely.", "Just a casual level of fluid. Totally comfortable.", "I can hold this all day without breaking a sweat.", "Just getting warmed up below.", "A few drops settling in the base.", "Nice, gentle inflow from the ureters.", "Detrusor is stretching smoothly with no strain.", "Everything is under control down here.", "Hardly noticeable, plenty of room left.", "Relaxed baseline fill in progress.", "Hydration filtration running smoothly.", "Mild expansion underway, feeling fine.", "Fluid level is rising casually.", "No pressure on the sphincter yet.", "Supple elastic walls accommodating the volume.", "Trigone area is stable and calm."],
-  distended: ["Okay, I'm definitely waking up now.", "Starting to feel a distinct stretch against my walls.", "We're past the halfway mark... just so you know!", "The stretch receptors are sending mild pings upstairs.", "Sphincter is holding firm, but I can feel the hydrostatic weight.", "Pressure's climbing into double digits.", "Definitely starting to feel heavy down here.", "My lining is smoothing out almost completely.", "You might want to think about a restroom break soon.", "Getting noticeably round in the pelvis.", "Hydrostatic weight is steadily climbing.", "Detrusor tone is starting to respond.", "Not urgent yet, but don't ignore me.", "The stretch signals are firing more frequently.", "Fluid volume is clearly building up.", "Feeling plump, taut, and slightly heavy.", "Sphincter tone is beginning active retention.", "Keep an eye on the intake, getting full.", "The walls are feeling the expansion.", "Elastic threshold is halfway crossed."],
-  full: ["Alright, this is getting seriously tight!", "I'm ballooning! Please find a bathroom soon!", "My walls are stretched thin... I can barely expand more!", "Sphincter, stay clamped! Don't you dare let go!", "Ugh, every single drop from the ureters feels heavy now!", "My detrusor muscle is working overtime to hold this!", "Pressure warning! It's pressing against everything!", "I feel like a taut water balloon ready to burst!", "The internal pressure is getting very uncomfortable!", "Hold firm! Squeeze the pelvic floor!", "Elastic tension is reaching its upper limits!", "Please, don't drink anything else right now!", "Urgency signals are firing non-stop!", "The walls are stretched paper-thin down here!", "Every slosh sends a shockwave to the valve!", "Detrusor muscle fibers are straining hard!", "I need a restroom immediately, this is intense!", "The sphincter is feeling the full fluid load!", "Overpressure approaching critical territory!", "Brace yourself, holding this is getting difficult!"],
-  critical: ["I CAN'T HOLD IT! The sphincter is twitching out of control!", "SPASM DETECTED! Squeeeeeeze with everything you've got!", "My muscle is completely exhausted... it's trembling!", "The pressure is through the roof! Over fifty cmH2O!", "Sphincter fatigue is at maximum! I'm losing grip!", "Emergency containment failure imminent!", "The detrusor is spasming violently!", "Hold on tight! The valve is shuddering!", "I'm shaking down here! Release the pressure!", "Total retention limit reached! Clench now!", "Overpressure alert! The seal is about to break!", "Every single second is a struggle to hold!", "The valve cannot withstand this force much longer!", "Containment breach warning! Take action!", "Intense detrusor seizure underway!", "I'm redlining! Relieve this tension immediately!", "Tremors are shaking the entire pelvic base!", "Elastic limit completely exceeded!", "The sphincter is burning with fatigue!", "Critical spasm! Hit the void valve!"],
-  leak: ["Aagh! A micro-spurt slipped through!", "Pressure was too high! I leaked a little!", "Oof! That surge forced the valve open!", "That was close... resealed, but I lost a few drops!", "Clench tighter! It's leaking under this pressure!", "A momentary leak escaped before resealing!", "The valve gave way for just a second!", "Pressure bled off with a quick spurt!", "I couldn't hold back that sudden surge!", "Micro-breach! Squeeze to lock it down!", "A quick spurt got past the sphincter!", "Overpressure leak! Resealed just in time!", "That spasm forced a leak out!", "Lost containment for a fraction of a second!", "Tension forced a leak! Stabilizing now...", "The hydrostatic burst broke through briefly!"],
-  clench: ["Holding tight! Squeezing the valve!", "Sphincter braced! Holding back the surge!", "Good clamp! That blocked the leak!", "Holding on with all my strength!", "Kegel reinforcement active! Valve locked!", "Clamping down firmly against the pressure!", "Sphincter reinforced! Holding the line!", "Locking the urethral seal tightly!", "Squeezing hard! That stopped the breach!", "Pelvic floor contracted, barrier holding!", "Tight clench engaged, containment secured!", "Straining to keep the valve clamped!", "Holding the floodgate shut with active tone!", "Braced against the internal hydrostatic push!", "Reinforcing the neck tightly!", "Squeezing the sphincter with maximum effort!"],
-  soothe: ["Ahhh... deep breath. Tension going down.", "Relaxing the spasm... that feels much calmer.", "Detrusor tone lowering nicely.", "Phew... settling back to a calm baseline.", "Soothing the muscle fibers... spasm subsiding.", "Releasing residual strain... much better.", "Detrusor excitability decreasing smoothly.", "Calming the pelvic tension... breathing out.", "The pressure spikes are smoothing over.", "Lowering muscular tone... thank goodness.", "Gentle relief washing over the tissue.", "Spasms fading away into a calm stretch.", "Detrusor walls relaxing their grip.", "Deep soothing breath... tone normalizing.", "Tension dissipating from the bladder neck.", "Restoring quiet elasticity to the walls."],
-  cough: ["Oof! That cough spiked the pressure!", "A sudden jolt straight to the pelvic floor!", "Brace yourself during those sneezes!", "Whoa! That intra-abdominal spike was close!", "That cough nearly blew the sphincter open!"],
-  involuntary: ["I CAN'T HOLD IT ANYMORE! The sphincter collapsed!", "FAILURE! I'm completely letting go!", "It's rushing out! The pressure was too much!", "The valve gave out entirely! Involuntary release!", "Total muscular surrender! It's all pouring out!", "I warned you! Containment completely lost!", "The sphincter failed completely under the weight!", "Uncontrolled emptying in progress!", "The valve gave up! Everything is releasing!", "Complete retention breakdown! Total void!", "Muscular collapse! It won't stop flowing!", "The pressure destroyed my grip! Total release!"],
-  poked: ["Hey! Don't poke me while I'm holding this!", "Ouch! That sloshed everything around!", "Hands off! It's delicate in here!", "Careful! You're making the pressure spike!", "Whoa! That prod sent shockwaves to the valve!", "Stop poking! You'll trigger a spasm!", "Eep! That indentation rattled the sphincter!", "Hands to yourself! That was right on the trigone!", "Quit prodding me, I'm under enough stress!", "That poke nearly forced a leak!", "Oof! Watch where your fingers are going!", "You're squishing the walls too roughly!", "Hey! That caused a massive pressure wave!", "Do not prod a full bladder like that!", "Careful! That soft-body dent hurts!", "That direct hit rattled the detrusor!"],
-  squeezed: ["Hey! Squeezing me is raising the pressure dangerously!", "Careful! You're gonna pop me if you squeeze so hard!", "Oof! The fluid has nowhere else to go!", "You're compressing the walls! The valve is straining!", "Stop squeezing! That's spiking the hydrostatic load!", "The lateral bulge is stretching me to the limit!", "You're forcing fluid straight into the sphincter neck!", "Aah! The Poisson expansion is too intense!", "Don't crush me like that, it's about to leak!", "Squeeze release! The pressure is off the charts!", "Compressing me is making retention impossible!", "Ouch! The internal walls can't take this clamp!", "You're squeezing out micro-spurts, stop!", "Let go! The squeeze is overwhelming the tone!", "High compression detected! Release the grip!", "You're crushing the lumen, let it expand!"],
-  shaken: ["Whoaaa! Stop shaking me!", "Everything is sloshing wildly inside!", "Ahhh! The fluid waves are hitting the valve!", "Hey! I'm not a cocktail shaker!", "You're making the fluid slosh everywhere!", "Stop! The slosh inertia is battering the sphincter!", "Whoa! The dual-body fluid lag is rocking me!", "Internal waves crashing against the neck!", "Quit jostling me around so violently!", "The slosh resonance is peaking! Stop shaking!", "All that sloshing is triggering reflex spasms!", "You're tossing fluid mass all over the place!", "Stop the agitation! I'm getting dizzy down here!", "The hydrodynamic waves are pushing the limit!", "Violent slosh detected! Keep it steady!", "Whoa! The fluid momentum is smashing the walls!"],
-  voiding: ["Aaaahhh... sweet, glorious relief!", "Yes! Let it all flow out!", "Oh, that feels so much better...", "Pressure dropping... ahhh, heaven.", "Sphincter dilating... emptying in progress.", "Look at that stream go! What a release!", "Finally, the tension is melting away!", "Ahhh, my elastic walls are shrinking back.", "Steady stream, optimal drainage velocity.", "All that heavy fluid... just washing away.", "Relaxing every muscle fiber as it drains.", "What a wonderful feeling of decompression.", "Deflating smoothly back to baseline.", "The relief is overwhelming... draining out.", "Sphincter wide open, steady evacuation.", "Almost done... draining the final drops.", "Pure comfort as the volume recedes.", "Back to normal capacity... ahhh."]
-}
+import { CHATTER, LINES, NORMAL_VOICE, URGENT, VOICE_STYLE } from './lines'
+
+// Who gets to speak. Chatter used to share one 10 s cooldown with everything, so a poke, a
+// leak or even a failure often went unsaid. Now urgent lines (a leak, a failure) cut in
+// over anything; a reaction to what just happened cuts in over chatter, and if another
+// reaction is being said it waits for it to end (briefly, or it's stale); the bladder's
+// own chatter about how full it is waits its turn, `chatGap` seconds apart and after a
+// quiet spell.
+export const PRIORITY = { chatter: 0, reaction: 1, urgent: 2 }
+const REPEAT_GAP = [0, 4, 1.5] // s before the same kind of line is said again, by priority
+const QUIET_BEFORE_CHATTER = 6 // s after any line
+const CHATTER_GAP_SCALE = { full: 0.75, critical: 0.5 } // a desperate bladder talks more
+const WAIT = 4 // s a reaction waits for its turn
+const SECONDS_PER_WORD = 0.38 // at rate 1, to estimate how long a line takes
 
 // Short arcade cues: [frequency Hz, start s, length s, wave, volume] per note.
 const CUES = {
@@ -26,7 +24,7 @@ const CUES = {
   bank: [[523, 0, 0.1, 'sine', 0.16], [784, 0.1, 0.1, 'sine', 0.16], [1047, 0.2, 0.28, 'sine', 0.16]],
 }
 
-class AudioManager {
+export class AudioManager {
   constructor() {
     this.ctx = null
     this.masterGain = null
@@ -43,8 +41,15 @@ class AudioManager {
     this.creakCooldown = 0
 
     this.femaleVoice = null
-    this.speechCooldown = 0.0
-    this.minInterval = 10.0
+    this.clock = 0 // s, advanced by update()
+    this.chatGap = 30 // s between chatter lines (the Settings slider)
+    this.busyUntil = 0 // the line being said ends about then...
+    this.busyPriority = PRIORITY.chatter // ...and this is how much it matters
+    this.lastLineAt = -Infinity
+    this.lastChatterAt = -Infinity
+    this.lastSaid = new Map() // category -> when
+    this.pending = null // a reaction waiting for the line being said: { category, priority, until }
+    this.utterance = null
     this.recentHistory = new Map()
     this.historySize = 5
 
@@ -71,10 +76,12 @@ class AudioManager {
     if (this.ctx.state === 'suspended') this.ctx.resume()
   }
 
-  // In the background: silence the engine and drop the queued voice line.
+  // In the background: silence the engine and drop the voice line.
   suspend() {
     if (this.ctx?.state === 'running') this.ctx.suspend()
     this.synth?.cancel()
+    this.busyUntil = this.clock
+    this.pending = null
   }
 
   resume() {
@@ -95,12 +102,28 @@ class AudioManager {
     if (!this.femaleVoice && voices.length > 0) this.femaleVoice = voices.find(v => v.lang.startsWith('en')) || voices[0]
   }
 
-  speak(category) {
-    if (!this.voiceEnabled || this.isMasterMuted || !this.synth) return
-    if (this.speechCooldown > 0 || this.synth.speaking) return
+  priorityOf(category) {
+    return URGENT.has(category) ? PRIORITY.urgent : CHATTER.has(category) ? PRIORITY.chatter : PRIORITY.reaction
+  }
 
-    const list = VOICE_DATABASE[category]
-    if (!list || list.length === 0) return
+  // Says a line of `category` if it's its turn (see PRIORITY), and shows it as a subtitle,
+  // also with the voice off. Returns whether it was said.
+  speak(category) {
+    const list = LINES[category]
+    if (!list || list.length === 0) return false
+    const priority = this.priorityOf(category)
+    const now = this.clock
+    const busy = now < this.busyUntil
+    if (priority === PRIORITY.chatter) {
+      const gap = this.chatGap * (CHATTER_GAP_SCALE[category] ?? 1)
+      if (busy || this.synth?.speaking || now - this.lastLineAt < QUIET_BEFORE_CHATTER || now - this.lastChatterAt < gap) return false
+    } else {
+      if (now - (this.lastSaid.get(category) ?? -Infinity) < REPEAT_GAP[priority]) return false
+      if (busy && priority < PRIORITY.urgent && priority <= this.busyPriority) {
+        if (!this.pending || priority >= this.pending.priority) this.pending = { category, priority, until: now + WAIT }
+        return false
+      }
+    }
 
     let recent = this.recentHistory.get(category) || []
     let available = list.map((_, i) => i).filter(i => !recent.includes(i))
@@ -112,26 +135,32 @@ class AudioManager {
     this.recentHistory.set(category, recent)
 
     const text = list[chosenIndex]
-    this.speechCooldown = this.minInterval
+    const style = VOICE_STYLE[category] ?? NORMAL_VOICE
+    const seconds = 0.3 + (text.split(' ').length * SECONDS_PER_WORD) / style.rate
+    this.busyUntil = now + seconds
+    this.busyPriority = priority
+    this.lastLineAt = now
+    this.lastSaid.set(category, now)
+    if (priority === PRIORITY.chatter) this.lastChatterAt = now
+    if (this.pending && this.pending.priority <= priority) this.pending = null
 
-    const utterance = new SpeechSynthesisUtterance(text)
-    if (this.femaleVoice) utterance.voice = this.femaleVoice
-    utterance.volume = this.voiceVolume
-
-    if (['critical', 'involuntary', 'leak'].includes(category)) {
-      utterance.pitch = 1.45; utterance.rate = 1.25
-    } else if (['shaken', 'squeezed', 'clench', 'cough'].includes(category)) {
-      utterance.pitch = 1.35; utterance.rate = 1.2
-    } else if (category === 'soothe') {
-      utterance.pitch = 1.15; utterance.rate = 0.9
-    } else if (['voiding', 'deflated'].includes(category)) {
-      utterance.pitch = 1.15; utterance.rate = 0.95
-    } else {
-      utterance.pitch = 1.2; utterance.rate = 1.05
+    if (this.voiceEnabled && !this.isMasterMuted && this.synth) {
+      if (busy || this.synth.speaking) this.synth.cancel() // cut off the less important line
+      const utterance = new SpeechSynthesisUtterance(text)
+      if (this.femaleVoice) utterance.voice = this.femaleVoice
+      utterance.volume = this.voiceVolume
+      utterance.pitch = style.pitch
+      utterance.rate = style.rate
+      // Busy until it really ends (slow voices outlast the estimate), up to twice the estimate.
+      this.busyUntil = now + seconds * 2
+      utterance.onend = utterance.onerror = () => {
+        if (this.utterance === utterance) this.busyUntil = Math.min(this.busyUntil, this.clock)
+      }
+      this.utterance = utterance
+      this.synth.speak(utterance)
     }
-
-    this.synth.speak(utterance)
     if (this.onSubtitle) this.onSubtitle(text, category)
+    return true
   }
 
   startDynamicJet() {
@@ -353,8 +382,14 @@ class AudioManager {
   }
 
   update(dt) {
-    if (this.speechCooldown > 0) this.speechCooldown -= dt
+    this.clock += dt
     if (this.creakCooldown > 0) this.creakCooldown -= dt
+    // A waiting reaction gets its turn once the line before it ends.
+    if (this.pending && this.clock >= this.busyUntil) {
+      const { category, until } = this.pending
+      this.pending = null
+      if (this.clock <= until) this.speak(category)
+    }
   }
 }
 
