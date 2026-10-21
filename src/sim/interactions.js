@@ -6,16 +6,21 @@ import { impartSloshForce, physicsOf } from './sim'
 
 const point = (p) => ({ x: p.x, y: p.y, z: p.z })
 
+// Sphincter strain from one poke or one slap (requested: 5 % each; the original's
+// were 8 % and 15 %). A drag pokes on every move, so Organ.jsx passes a share of it.
+export const POKE_STRAIN = 0.05
+export const SLAP_STRAIN = 0.05
+
 // strength: 2.2 (physics `squishForce`) for a tap, 0.7 for each step of a drag.
-export function pokeAt(sim, out, local, strength, { touch = false } = {}) {
+export function pokeAt(sim, out, local, strength, { touch = false, strain = POKE_STRAIN } = {}) {
   impartSloshForce(sim, local.x * 2.5 * strength, local.z * 2.5 * strength)
   sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + 0.3 * strength)
-  sim.sphincterToneStrain = Math.min(1.0, sim.sphincterToneStrain + 0.08)
+  sim.sphincterToneStrain = Math.min(1.0, sim.sphincterToneStrain + strain)
   out.push({ type: 'poke', local: point(local), strength, touch })
 }
 
 // strength: 2.0 for a tap in slap mode, 2.4 for the Slap button, up to 3.0 for a swipe.
-export function slapAt(sim, out, local, strength = 1.8, { haptic = false } = {}) {
+export function slapAt(sim, out, local, strength = 1.8, { haptic = false, strain = SLAP_STRAIN } = {}) {
   const phys = physicsOf(sim)
   sim.ripples.push({
     center: point(local),
@@ -27,7 +32,7 @@ export function slapAt(sim, out, local, strength = 1.8, { haptic = false } = {})
   })
   impartSloshForce(sim, local.x * 4.0 * strength, local.z * 4.0 * strength)
   sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + 0.6 * strength)
-  sim.sphincterToneStrain = Math.min(1.0, sim.sphincterToneStrain + 0.15)
+  sim.sphincterToneStrain = Math.min(1.0, sim.sphincterToneStrain + strain)
   out.push({ type: 'slap', local: point(local), strength, haptic })
 }
 

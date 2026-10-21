@@ -5,7 +5,9 @@ import { selectQualityTier, useUiStore } from '../../store/useUiStore'
 import { QUALITY_TIERS } from '../../settings/quality'
 import { act, onSimEvent, sim } from '../../sim/engine'
 import { physicsOf } from '../../sim/sim'
-import { orbitDrag, pokeAt, slapAt, squeezeCancel, squeezeDrag, squeezePinch, squeezeRelease, squeezeStart } from '../../sim/interactions'
+import {
+  orbitDrag, POKE_STRAIN, pokeAt, SLAP_STRAIN, slapAt, squeezeCancel, squeezeDrag, squeezePinch, squeezeRelease, squeezeStart,
+} from '../../sim/interactions'
 import { createOrganRig, createOrganTextures } from './organRig'
 import { createCutMaterials } from './cutMaterials'
 
@@ -26,7 +28,7 @@ export default function Organ() {
   const bladderRef = useRef()
   const sphincterRef = useRef()
   const streamRef = useRef()
-  const splashRef = useRef()
+  const dropsRef = useRef()
   const leftDropRef = useRef()
   const rightDropRef = useRef()
   const wallMatRef = useRef()
@@ -55,6 +57,7 @@ export default function Organ() {
     const fingers = new Map() // pointerId -> { x, y }
     let primaryId = null // the finger driving the one-finger tool, if any
     let pinchDistance = 0
+    let lastSwipeStrain = -Infinity
 
     const hitBladder = (e) => {
       const { camera, raycaster } = get()
@@ -70,6 +73,7 @@ export default function Organ() {
     }
 
     const onDown = (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return // right/middle buttons move the camera
       fingers.set(e.pointerId, { x: e.clientX, y: e.clientY })
       const mode = useUiStore.getState().interactionMode
 
@@ -111,8 +115,16 @@ export default function Organ() {
         const local = hitBladder(e)
         if (!local) return
         const speed = Math.hypot(dx, dy)
-        if (mode === 'slap' && speed > 10) act(slapAt, local, Math.min(3.0, speed * 0.14))
-        else if (mode === 'poke') act(pokeAt, local, 0.7)
+        if (mode === 'slap' && speed > 10) {
+          // A swipe slaps on every move, but strains the sphincter like one slap per 150 ms.
+          const now = performance.now()
+          const strain = now - lastSwipeStrain >= 150 ? SLAP_STRAIN : 0
+          if (strain) lastSwipeStrain = now
+          act(slapAt, local, Math.min(3.0, speed * 0.14), { strain })
+        } else if (mode === 'poke') {
+          // A drag pokes on every move: strain by the distance rubbed, a poke's worth per 120 px.
+          act(pokeAt, local, 0.7, { strain: POKE_STRAIN * Math.min(1, speed / 120) })
+        }
       }
     }
 
@@ -150,7 +162,7 @@ export default function Organ() {
       fluidMat: fluidMatRef.current,
       sphincter: sphincterRef.current,
       stream: streamRef.current,
-      splash: splashRef.current,
+      drops: dropsRef.current,
       leftDrop: leftDropRef.current,
       rightDrop: rightDropRef.current,
       camera: state.camera,
@@ -218,14 +230,16 @@ export default function Organ() {
         <meshPhysicalMaterial vertexColors color={0xffffff} emissive={0x4c0519} emissiveIntensity={0.35} roughness={0.28} clearcoat={0.8} clearcoatRoughness={0.15} side={THREE.DoubleSide} />
       </mesh>
 
-      <mesh ref={streamRef} geometry={rig.streamGeo} renderOrder={5} visible={false}>
-        {/* No transmission: on a jet this thin it's invisible, and it doubled the frame cost while voiding. */}
-        <meshPhysicalMaterial color={0xfacc15} emissive={0xd97706} emissiveIntensity={0.6} roughness={0.05} transparent opacity={0.92} side={THREE.DoubleSide} />
-      </mesh>
-
-      <points ref={splashRef} geometry={rig.splashGeo} renderOrder={6} visible={false}>
-        <pointsMaterial color={0xfef08a} size={0.12} transparent opacity={0.8} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </points>
+      {/* Stream: the jet and the drops it breaks into (stream.js). No transmission: on a jet
+          this thin it's invisible, and it doubled the frame cost while voiding. */}
+      <mesh ref={streamRef} geometry={rig.stream.jetGeo} material={rig.stream.material} renderOrder={5} visible={false} frustumCulled={false} />
+      <instancedMesh
+        ref={dropsRef}
+        args={[rig.stream.dropGeo, rig.stream.material, rig.stream.maxDrops]}
+        renderOrder={5}
+        visible={false}
+        frustumCulled={false}
+      />
 
       {/* Ureters are cut with the wall so a tube never dangles in front of the section. */}
       <mesh geometry={rig.ureterGeoLeft} renderOrder={3}>

@@ -4,7 +4,8 @@ import { openOriginal } from './helpers/original'
 
 // Touches on the bladder (ROADMAP M2). Runs on Pixel 7 only (see playwright.config.js).
 
-const FIELDS = ['sphincterToneStrain', 'sloshVelX', 'sloshVelZ', 'jiggleIntensity']
+// Strain is left out: pokes and slaps now add 5 % each (requested; the original's 8 % and 15 %).
+const FIELDS = ['sloshVelX', 'sloshVelZ', 'jiggleIntensity']
 
 const resetState = { sphincterToneStrain: 0, sloshVelX: 0, sloshVelZ: 0, jiggleIntensity: 0 }
 
@@ -13,7 +14,7 @@ test.describe('same touch in the original and the port', () => {
     ['a poke', 'pokeBladder(new THREE.Vector3(1, 0.7, 2), 2.2)', ['pokeAt', { x: 1, y: 0.5, z: 2 }, 2.2]],
     ['a slap', 'slapBladder(new THREE.Vector3(-1.5, 0.2, 1.5), 2.4)', ['slapAt', { x: -1.5, y: 0, z: 1.5 }, 2.4]],
   ]) {
-    test(`${name} changes strain, slosh and jiggle identically`, async ({ page }) => {
+    test(`${name} changes slosh and jiggle identically, and adds 5 % strain`, async ({ page }) => {
       test.skip(!(await openOriginal(page)), 'original needs CDN access')
       // Run synchronously so no frame of physics runs between the touch and the read.
       const original = await page.evaluate(`(() => {
@@ -28,10 +29,11 @@ test.describe('same touch in the original and the port', () => {
         v.setState(reset)
         v.act(action, ...args)
         const s = v.getState()
-        return Object.fromEntries(fields.map((f) => [f, s[f]]))
+        return Object.fromEntries([...fields, 'sphincterToneStrain'].map((f) => [f, s[f]]))
       }, [resetState, portAction, FIELDS])
 
       for (const field of FIELDS) expect(port[field], field).toBeCloseTo(original[field], 9)
+      expect(port.sphincterToneStrain).toBeCloseTo(0.05, 9)
     })
   }
 })
@@ -55,7 +57,7 @@ test.describe('gestures on the bladder', () => {
     await page.touchscreen.tap(point.x, point.y)
     const [poke] = await eventsOf(page, 'poke')
     expect(poke).toMatchObject({ strength: 2.2, touch: true })
-    expect((await portState(page)).sphincterToneStrain).toBeCloseTo(0.08, 6)
+    expect((await portState(page)).sphincterToneStrain).toBeCloseTo(0.05, 6)
   })
 
   test('dragging in Poke mode keeps poking softly', async ({ page }) => {
@@ -73,7 +75,7 @@ test.describe('gestures on the bladder', () => {
     await setMode(page, 'slap')
     await page.touchscreen.tap(point.x, point.y)
     expect((await eventsOf(page, 'slap'))[0]).toMatchObject({ strength: 2.0, haptic: true })
-    expect((await portState(page)).sphincterToneStrain).toBeCloseTo(0.15, 6)
+    expect((await portState(page)).sphincterToneStrain).toBeCloseTo(0.05, 6)
 
     await page.mouse.move(point.x - 40, point.y)
     await page.mouse.down()
@@ -115,7 +117,7 @@ test.describe('gestures on the bladder', () => {
   test('the Slap button slaps at 2.4 without the touch vibration', async ({ page }) => {
     await page.getByRole('button', { name: /Slap/ }).click()
     expect((await eventsOf(page, 'slap'))[0]).toMatchObject({ strength: 2.4, haptic: false })
-    expect((await portState(page)).sphincterToneStrain).toBeCloseTo(0.15, 6)
+    expect((await portState(page)).sphincterToneStrain).toBeCloseTo(0.05, 6)
   })
 
   test('cutaway opens the side facing the camera, even from behind', async ({ page }) => {

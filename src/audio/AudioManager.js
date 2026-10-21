@@ -15,6 +15,17 @@ const VOICE_DATABASE = {
   voiding: ["Aaaahhh... sweet, glorious relief!", "Yes! Let it all flow out!", "Oh, that feels so much better...", "Pressure dropping... ahhh, heaven.", "Sphincter dilating... emptying in progress.", "Look at that stream go! What a release!", "Finally, the tension is melting away!", "Ahhh, my elastic walls are shrinking back.", "Steady stream, optimal drainage velocity.", "All that heavy fluid... just washing away.", "Relaxing every muscle fiber as it drains.", "What a wonderful feeling of decompression.", "Deflating smoothly back to baseline.", "The relief is overwhelming... draining out.", "Sphincter wide open, steady evacuation.", "Almost done... draining the final drops.", "Pure comfort as the volume recedes.", "Back to normal capacity... ahhh."]
 }
 
+// Short arcade cues: [frequency Hz, start s, length s, wave, volume] per note.
+const CUES = {
+  warning: [[660, 0, 0.09, 'triangle', 0.14], [880, 0.1, 0.09, 'triangle', 0.14]],
+  perfect: [[784, 0, 0.08, 'sine', 0.16], [1175, 0.07, 0.16, 'sine', 0.16]],
+  good: [[587, 0, 0.12, 'sine', 0.14]],
+  miss: [[170, 0, 0.2, 'sawtooth', 0.07]],
+  alarm: [[440, 0, 0.07, 'square', 0.06], [440, 0.12, 0.07, 'square', 0.06]],
+  level: [[523, 0, 0.08, 'sine', 0.14], [659, 0.08, 0.08, 'sine', 0.14], [784, 0.16, 0.16, 'sine', 0.14]],
+  bank: [[523, 0, 0.1, 'sine', 0.16], [784, 0.1, 0.1, 'sine', 0.16], [1047, 0.2, 0.28, 'sine', 0.16]],
+}
+
 class AudioManager {
   constructor() {
     this.ctx = null
@@ -159,7 +170,7 @@ class AudioManager {
     if (!this.dynamicJet || !this.ctx) return
     const now = this.ctx.currentTime
     this.dynamicJet.filter.frequency.setTargetAtTime(Math.min(2200, 400 + (flowRate * 38) + (pressure * 10)), now, 0.05)
-    this.dynamicJet.gain.gain.setTargetAtTime(Math.min(0.38, 0.05 + (flowRate / 30.0) * 0.3), now, 0.05)
+    this.dynamicJet.gain.gain.setTargetAtTime(Math.min(0.38, 0.05 + (flowRate / 20.0) * 0.3), now, 0.05)
   }
 
   stopDynamicJet() {
@@ -327,6 +338,18 @@ class AudioManager {
     osc.type = 'sine'; osc.frequency.setValueAtTime(320, now); osc.frequency.exponentialRampToValueAtTime(120, now + 0.6)
     gain.gain.setValueAtTime(0.01, now); gain.gain.linearRampToValueAtTime(0.2, now + 0.15); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6)
     osc.connect(gain); gain.connect(this.sfxGain); osc.start(now); osc.stop(now + 0.65)
+  }
+
+  playCue(kind) {
+    const notes = CUES[kind]
+    if (!notes || !this.sfxEnabled || this.isMasterMuted) return
+    this.initCtx(); const now = this.ctx.currentTime
+    for (const [freq, at, len, type, vol] of notes) {
+      const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain()
+      osc.type = type; osc.frequency.setValueAtTime(freq, now + at)
+      gain.gain.setValueAtTime(0.0001, now + at); gain.gain.linearRampToValueAtTime(vol, now + at + 0.01); gain.gain.exponentialRampToValueAtTime(0.0001, now + at + len)
+      osc.connect(gain); gain.connect(this.sfxGain); osc.start(now + at); osc.stop(now + at + len + 0.02)
+    }
   }
 
   update(dt) {

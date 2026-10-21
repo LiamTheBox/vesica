@@ -4,7 +4,7 @@ const PORT = 5199 // dev server: has the window.__vesica test hook
 const PREVIEW_PORT = 5299 // production build: service worker, no test hook
 
 // Simulation-logic specs don't depend on screen size, so they only run on Pixel 7.
-const LOGIC_SPECS = /(sim|interactions|challenges|hud|lifecycle|quality)\.spec\.js/
+const LOGIC_SPECS = /(sim|interactions|challenges|hud|lifecycle|quality|arcade)\.spec\.js/
 const PWA_SPECS = /pwa\.spec\.js/
 // The performance gate has its own config (playwright.perf.config.js).
 const PERF_SPECS = /perf[\\/]/

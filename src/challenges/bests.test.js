@@ -22,7 +22,17 @@ describe('best challenge results', () => {
     expect(bests.precision).toEqual({ voided: 196 })
   })
 
+  it('keeps the highest arcade score, banked or not', () => {
+    let bests = recordResult(EMPTY_BESTS, { challenge: 'arcade', success: false, score: 4200, seconds: 150 })
+    expect(bests.arcade).toEqual({ score: 4200, seconds: 150 })
+    bests = recordResult(bests, { challenge: 'arcade', success: true, score: 3900, seconds: 200 })
+    expect(bests.arcade).toEqual({ score: 4200, seconds: 150 })
+    bests = recordResult(bests, { challenge: 'arcade', success: true, score: 5100, seconds: 95 })
+    expect(bests.arcade).toEqual({ score: 5100, seconds: 95 })
+  })
+
   it('describes bests for the challenge cards', () => {
+    expect(describeBest('arcade', { score: 12345, seconds: 95 })).toBe('Best: 12,345 pts (1:35 held)')
     expect(describeBest('commute', { leaked: 4 })).toBe('Best: 4 ml lost')
     expect(describeBest('precision', { voided: 200 })).toBe('Best: 200 ml (perfect)')
     expect(describeBest('precision', { voided: 193 })).toBe('Best: 193 ml (-7 ml)')

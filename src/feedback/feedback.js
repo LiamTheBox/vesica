@@ -2,7 +2,7 @@ import { audio } from '../audio/AudioManager'
 import { ambientVoiceCategory } from '../sim/sim'
 import { onSimEvent, onSimTick, sim } from '../sim/engine'
 import { useUiStore } from '../store/useUiStore'
-import { recordResult } from '../challenges/bests'
+import { clock, recordResult } from '../challenges/bests'
 import { saveJson } from '../store/persist'
 
 // Turns simulation events into sound, voice, haptics and UI reactions, matching what
@@ -51,15 +51,35 @@ function setChallengeResult(challenge, result) {
   useUiStore.setState((state) => ({ challengeResults: { ...state.challengeResults, [challenge]: result } }))
 }
 
-function finishChallenge(event, text) {
+function finishChallenge(event, text, detail = null) {
   setChallengeResult(event.challenge, { success: event.success, text })
   const { bests } = useUiStore.getState()
   const nextBests = recordResult(bests, event)
   if (nextBests !== bests) saveJson('bests', nextBests)
   useUiStore.setState({
     bests: nextBests,
-    lastResult: { challenge: event.challenge, success: event.success, text, newBest: nextBests !== bests, id: Date.now() },
+    lastResult: { challenge: event.challenge, success: event.success, text, detail, newBest: nextBests !== bests, id: Date.now() },
   })
+}
+
+const pts = (n) => n.toLocaleString('en-US')
+
+// Arcade score lines flashed under the score, with their sound.
+const ARCADE_LINES = {
+  perfect: (e) => [`PERFECT${e.combo > 1 ? ` ×${e.combo}` : ''} +${e.points}`, 'good', 'perfect'],
+  good: (e) => [`CALMED +${e.points}`, 'ok', 'good'],
+  missed: () => ['URGE MISSED', 'bad', 'miss'],
+  braced: (e) => [`BRACED${e.combo > 1 ? ` ×${e.combo}` : ''} +${e.points}`, 'good', 'perfect'],
+  unbraced: () => ['SNEEZE! NOT BRACED', 'bad', 'miss'],
+  saved: (e) => [`CLOSE CALL +${e.points}`, 'warn', 'good'],
+  leak: (e) => [`LEAK ${e.points}`, 'bad', 'miss'],
+  drink: (e) => [`DRINK BONUS +${e.points}`, 'ok', 'good'],
+  bank: (e) => [`BANKED +${pts(e.points)}`, 'warn', 'bank'],
+}
+
+function arcadeLine(text, tone, cue) {
+  useUiStore.setState({ arcadeToast: { text, tone, id: Date.now() + Math.random() } })
+  audio.playCue(cue)
 }
 
 const handlers = {
@@ -75,6 +95,19 @@ const handlers = {
   },
   clenchStop: () => audio.stopClenchHum(),
   clenchExhausted: () => audio.stopClenchHum(),
+  // Announced threats (arcade): a short cue and a tap on the hand.
+  urgeWarning: () => {
+    audio.playCue('warning')
+    haptic([15, 40, 15])
+  },
+  sneezeWarning: () => {
+    audio.playCue('warning')
+    haptic([15, 40, 15])
+  },
+  leakWarning: () => {
+    audio.playCue('alarm')
+    haptic([60, 40, 60])
+  },
   voidAttemptStart: () => haptic(25),
   voidStart: () => {
     audio.startDynamicJet()
@@ -97,7 +130,13 @@ const handlers = {
     audio.speak('deflated')
   },
   urgeStart: () => audio.startUrgeRumble(),
-  urgeEnd: () => audio.stopUrgeRumble(),
+  urgeEnd: (e) => {
+    audio.stopUrgeRumble()
+    if (e.suppressed) haptic(20)
+  },
+  arcadePoints: (e) => arcadeLine(...ARCADE_LINES[e.reason](e)),
+  arcadeLevel: (e) => arcadeLine(`LEVEL ${e.level}`, 'level', 'level'),
+  arcadeQuit: () => keepScreenAwake(false),
   creak: () => audio.playTensionCreak(),
   cough: () => {
     audio.playCoughBurst()
@@ -144,13 +183,17 @@ const handlers = {
   squeezeRelease: () => audio.playGranularSlosh(1.1),
   challengeStart: (e) => {
     setChallengeResult(e.challenge, null)
-    useUiStore.setState({ lastResult: null })
+    useUiStore.setState({ lastResult: null, arcadeToast: null })
     keepScreenAwake(true)
     useUiStore.getState().setTab('sim')
   },
   challengeResult: (e) => {
     keepScreenAwake(false)
-    if (e.challenge === 'commute') {
+    if (e.challenge === 'arcade') {
+      const detail = `${clock(e.seconds)} held · best combo ×${e.bestCombo} · ${e.leaks} leak${e.leaks === 1 ? '' : 's'}`
+      finishChallenge(e, e.success ? `BANKED ${pts(e.score)} PTS` : `RUN OVER · ${pts(e.score)} PTS`, detail)
+      if (e.success) haptic([100, 50, 100])
+    } else if (e.challenge === 'commute') {
       finishChallenge(e, e.success ? `VICTORY! (${e.leaked}ml lost)` : `FAILED (${e.leaked}ml lost)`)
       if (e.success) haptic([100, 50, 100])
     } else {

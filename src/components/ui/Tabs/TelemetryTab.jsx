@@ -52,7 +52,7 @@ export default function TelemetryTab() {
       ctx.beginPath()
       for (let i = 0; i < hist.length; i++) {
         const x = (i / (hist.length - 1)) * w
-        const normP = Math.min(1.0, hist[i].pressure / 80.0)
+        const normP = Math.min(1.0, hist[i].pressure / 100.0)
         const y = h - (normP * (h - 16)) - 8
         if (i === 0) ctx.moveTo(x, y)
         else ctx.lineTo(x, y)
@@ -65,7 +65,7 @@ export default function TelemetryTab() {
       ctx.beginPath()
       for (let i = 0; i < hist.length; i++) {
         const x = (i / (hist.length - 1)) * w
-        const normV = Math.min(1.0, hist[i].volume / 750.0)
+        const normV = Math.min(1.0, hist[i].volume / sim.maxCapacity)
         const y = h - (normV * (h - 16)) - 8
         if (i === 0) ctx.moveTo(x, y)
         else ctx.lineTo(x, y)

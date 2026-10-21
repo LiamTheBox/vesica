@@ -13,16 +13,77 @@ Every milestone ends with a **gate**. A milestone is done only when its gate pas
 
 Status legend: ☐ todo · ◐ in progress · ☑ done
 
-## Where things stand (end of 2026-10-20)
+## Where things stand (2026-10-21)
 
 - **M0–M7:** code done, automated gates passed, tagged `m0`–`m7`. Every milestone's **phone check is still open**.
-- **After M7 (requested):** urine scales with the volume held over a thick muscle wall, with shaded cut faces;
-  the sphincter is a muscle ring above a urethra; Kegel recovers 4× faster and eases sphincter strain while held.
+- **After M7 (requested, 2026-10-20):** urine scales with the volume held over a thick muscle wall, with shaded cut
+  faces; the sphincter is a muscle ring above a urethra; Kegel recovers 4× faster and eases sphincter strain while held.
+- **Requested 2026-10-21:** new physiology (slow kidney fill, steeper pressure, tone-gated leaks, freeze and squeeze,
+  20 ml/s flow), **arcade mode as the default**, camera panning and closer zoom, and a new urine stream. See the
+  section below.
 - **Live:** https://liamthebox.github.io/vesica/ (deployed by GitHub Actions on every push to `main`). Check that
   Settings → Pages → Source is "GitHub Actions", or the old branch publish can overwrite the app.
-- **Tests:** `npm run check` green (88 unit tests). Browser tests were paused at the user's request; last full run
-  85 passed. One flaky pinch-zoom test is open (KNOWN_ISSUES).
-- **Next:** phone checks (on the live site), then M8 (minigames).
+- **Tests:** `npm run check` green (124 unit tests). Browser tests are still paused at the user's request: the specs
+  were updated for the 2026-10-21 rules and `e2e/arcade.spec.js` was added, but **none of it has been run yet**
+  (last full run, before these changes: 85 passed). One flaky pinch-zoom test is open (KNOWN_ISSUES).
+- **Next:** run the browser suite, phone checks (on the live site), then M8 (minigames).
+
+---
+
+## Requested 2026-10-21 — physiology, arcade mode, camera, stream ☑ (unit tests green; browser tests not run)
+
+**Physiology** (`src/sim/sim.js`, sandbox and arcade alike):
+- ☑ Kidneys fill at **1 ml / 30 s** (was 1 ml/s). Drinks still arrive in seconds, so they now do most of the filling.
+- ☑ **Pressure rises more**, low while the wall stretches and steep near capacity: 4 + 80·fill³ cmH₂O (was
+  4 + 56·fill^2.6): 14 at half full, 45 at 80 %, 84 at 750 ml, 160 overfull.
+- ☑ **Clench drains 2× slower** (0.11/s): a full hold lasts ~9 s.
+- ☑ **Sphincter tone is the leak gauge.** Urge waves, coughs and squeezes raise it, harder the fuller the bladder
+  (an unclenched wave adds ~29 % at 80 % full, a cough ~14 %); a held clench braces against 75 % of it. **Leaks only
+  start at 100 %**: a 12 ml/s spurt that a clench shuts, or total failure above 65 cmH₂O (as in the original). After
+  a spurt runs out the sphincter regains some grip (85 %). Holding a clench at 100 % against more strain burns stamina.
+- ☑ **Freeze and squeeze** (the missing piece from the realism review): clenching during an urge wave calms the bladder
+  muscle by reflex. The spasm drains while the clench is held and the wave ends early; a clench already held as a wave
+  lands stops it at once.
+- ☑ **Pokes and slaps add 5 %** each (were 8 % and 15 %). A drag pokes on every move, so it adds strain by the
+  distance rubbed, and a swipe counts as one slap at most every 150 ms.
+- ☑ **Voiding peaks at 20 ml/s** and slows over the last ~150 ml (the real flow curve rises fast, then tapers as the
+  emptying bladder's contraction weakens): 300 ml takes ~22 s, 700 ml ~42 s. Voiding eases the strain; total failure
+  empties at the same flow and now counts as leaked (the commute challenge used to miss it).
+- ☑ Capacity stays 750 ml, but it's now reachable: pressure alone no longer forces leaks at ~670 ml.
+
+**Arcade mode, the default** (`src/sim/arcade.js`): an endless hold on the same simulation.
+- ☑ The start screen begins a run on any tap; a Sandbox button gives free play. The Challenges sheet has Arcade
+  (start/restart, best score) and Sandbox (free play, ends a run) cards above the two challenges.
+- ☑ Drinks are served every 26 → 12 s (bigger ones later); choosing to drink scores 0.5 pt/ml.
+- ☑ Every urge is announced 1.2 s ahead (0.6 s later on) with a banner, a cue and a ring on Clench. Clench during the
+  warning or within 0.35 s of the wave: **perfect** (the wave is calmed at once, 50 × combo, 15 % stamina back);
+  later: 20 pts; no clench: combo lost. From level 2, sneezes are announced 1 s ahead: brace for 40 × combo.
+- ☑ At 100 % strain there's 0.6 s to clench ("SLIPPING!"), +30 for the save; a leak costs 100 and the combo.
+- ☑ Clenching with nothing to hold back costs 3× stamina and eases no strain; after giving out, the clench needs 30 %
+  back. Soothe has a 20 s cooldown.
+- ☑ Every 30 s a level: stronger, closer, later-announced urges that take longer to calm; the pelvic floor tires
+  (less relief, weaker brace).
+- ☑ Scoring: 10 pts/s × fill (×1 under 50 %, ×2, ×3 from 75 %, ×5 overfull). **Emptying banks** the run with a
+  bonus of volume × fill multiplier; total failure ends it unbanked. Best score saved on the device.
+- Balance, from headless bots: never clenching fails in ~1 min; always clenching late (0.35 s after a wave lands)
+  in ~3.5 min; a player who usually uses the warnings but sometimes reacts late or misses one in 3–4 min; holding
+  Clench down permanently in ~4.5 min; a perfect clench on every warning survives (combo bonus capped at ×10).
+- Note: the **commute challenge is much easier** under the new rules (reacting to waves is enough to win).
+
+**Camera** (`Scene.jsx`, `StageFit.jsx`): ☑ right-drag pans in any tool; with the Orbit tool a two-finger drag pans
+(pinch still zooms); the wheel zooms toward the pointer; zoom goes 2.5× closer than before (to the sphincter);
+panning stays near the organ; a Recenter button appears once the view has moved.
+
+**Stream** (`stream.js`, replaces the tube and splash): ☑ a jet from a single narrow opening (the urethra no longer
+widens into a nozzle) that thins as it falls, twists like a ribbon near the outlet, swells and pinches, and breaks
+into drops. Its flow, aim and twist wander, and each wobble travels down with the fluid. Leaks come out in spurts,
+the end of a void dribbles, and the colour follows hydration (pale straw to amber).
+
+**Automated (unit):** sim rules (31 → 47 tests incl. pressure curve, tone-gated leaks, overload, freeze and squeeze,
+flow taper), 15 arcade tests, 6 stream tests, arcade bests, readout states; 124 in all.
+**Automated (e2e, written, not run):** start helper picks the sandbox unless asked for the arcade; strain expectations
+5 %; the cough-leak scenario rewritten for tone-gated leaks; `e2e/arcade.spec.js` (start, perfect clench, banking).
+**Manual:** ☐ play a few arcade runs on the phone; pan to the sphincter with two fingers; watch a void and a leak.
 
 ---
 
@@ -325,6 +386,7 @@ Each lasts ~5 s, opens with a one-word prompt, speeds up as you win, and costs a
   - **CLENCH!**: clench the instant the sneeze lands, not before.
   - **CARRY!**: walk a brimming cup to the toilet by holding a steady drag speed without spilling.
 - ☐ Results feed the bladder sim (a lost microgame = a stress leak), so the 3D organ reacts between rounds.
+- Note (2026-10-21): HOLD! and CLENCH! can reuse the arcade's announced urges and sneezes and its timing rules.
 
 **Automated (unit):** each microgame's win/lose logic with scripted input; runner speed-up and lives.
 **Automated (e2e):** play each microgame on a phone profile through touch input, win and lose paths.

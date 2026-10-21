@@ -1,6 +1,7 @@
 import { act, advance, onSimEvent, publishHud, setPaused, sim } from '../sim/engine'
 import * as simActions from '../sim/sim'
 import * as interactions from '../sim/interactions'
+import * as arcade from '../sim/arcade'
 import { useUiStore } from '../store/useUiStore'
 
 // Dev-only test hook exposed as `window.__vesica`. Every call site is guarded by
@@ -42,8 +43,8 @@ export function installDevHook() {
       Object.assign(sim, partial)
       publishHud()
     },
-    // Run a named action from src/sim/sim.js or interactions.js, e.g. act('ingestBeverage', 'water').
-    act: (name, ...args) => act(simActions[name] ?? interactions[name], ...args),
+    // Run a named action from src/sim/sim.js, interactions.js or arcade.js, e.g. act('ingestBeverage', 'water').
+    act: (name, ...args) => act(simActions[name] ?? interactions[name] ?? arcade[name], ...args),
     // Pause the per-frame loop so tests can step the simulation deterministically.
     pause: () => setPaused(true),
     resume: () => setPaused(false),

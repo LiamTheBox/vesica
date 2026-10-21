@@ -23,11 +23,14 @@ export async function canvasBox(page) {
   return canvas.boundingBox()
 }
 
-// Loads the port and taps through the start overlay. Returns the canvas box.
-export async function startApp(page) {
+// Loads the port and starts it: in the sandbox by default (the mode most specs were
+// written for), or with `mode: 'arcade'` the way a player does, with a tap anywhere
+// (arcade is the game's default). Returns the canvas box.
+export async function startApp(page, { mode = 'sandbox' } = {}) {
   await page.goto('/')
   const box = await canvasBox(page)
-  await page.touchscreen.tap(box.x + 8, box.y + box.height / 2) // edge of the view, away from the bladder
+  if (mode === 'sandbox') await page.getByRole('button', { name: /Sandbox/ }).tap()
+  else await page.touchscreen.tap(box.x + 8, box.y + box.height / 2)
   await expect(page.getByText('TAP ANYWHERE TO START')).toBeHidden()
   return box
 }

@@ -1,13 +1,15 @@
 import * as THREE from 'three'
 import { physicsOf } from '../../sim/sim'
+import { computeNormals } from './normals'
+import { createStream } from './stream'
+
+export { computeNormals }
 
 // Geometry and per-frame deformation for the organ. Kept outside React so
 // the 60 fps vertex work never touches component render; `Organ.jsx` wires it up.
 // The per-frame loops work on the raw attribute arrays with per-vertex constants
 // precomputed, and allocate nothing (M7).
 
-const SPLASH_COUNT = 180
-const STREAM_SEGMENTS = 24
 
 export function createOrganTextures() {
   const size = 1024
@@ -65,32 +67,6 @@ export function createOrganTextures() {
   normTex.wrapS = THREE.RepeatWrapping; normTex.wrapT = THREE.RepeatWrapping; normTex.repeat.set(2, 2)
 
   return { diffTex, normTex }
-}
-
-// Same result as BufferGeometry.computeVertexNormals() for indexed geometry, on the raw
-// arrays. Three's version reads every corner through a Vector3, which made it the
-// largest single cost of a frame on a throttled phone profile.
-export function computeNormals(geometry) {
-  const pos = geometry.attributes.position.array
-  const nrm = geometry.attributes.normal.array
-  const idx = geometry.index.array
-  nrm.fill(0)
-  for (let t = 0; t < idx.length; t += 3) {
-    const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3
-    const cbx = pos[c] - pos[b], cby = pos[c + 1] - pos[b + 1], cbz = pos[c + 2] - pos[b + 2]
-    const abx = pos[a] - pos[b], aby = pos[a + 1] - pos[b + 1], abz = pos[a + 2] - pos[b + 2]
-    const nx = cby * abz - cbz * aby
-    const ny = cbz * abx - cbx * abz
-    const nz = cbx * aby - cby * abx
-    nrm[a] += nx; nrm[a + 1] += ny; nrm[a + 2] += nz
-    nrm[b] += nx; nrm[b + 1] += ny; nrm[b + 2] += nz
-    nrm[c] += nx; nrm[c + 1] += ny; nrm[c + 2] += nz
-  }
-  for (let i = 0; i < nrm.length; i += 3) {
-    const inv = 1 / (Math.sqrt(nrm[i] * nrm[i] + nrm[i + 1] * nrm[i + 1] + nrm[i + 2] * nrm[i + 2]) || 1)
-    nrm[i] *= inv; nrm[i + 1] *= inv; nrm[i + 2] *= inv
-  }
-  geometry.attributes.normal.needsUpdate = true
 }
 
 // Bladder centre in world space (the organ group sits 0.2 above the origin).
@@ -247,12 +223,13 @@ function ureterPoint(ureter, u, target) {
   return ureter.curve.getPoint(curveT(ureter.arc, u), target)
 }
 
-// The sphincter as a surface of revolution, (radius, height) from the bottom up: the
-// urethra down to the outlet, the thick muscular ring at the bladder neck, then the
-// neck rising into the bladder (hidden inside the wall). It spans the same height as
-// the original's tube, so it sits and attaches where that did.
+// The sphincter as a surface of revolution, (radius, height) from the bottom up: a lip
+// around the single small opening, the urethra up from it, the thick muscular ring at
+// the bladder neck, then the neck rising into the bladder (hidden inside the wall). It
+// spans the same height as the original's tube, so it sits and attaches where that did.
+export const OUTLET_Y = -0.62
 const SPHINCTER_PROFILE = [
-  [0.1, -0.6], [0.11, -0.48], [0.125, -0.34], [0.15, -0.25],
+  [0.075, OUTLET_Y], [0.1, -0.6], [0.11, -0.48], [0.125, -0.34], [0.15, -0.25],
   [0.26, -0.17], [0.38, -0.09], [0.43, 0.01], [0.42, 0.1], [0.35, 0.19],
   [0.28, 0.3], [0.29, 0.45], [0.32, 0.6],
 ]
@@ -340,20 +317,8 @@ export function createOrganRig() {
   }
   let clenchLevel = 0 // eases in and out rather than snapping
 
-  const streamGeo = new THREE.CylinderGeometry(0.12, 0.08, 6.0, 16, STREAM_SEGMENTS, true)
-  const streamPos = streamGeo.attributes.position
-  // The original's stream indexing (segment from i % 24, angle from i / 24) gives its
-  // twisting look; keep it, precomputed.
-  const streamBase = new Float64Array(streamPos.count * 3) // segY, cos θ, sin θ
-  for (let i = 0; i < streamPos.count; i++) {
-    const theta = ((i / STREAM_SEGMENTS) % 16) * (Math.PI * 2 / 16)
-    streamBase.set([(i % STREAM_SEGMENTS) / STREAM_SEGMENTS, Math.cos(theta), Math.sin(theta)], i * 3)
-  }
-
-  const splashGeo = new THREE.BufferGeometry()
-  const splashPositions = new Float32Array(SPLASH_COUNT * 3)
-  for (let i = 0; i < SPLASH_COUNT; i++) splashPositions[i * 3 + 1] = -999
-  splashGeo.setAttribute('position', new THREE.BufferAttribute(splashPositions, 3))
+  const stream = createStream()
+  const outlet = new THREE.Vector3()
 
   const ureters = [createUreter(-1, baseVertices), createUreter(1, baseVertices)]
 
@@ -383,7 +348,7 @@ export function createOrganRig() {
 
   // `objects`: live meshes/materials from Organ.jsx refs, plus the camera.
   function update(sim, dt, timeSec, objects) {
-    const { wallMat, urine, sphincter, stream, splash, leftDrop, rightDrop, camera, cutaway } = objects
+    const { wallMat, urine, sphincter, leftDrop, rightDrop, camera, cutaway } = objects
     const phys = physicsOf(sim)
 
     const fillRatio = Math.max(0.01, sim.volume / sim.maxCapacity)
@@ -402,10 +367,10 @@ export function createOrganRig() {
       wallMat.emissiveIntensity = 0.18 + stretch * 0.3 + strainPulse
       wallMat.roughness = THREE.MathUtils.lerp(0.38, 0.12, stretch)
     }
-    if (objects.fluidMat) {
-      const h = sim.hydration
-      objects.fluidMat.color.setRGB(1.0, 0.72 + h * 0.22, 0.1 + h * 0.6)
-    }
+    // Urine colour follows hydration, in the bladder and in the stream.
+    const h = sim.hydration
+    if (objects.fluidMat) objects.fluidMat.color.setRGB(1.0, 0.72 + h * 0.22, 0.1 + h * 0.6)
+    stream.setHydration(h)
 
     // Soft-body wall
     const phase = sim.globalJigglePhase
@@ -522,7 +487,7 @@ export function createOrganRig() {
       const ripple = sphincterBase[k + 5] * c30 + sphincterBase[k + 6] * s30 // sin(4θ + 30t)
       const squeeze = 1.0 - clenchLevel * (0.1 + 0.12 * ring + 0.3 * urethra)
       const closed = (r + sphincterBase[k + 4] * foldDepth * ring + ripple * twitch) * squeeze
-      const open = r * (1.0 + 0.25 * ring + 1.3 * urethra)
+      const open = r * (1.0 + 0.25 * ring + 0.45 * urethra) // a narrow opening, not a nozzle
       const radius = THREE.MathUtils.lerp(closed, open, dil)
       sArr[i * 3] = sphincterBase[k + 2] * radius
       sArr[i * 3 + 1] = y
@@ -531,46 +496,11 @@ export function createOrganRig() {
     sPos.needsUpdate = true
     computeNormals(sphincterGeo)
 
-    if (sphincter) sphincter.position.y = -2.35 * inflationScale * scaleY - 0.45
+    const sphincterY = -2.35 * inflationScale * scaleY - 0.45
+    if (sphincter) sphincter.position.y = sphincterY
 
-    // Stream & splash
-    const exitY = sphincter ? sphincter.position.y - 0.55 : -2.5
-    const streaming = sim.flowRate > 0
-    if (stream) stream.visible = streaming
-    if (splash) splash.visible = streaming
-    if (streaming) {
-      const streamArr = streamPos.array
-      const streamRadius = THREE.MathUtils.lerp(0.04, 0.16, dil)
-      const flowScale = 0.5 + Math.min(1.0, sim.flowRate / 30.0) * 0.5
-      const sx = Math.sin(sim.sloshAngleX) * 0.4
-      const sz = Math.sin(sim.sloshAngleZ) * 0.4
-      for (let i = 0; i < streamPos.count; i++) {
-        const segY = streamBase[i * 3]
-        const r = (streamRadius * (1.0 - segY * 0.35) + Math.sin(timeSec * 24.0 + segY * 18.0) * (0.015 * segY)) * flowScale
-        streamArr[i * 3] = streamBase[i * 3 + 1] * r + sx * segY
-        streamArr[i * 3 + 1] = exitY - (segY * 5.5)
-        streamArr[i * 3 + 2] = streamBase[i * 3 + 2] * r + sz * segY
-      }
-      streamPos.needsUpdate = true
-      computeNormals(streamGeo)
-
-      const splashBaseY = exitY - 5.5
-      for (let i = 0; i < SPLASH_COUNT; i++) {
-        if (splashPositions[i * 3 + 1] <= splashBaseY - 1.5 || splashPositions[i * 3 + 1] === -999) {
-          const angle = Math.random() * Math.PI * 2
-          const dist = Math.random() * 0.25 * Math.min(1.0, sim.flowRate / 30.0)
-          splashPositions[i * 3 + 0] = Math.cos(angle) * dist
-          splashPositions[i * 3 + 1] = splashBaseY + (Math.random() * 0.2)
-          splashPositions[i * 3 + 2] = Math.sin(angle) * dist
-        } else {
-          splashPositions[i * 3 + 1] -= (6.0 + Math.random() * 4.0) * dt
-        }
-      }
-      splashGeo.attributes.position.needsUpdate = true
-    } else if (splashPositions[1] !== -999) {
-      for (let i = 0; i < SPLASH_COUNT; i++) splashPositions[i * 3 + 1] = -999
-      splashGeo.attributes.position.needsUpdate = true
-    }
+    // Stream from the opening at the bottom of the urethra (the sphincter sits 0.2 back).
+    stream.update(sim, dt, timeSec, outlet.set(0, sphincterY + OUTLET_Y, -0.2), objects.stream, objects.drops)
 
     // Drops travelling down the ureters while drinks are being filtered
     const hasBeverage = sim.activeBeverages.length > 0
@@ -589,7 +519,7 @@ export function createOrganRig() {
   }
 
   return {
-    bladderGeo, sphincterGeo, streamGeo, splashGeo,
+    bladderGeo, sphincterGeo, stream,
     ureterGeoLeft: ureters[0].geo, ureterGeoRight: ureters[1].geo,
     cutawayPlane, poke, slap, clearDents, update,
   }

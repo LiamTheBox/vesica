@@ -37,14 +37,32 @@ export function Subtitles() {
 
 const BANNER = 'pointer-events-none px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-black tracking-wider uppercase shadow-xl text-center'
 
-// Urge, leak and failure banners, stacked at the top of the stage.
+// Warnings (arcade), urge, leak and failure banners, stacked at the top of the stage.
 export function StageAlerts() {
   const isStressLeaking = useHud((h) => h.isStressLeaking)
   const involuntaryVoiding = useHud((h) => h.involuntaryVoiding)
   const isUrgeWaveActive = useHud((h) => h.isUrgeWaveActive)
+  const urgeWarned = useHud((h) => h.urgeWarned)
+  const coughWarned = useHud((h) => h.coughWarned)
+  const leakGrace = useHud((h) => h.leakGrace)
 
   return (
     <>
+      {leakGrace && (
+        <div className={`${BANNER} bg-rose-600/95 text-white shadow-rose-600/50 animate-bounce`}>
+          💦 SLIPPING! CLENCH NOW!
+        </div>
+      )}
+      {urgeWarned && (
+        <div className={`${BANNER} bg-amber-300/95 text-slate-950 animate-pulse`}>
+          ⚡ URGE INCOMING: CLENCH AS IT LANDS
+        </div>
+      )}
+      {coughWarned && (
+        <div className={`${BANNER} bg-sky-300/95 text-slate-950 animate-pulse`}>
+          🤧 SNEEZE INCOMING: BRACE!
+        </div>
+      )}
       {isUrgeWaveActive && (
         <div className={`${BANNER} bg-amber-500/90 text-slate-950 animate-pulse flex items-center gap-2`}>
           <span>⚡</span><span>DETRUSOR CONTRACTION WAVE INCOMING!</span>

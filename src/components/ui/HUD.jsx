@@ -44,6 +44,18 @@ function useStageRect(ref) {
   }, [ref])
 }
 
+// Shown once the player has panned or zoomed the view: puts the bladder back in frame.
+function RecenterButton() {
+  const moved = useUiStore((s) => s.viewMoved)
+  const recenter = useUiStore((s) => s.recenterView)
+  if (!moved) return null
+  return (
+    <button onClick={recenter} className="glass-hud pointer-events-auto min-h-11 px-3 rounded-full text-[11px] font-bold text-sky-300 active:scale-95 transition">
+      ⌖ Recenter
+    </button>
+  )
+}
+
 function StatusCard() {
   const status = useHud(organStatus)
   return (
@@ -133,6 +145,9 @@ export default function HUD() {
           </div>
           <div className="absolute right-0 inset-y-0 flex items-center">
             <ToolRail />
+          </div>
+          <div className="absolute inset-x-0 bottom-1 flex justify-center pointer-events-none">
+            <RecenterButton />
           </div>
         </section>
 

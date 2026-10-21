@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import HUD from './components/ui/HUD'
 import { audio } from './audio/AudioManager'
 import { installFeedback } from './feedback/feedback'
@@ -6,15 +6,41 @@ import { applySettings } from './settings/settings'
 import { useUiStore } from './store/useUiStore'
 import { act } from './sim/engine'
 import { agitate } from './sim/sim'
+import { startArcadeRun } from './sim/arcade'
 import { countRender } from './debug/devHook'
 
 // The 3D engine (Three.js + R3F, most of the download) loads in its own chunks, so the
 // HUD and start screen don't wait for it to parse.
 const Scene = lazy(() => import('./components/3d/Scene'))
 
+// Audio, speech and motion all need a user gesture to start on mobile browsers.
+function initFromGesture() {
+  audio.initCtx()
+
+  // Speech synthesis must be primed from a user gesture on mobile browsers.
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.cancel() // clear any stuck empty utterances
+    const utterance = new SpeechSynthesisUtterance(' ')
+    utterance.volume = 0
+    window.speechSynthesis.speak(utterance)
+  }
+
+  // iOS only reports motion after the player grants it, from a gesture like this tap.
+  if (useUiStore.getState().settings.shakeToSlosh && typeof DeviceMotionEvent?.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission().catch(() => {})
+  }
+}
+
 function App() {
   countRender('App')
   const [started, setStarted] = useState(false)
+
+  // Arcade is the default: a tap (or key) anywhere starts a run; the Sandbox button skips it.
+  const begin = useCallback((mode) => {
+    initFromGesture()
+    setStarted(true)
+    if (mode === 'arcade') act(startArcadeRun)
+  }, [])
 
   useEffect(() => {
     applySettings(useUiStore.getState().settings)
@@ -22,30 +48,13 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const initAudio = () => {
-      audio.initCtx()
+    if (started) return
+    const onKey = () => begin('arcade')
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [started, begin])
 
-      // Speech synthesis must be primed from a user gesture on mobile browsers.
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel() // clear any stuck empty utterances
-        const utterance = new SpeechSynthesisUtterance(' ')
-        utterance.volume = 0
-        window.speechSynthesis.speak(utterance)
-      }
-
-      // iOS only reports motion after the player grants it, from a gesture like this tap.
-      if (useUiStore.getState().settings.shakeToSlosh && typeof DeviceMotionEvent?.requestPermission === 'function') {
-        DeviceMotionEvent.requestPermission().catch(() => {})
-      }
-
-      setStarted(true)
-      document.removeEventListener('pointerdown', initAudio)
-      document.removeEventListener('keydown', initAudio)
-    }
-
-    document.addEventListener('pointerdown', initAudio)
-    document.addEventListener('keydown', initAudio)
-
+  useEffect(() => {
     // Shaking the phone sloshes the bladder, as in the original.
     let lastAx = 0, lastAy = 0, lastAz = 0
     const handleMotion = (e) => {
@@ -62,8 +71,6 @@ function App() {
     document.addEventListener('contextmenu', blockMenu)
 
     return () => {
-      document.removeEventListener('pointerdown', initAudio)
-      document.removeEventListener('keydown', initAudio)
       window.removeEventListener('devicemotion', handleMotion)
       document.removeEventListener('contextmenu', blockMenu)
     }
@@ -77,11 +84,22 @@ function App() {
       <HUD />
 
       {!started && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm pointer-events-none transition-opacity duration-500">
-          <div className="glass-hud px-6 py-4 rounded-2xl flex flex-col items-center animate-pulse">
-            <span className="text-3xl mb-2">👆</span>
-            <span className="text-sm font-bold text-slate-200 tracking-wider">TAP ANYWHERE TO START</span>
-            <span className="text-[10px] text-slate-400 font-mono mt-1">Initializes Hydro-Acoustic Engine</span>
+        <div
+          className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
+          onPointerDown={() => begin('arcade')}
+        >
+          <div className="glass-hud px-6 py-4 rounded-2xl flex flex-col items-center gap-1 max-w-xs text-center">
+            <span className="text-3xl mb-1">🕹️</span>
+            <span className="text-sm font-bold text-slate-200 tracking-wider animate-pulse">TAP ANYWHERE TO START</span>
+            <span className="text-[11px] text-slate-400 leading-snug">
+              Arcade: clench as each urge lands, brace for sneezes, and hold on. Empty to bank your score.
+            </span>
+            <button
+              onPointerDown={(e) => { e.stopPropagation(); begin('sandbox') }}
+              className="mt-2 min-h-11 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold text-slate-200"
+            >
+              🧪 Sandbox (free play)
+            </button>
           </div>
         </div>
       )}

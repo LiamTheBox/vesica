@@ -33,6 +33,9 @@ export default function ActionButtons() {
   const isActivelyVoiding = useHud((h) => h.isActivelyVoiding)
   const voidProgress = useHud((h) => h.voidProgress)
   const voidSecondsLeft = useHud((h) => h.voidSecondsLeft)
+  const sootheSeconds = useHud((h) => h.sootheSeconds)
+  // An announced threat (arcade): the Clench button calls for the thumb.
+  const clenchCue = useHud((h) => h.urgeWarned || h.coughWarned || h.leakGrace)
 
   const clenchLabel = isClenching ? 'CLENCHING!' : clenchExhausted ? 'CLENCH EXHAUSTED!' : 'CLENCH (HOLD)'
   const voidLabel = isActivelyVoiding ? 'VOIDING…' : isAttemptingVoid ? 'RELAXING VALVE…' : 'EMPTY (HOLD)'
@@ -57,7 +60,7 @@ export default function ActionButtons() {
       <div className="flex items-stretch gap-1.5 sm:gap-2">
         <button
           {...holdProps(startClench, stopClench)}
-          className={`flex-1 basis-0 min-w-0 py-3 px-2 rounded-2xl font-extrabold text-xs tracking-wide uppercase shadow-lg transition flex flex-col items-center justify-center border-2 select-none cursor-pointer touch-none ${isClenching ? 'bg-cyan-500 border-cyan-200 scale-95 shadow-cyan-500/50 text-white' : 'bg-gradient-to-r from-sky-600 via-cyan-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 border-cyan-300 text-white shadow-cyan-600/30'}`}
+          className={`flex-1 basis-0 min-w-0 py-3 px-2 rounded-2xl font-extrabold text-xs tracking-wide uppercase shadow-lg transition flex flex-col items-center justify-center border-2 select-none cursor-pointer touch-none ${isClenching ? 'bg-cyan-500 border-cyan-200 scale-95 shadow-cyan-500/50 text-white' : 'bg-gradient-to-r from-sky-600 via-cyan-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 border-cyan-300 text-white shadow-cyan-600/30'} ${clenchCue && !isClenching ? 'ring-4 ring-amber-300 animate-pulse' : ''}`}
         >
           <div className="flex flex-wrap items-center justify-center gap-x-1.5 text-center">
             <span className="text-sm">🛡️</span>
@@ -82,13 +85,16 @@ export default function ActionButtons() {
           <div className="absolute bottom-0 left-0 h-1.5 bg-rose-600 z-20 transition-all duration-75" style={{ width: `${voidProgress * 100}%` }}></div>
         </div>
 
+        {/* In the arcade Soothe needs 20 s to come back; the button counts down. */}
         <button
           onClick={() => act(soothe)}
-          className="min-w-12 px-2.5 py-3 rounded-2xl glass-hud hover:border-emerald-400/80 text-emerald-300 font-bold text-xs uppercase active:scale-95 transition flex flex-col items-center justify-center flex-shrink-0"
+          disabled={sootheSeconds > 0}
+          aria-label="Soothe"
+          className="min-w-12 px-2.5 py-3 rounded-2xl glass-hud hover:border-emerald-400/80 text-emerald-300 font-bold text-xs uppercase active:scale-95 transition flex flex-col items-center justify-center flex-shrink-0 disabled:opacity-45 disabled:active:scale-100"
           title="Soothe Detrusor"
         >
           <span className="text-sm">🧘</span>
-          <span className="text-[9px] font-mono mt-0.5">Soothe</span>
+          <span className="text-[9px] font-mono mt-0.5">{sootheSeconds > 0 ? `${sootheSeconds}s` : 'Soothe'}</span>
         </button>
 
         <button

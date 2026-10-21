@@ -39,12 +39,19 @@ export default function Scene() {
         <Organ />
 
         {/* One finger/left button uses the current tool; Orbit mode rotates instead.
-            Two fingers zoom and rotate in any tool except Squeeze, where a pinch squeezes. */}
+            Two fingers zoom and rotate with Poke and Slap; with Orbit they zoom and pan (move
+            the view up and down to the sphincter); with Squeeze a pinch squeezes. The right
+            button pans and the wheel zooms toward the pointer in any tool. StageFit keeps
+            the view near the organ. */}
         <OrbitControls
           makeDefault
-          enablePan={false}
-          mouseButtons={{ LEFT: mode === 'orbit' ? THREE.MOUSE.ROTATE : null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: null }}
-          touches={{ ONE: mode === 'orbit' ? THREE.TOUCH.ROTATE : null, TWO: mode === 'squeeze' ? null : THREE.TOUCH.DOLLY_ROTATE }}
+          enablePan
+          zoomToCursor
+          mouseButtons={{ LEFT: mode === 'orbit' ? THREE.MOUSE.ROTATE : null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
+          touches={{
+            ONE: mode === 'orbit' ? THREE.TOUCH.ROTATE : null,
+            TWO: mode === 'squeeze' ? null : mode === 'orbit' ? THREE.TOUCH.DOLLY_PAN : THREE.TOUCH.DOLLY_ROTATE,
+          }}
           maxPolarAngle={Math.PI / 1.5}
         />
       </Canvas>

@@ -27,26 +27,32 @@ test('React stays idle while the simulation runs', async ({ page }) => {
   expect(renders.TelemetryBar ?? 0).toBeLessThanOrEqual(20)
 })
 
-test.describe('same scenario in the original and the port', () => {
-  test('a cough at 80% full forces a stress leak', async ({ page }) => {
-    test.skip(!(await openOriginal(page)), 'original needs CDN access')
-    // The leak reseals within ~0.25 s as the cough fades, so check what it left behind.
-    // The original can't be stepped, so give its slow software-rendered loop time.
-    await page.evaluate('sim.volume = 600; triggerCoughImpulse()')
-    await expect.poll(() => page.evaluate('sim.totalLeakedVolume'), { timeout: 20000 }).toBeGreaterThan(0)
-
-    await startApp(page)
-    await pause(page)
-    await vesica(page, () => {
-      window.__vesica.clearEvents()
-      window.__vesica.setState({ volume: 600 })
-      window.__vesica.act('cough')
-    })
-    await step(page, 60)
-    expect((await portState(page)).totalLeakedVolume).toBeGreaterThan(0)
-    const events = await vesica(page, () => window.__vesica.events.map((e) => e.type))
-    expect(events).toEqual(expect.arrayContaining(['cough', 'leakStart', 'leakEnd']))
+// Requested: coughs and urges strain the sphincter, and it only leaks at 100 % (the
+// original leaked whenever the pressure beat it, so this no longer compares the two).
+test('a cough strains the sphincter; at 100 % it leaks', async ({ page }) => {
+  await startApp(page)
+  await pause(page)
+  await vesica(page, () => {
+    window.__vesica.clearEvents()
+    window.__vesica.setState({ volume: 600 })
+    window.__vesica.act('cough')
   })
+  await step(page, 60)
+  const strained = await portState(page)
+  expect(strained.sphincterToneStrain).toBeGreaterThan(0.1)
+  expect(strained.totalLeakedVolume).toBe(0)
+
+  await vesica(page, () => {
+    window.__vesica.setState({ sphincterToneStrain: 0.95 })
+    window.__vesica.act('cough')
+  })
+  await step(page, 240)
+  expect((await portState(page)).totalLeakedVolume).toBeGreaterThan(0)
+  const events = await vesica(page, () => window.__vesica.events.map((e) => e.type))
+  expect(events).toEqual(expect.arrayContaining(['cough', 'leakStart', 'leakEnd']))
+})
+
+test.describe('same scenario in the original and the port', () => {
 
   test('an urge wave arrives over 45% full and shows its warning', async ({ page }) => {
     test.skip(!(await openOriginal(page)), 'original needs CDN access')

@@ -42,6 +42,14 @@ export const initialHud = {
   maxPressure: 7.2,
   activeChallenge: null,
   challengeSeconds: 0,
+  urgeWarned: false,
+  coughWarned: false,
+  leakGrace: false,
+  sootheSeconds: 0,
+  arcadeScore: 0,
+  arcadeCombo: 0,
+  arcadeLevel: 0,
+  arcadeSeconds: 0,
 }
 
 export const useUiStore = create((set) => ({
@@ -50,15 +58,20 @@ export const useUiStore = create((set) => ({
   isCutawayActive: false,
   currentSubtitle: null,
   // Last result per challenge: { success, text }
-  challengeResults: { commute: null, precision: null },
-  // Most recent result, shown as a toast on the Sim screen: { challenge, success, text, id }
+  challengeResults: { commute: null, precision: null, arcade: null },
+  // Most recent result, shown as a card on the Sim screen: { challenge, success, text, detail, newBest, id }
   lastResult: null,
+  // Latest arcade score line, flashed under the score: { text, tone, id }
+  arcadeToast: null,
   // Best results, kept on the device.
   bests: loadJson('bests', EMPTY_BESTS),
   settings: loadJson('settings', DEFAULT_SETTINGS),
   hud: initialHud,
   // Where the 3D stage sits on screen ({ x, y, width, height }), for camera framing.
   stageRect: null,
+  // The player has panned or zoomed away from the fitted view; bumping viewResetId recenters.
+  viewMoved: false,
+  viewResetId: 0,
   // Tier Auto quality settled on for this device; kept so a slow phone starts there.
   autoQuality: isTier(savedAutoQuality) ? savedAutoQuality : 'high',
   // The page is in the background: rendering and audio pause.
@@ -68,6 +81,7 @@ export const useUiStore = create((set) => ({
   setInteractionMode: (mode) => set({ interactionMode: mode }),
   toggleCutaway: () => set((state) => ({ isCutawayActive: !state.isCutawayActive })),
   dismissResult: () => set({ lastResult: null }),
+  recenterView: () => set((state) => ({ viewResetId: state.viewResetId + 1 })),
   setAutoQuality: (tier) => {
     set({ autoQuality: tier })
     saveJson('quality', { tier })

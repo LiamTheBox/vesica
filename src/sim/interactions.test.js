@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { cough, createSimState, stepSim } from './sim'
+import { createSimState, stepSim } from './sim'
 import { orbitDrag, pokeAt, slapAt, slapRandom, squeezeCancel, squeezeDrag, squeezeRelease, squeezeStart } from './interactions'
 import { extractOriginalConst } from '../test/original'
 
 const SQUISH_FORCE = extractOriginalConst('PHYSICS_CONFIGS').jello.squishForce // 2.2
 
 describe('poke (original pokeBladder)', () => {
-  it('adds 0.08 strain, slosh 2.5×strength and jiggle 0.3×strength', () => {
+  it('adds 5 % strain (requested), slosh 2.5×strength and jiggle 0.3×strength', () => {
     const sim = createSimState()
     const out = []
     pokeAt(sim, out, { x: 1, y: 0.5, z: -2 }, SQUISH_FORCE, { touch: true })
 
-    expect(sim.sphincterToneStrain).toBeCloseTo(0.08, 9)
+    expect(sim.sphincterToneStrain).toBeCloseTo(0.05, 9)
     // First impulse opposes zero velocity, so the original's 0.85 boost applies.
     expect(sim.sloshVelX).toBeCloseTo(1 * 2.5 * SQUISH_FORCE * 0.85, 9)
     expect(sim.sloshVelZ).toBeCloseTo(-2 * 2.5 * SQUISH_FORCE * 0.85, 9)
@@ -20,22 +20,28 @@ describe('poke (original pokeBladder)', () => {
     expect(out).toEqual([{ type: 'poke', local: { x: 1, y: 0.5, z: -2 }, strength: SQUISH_FORCE, touch: true }])
   })
 
-  it('13 pokes strain the sphincter to its limit', () => {
+  it('20 pokes strain the sphincter to its limit', () => {
     const sim = createSimState()
-    for (let i = 0; i < 12; i++) pokeAt(sim, [], { x: 0, y: 0, z: 2 }, 0.7)
+    for (let i = 0; i < 19; i++) pokeAt(sim, [], { x: 0, y: 0, z: 2 }, 2.2)
     expect(sim.sphincterToneStrain).toBeLessThan(1)
-    pokeAt(sim, [], { x: 0, y: 0, z: 2 }, 0.7)
-    expect(sim.sphincterToneStrain).toBe(1)
+    pokeAt(sim, [], { x: 0, y: 0, z: 2 }, 2.2)
+    expect(sim.sphincterToneStrain).toBeCloseTo(1, 9)
+  })
+
+  it('a drag step adds the share of strain it is given', () => {
+    const sim = createSimState()
+    pokeAt(sim, [], { x: 0, y: 0, z: 2 }, 0.7, { strain: 0.01 })
+    expect(sim.sphincterToneStrain).toBeCloseTo(0.01, 9)
   })
 })
 
 describe('slap (original slapBladder)', () => {
-  it('adds 0.15 strain and a ripple at the hit point', () => {
+  it('adds 5 % strain (requested) and a ripple at the hit point', () => {
     const sim = createSimState()
     const out = []
     slapAt(sim, out, { x: 2, y: 0, z: 0 }, 2.0, { haptic: true })
 
-    expect(sim.sphincterToneStrain).toBeCloseTo(0.15, 9)
+    expect(sim.sphincterToneStrain).toBeCloseTo(0.05, 9)
     expect(sim.ripples).toEqual([{ center: { x: 2, y: 0, z: 0 }, radius: 0.1, maxRadius: 3.8, speed: 7.5, amplitude: 1.3, decay: 3.5 }])
     expect(sim.sloshVelX).toBeCloseTo(2 * 4.0 * 2.0 * 0.85, 9)
     expect(sim.jiggleIntensity).toBe(1)
@@ -52,14 +58,14 @@ describe('slap (original slapBladder)', () => {
     expect(out[0]).toMatchObject({ strength: 2.4, haptic: false })
   })
 
-  it('a few slaps on a full bladder can end in total failure', () => {
+  it('twenty slaps on a full bladder end in total failure', () => {
     const sim = createSimState()
     sim.volume = 700
-    for (let i = 0; i < 7; i++) slapAt(sim, [], { x: 0, y: 0, z: 2.2 }, 2.4)
-    expect(sim.sphincterToneStrain).toBe(1)
-    const out = []
-    cough(sim, out, () => 0.5)
-    stepSim(sim, 1 / 60, out, () => 0.5)
+    for (let i = 0; i < 19; i++) slapAt(sim, [], { x: 0, y: 0, z: 2.2 }, 2.4)
+    stepSim(sim, 1 / 60, [], () => 0.5)
+    expect(sim.involuntaryVoiding).toBe(false)
+    slapAt(sim, [], { x: 0, y: 0, z: 2.2 }, 2.4)
+    stepSim(sim, 1 / 60, [], () => 0.5)
     expect(sim.involuntaryVoiding).toBe(true)
   })
 })

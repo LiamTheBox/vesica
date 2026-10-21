@@ -1,6 +1,7 @@
 import { useHud, useUiStore } from '../../../store/useUiStore'
 import { act } from '../../../sim/engine'
 import { startCommuteChallenge, startPrecisionChallenge } from '../../../sim/sim'
+import { quitArcadeRun, startArcadeRun } from '../../../sim/arcade'
 import { describeBest } from '../../../challenges/bests'
 import Sheet from '../Sheet'
 
@@ -26,11 +27,41 @@ export default function ChallengesTab() {
   const activeChallenge = useHud((h) => h.activeChallenge)
   const challengeSeconds = useHud((h) => h.challengeSeconds)
   const totalLeaked = useHud((h) => h.totalLeaked)
+  const arcadeScore = useHud((h) => h.arcadeScore)
 
   if (currentTab !== 'challenges') return null
+  const inArcade = activeChallenge === 'arcade'
 
   return (
-    <Sheet title="Continence Challenges" subtitle="Test reflexes against fluid rushes and random disturbances" titleTone="text-cyan-400" onClose={() => setTab('sim')}>
+    <Sheet title="Continence Challenges" subtitle="Arcade is the default mode; the sandbox and its challenges are below" titleTone="text-cyan-400" onClose={() => setTab('sim')}>
+      <div className="p-3.5 bg-slate-900/70 border border-fuchsia-800/60 rounded-2xl flex flex-col gap-2">
+        <div className="flex justify-between items-center gap-2">
+          <div className="font-extrabold text-xs text-slate-200">🕹️ Arcade (Endless Hold)</div>
+          <StatusBadge running={inArcade} runningText={`RUN: ${arcadeScore.toLocaleString('en-US')} PTS`} result={results.arcade} />
+        </div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          Drinks keep coming and every urge is announced. Clench as it lands to calm it, brace for sneezes, and hold on as long as you can.
+          Empty to bank your score before the sphincter gives out. It gets harder every 30 s.
+        </p>
+        {bests.arcade && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('arcade', bests.arcade)}</p>}
+        <button onClick={() => act(startArcadeRun)} className="w-full py-2 bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-500 hover:to-violet-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
+          {inArcade ? 'Restart Arcade Run' : 'Start Arcade Run'}
+        </button>
+      </div>
+
+      <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
+        <div className="font-extrabold text-xs text-slate-200">🧪 Sandbox (Free Play)</div>
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          The simulation on its own: no score, no served drinks, no warnings. The challenges below run in it.
+        </p>
+        <button
+          onClick={() => { act(quitArcadeRun); setTab('sim') }}
+          className="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-xs uppercase tracking-wider transition"
+        >
+          {inArcade ? 'End Run and Free Play' : 'Free Play'}
+        </button>
+      </div>
+
       <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
         <div className="flex justify-between items-center gap-2">
           <div className="font-extrabold text-xs text-slate-200">🚌 Rush Hour Commute (60s Survival)</div>

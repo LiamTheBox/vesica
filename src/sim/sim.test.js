@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ambientVoiceCategory, cough, createSimState, ingestBeverage, resetOrgan, startClench,
-  startCommuteChallenge, startPrecisionChallenge, startVoidAttempt, stepSim, stopVoidAttempt,
+  ambientVoiceCategory, cough, createSimState, FAILURE_PRESSURE, ingestBeverage, LEAK_FLOW, PEAK_FLOW, resetOrgan,
+  RESEAL_STRAIN, SANDBOX_RULES, soothe, startClench, startCommuteChallenge, startPrecisionChallenge, startVoidAttempt,
+  stepSim, stopClench, stopVoidAttempt, voidFlow,
 } from './sim'
 import { extractOriginalConst } from '../test/original'
 
@@ -19,7 +20,7 @@ function run(sim, seconds, { dt = DT, rng = fixed(0.5), until } = {}) {
 }
 
 const types = (events) => events.map((e) => e.type)
-const expectedPressure = (fill) => 4.0 + Math.pow(fill, 2.6) * 56.0
+const expectedPressure = (fill) => 4.0 + Math.pow(fill, 3.0) * 80.0
 
 // A quiet bladder: no kidney drip, so volume only changes when the test says so.
 function quietSim(volume) {
@@ -32,6 +33,8 @@ function quietSim(volume) {
 // Deliberate departures from the original, each one requested.
 const CHANGED_FROM_ORIGINAL = {
   kegelRecoverRate: 0.64, // the original's 0.16, made 4x faster
+  kegelFatigueRate: 0.11, // the original's 0.22, drains 2x slower
+  baseDrip: 1 / 30, // the original's 1 ml/s: 1 ml every 30 s
 }
 
 describe('initial state', () => {
@@ -52,7 +55,7 @@ describe('initial state', () => {
 })
 
 describe('pressure', () => {
-  it.each([0.2, 0.5, 0.8, 1.0])('follows the original curve at fill %s', (fill) => {
+  it.each([0.2, 0.5, 0.8, 1.0])('stays low early and rises steeply near capacity (requested) at fill %s', (fill) => {
     const sim = quietSim(750 * fill)
     run(sim, DT)
     expect(sim.pressure).toBeCloseTo(expectedPressure(fill), 6)
@@ -67,17 +70,26 @@ describe('pressure', () => {
 })
 
 describe('kegel stamina', () => {
-  it('drains 0.22/s while clenching and recovers 0.64/s after (4x the original)', () => {
+  it('drains 0.11/s while clenching (2x slower than the original) and recovers 0.64/s after (4x faster)', () => {
     const sim = quietSim(150)
     startClench(sim, [])
     run(sim, 1)
-    expect(sim.kegelStamina).toBeCloseTo(0.78, 6)
+    expect(sim.kegelStamina).toBeCloseTo(0.89, 6)
 
     sim.isClenching = false
-    run(sim, 0.25)
-    expect(sim.kegelStamina).toBeCloseTo(0.94, 6)
+    run(sim, 0.1)
+    expect(sim.kegelStamina).toBeCloseTo(0.954, 6)
     run(sim, 1)
     expect(sim.kegelStamina).toBe(1)
+  })
+
+  it('a full hold lasts about 9 s', () => {
+    const sim = quietSim(150)
+    startClench(sim, [])
+    run(sim, 8.8)
+    expect(sim.isClenching).toBe(true)
+    run(sim, 0.2)
+    expect(sim.isClenching).toBe(false)
   })
 
   it('eases the sphincter strain the longer it is held (requested)', () => {
@@ -98,7 +110,7 @@ describe('kegel stamina', () => {
   it('gives out when exhausted and clears the label above 15%', () => {
     const sim = quietSim(150)
     startClench(sim, [])
-    const events = run(sim, 6, { until: (s) => s.clenchExhausted })
+    const events = run(sim, 10, { until: (s) => s.clenchExhausted })
     expect(types(events)).toContain('clenchExhausted')
     expect(sim.isClenching).toBe(false)
     expect(sim.clenchExhausted).toBe(true)
@@ -145,60 +157,147 @@ describe('voiding', () => {
     expect(types(events)).toContain('voidStop')
     expect(events).toContainEqual({ type: 'voice', category: 'deflated' })
   })
+
+  it('peaks at 20 ml/s and slows over the last ~150 ml (requested)', () => {
+    expect(voidFlow(500, 1)).toBe(PEAK_FLOW)
+    expect(voidFlow(160, 1)).toBe(PEAK_FLOW)
+    expect(voidFlow(85, 1)).toBeCloseTo(PEAK_FLOW * Math.sqrt(0.5), 9)
+    expect(voidFlow(20, 1)).toBeLessThan(6)
+    expect(voidFlow(10, 1)).toBeGreaterThan(0) // a last dribble, never stuck
+
+    const sim = quietSim(500)
+    startVoidAttempt(sim, [])
+    let peak = 0
+    run(sim, 60, { until: (s) => { peak = Math.max(peak, s.flowRate); return !s.isAttemptingVoid } })
+    expect(peak).toBeCloseTo(PEAK_FLOW, 1)
+  })
+
+  it('eases the sphincter strain while it flows', () => {
+    const sim = quietSim(400)
+    sim.sphincterToneStrain = 0.8
+    startVoidAttempt(sim, [])
+    run(sim, 1) // latency
+    run(sim, 2)
+    expect(sim.sphincterToneStrain).toBeCloseTo(0.3, 1)
+  })
+})
+
+describe('sphincter strain (requested)', () => {
+  it('rises with a cough, more the fuller the bladder, without leaking below 100 %', () => {
+    const strainAfterCough = (volume) => {
+      const sim = quietSim(volume)
+      const events = []
+      cough(sim, events, fixed(0.5))
+      events.push(...run(sim, 1))
+      expect(types(events)).not.toContain('leakStart')
+      return sim.sphincterToneStrain
+    }
+    const half = strainAfterCough(375)
+    const full = strainAfterCough(600)
+    expect(half).toBeGreaterThan(0.02)
+    expect(full).toBeGreaterThan(0.1)
+    expect(full).toBeLessThan(0.2)
+    expect(full).toBeGreaterThan(half * 2)
+  })
+
+  it('a clench braces against most of a cough', () => {
+    const sim = quietSim(600)
+    startClench(sim, [])
+    sim.kegelReliefRate = 0 // measure the brace alone
+    cough(sim, [], fixed(0.5))
+    run(sim, 1)
+    expect(sim.sphincterToneStrain).toBeLessThan(0.05)
+    expect(sim.sphincterToneStrain).toBeGreaterThan(0)
+  })
+
+  it('rises through an unclenched urge wave', () => {
+    const sim = quietSim(600) // 80 % full
+    sim.urgeWaveTimer = 0
+    run(sim, 5)
+    expect(sim.sphincterToneStrain).toBeGreaterThan(0.2)
+    expect(sim.sphincterToneStrain).toBeLessThan(0.4)
+  })
+
+  it('rises under a squeeze', () => {
+    const sim = quietSim(600)
+    sim.squeezeAmountY = sim.targetSqueezeY = 0.5
+    run(sim, 2)
+    expect(sim.sphincterToneStrain).toBeGreaterThan(0.1)
+  })
 })
 
 describe('stress leaks', () => {
-  it('leak when pressure beats the sphincter above 50% fill', () => {
-    const sim = quietSim(600) // fill 0.8: ~32 cmH2O, a cough adds 38
-    cough(sim, [], fixed(0.5))
+  it('only start at 100 % strain: a spurt at 12 ml/s', () => {
+    const sim = quietSim(600)
+    sim.sphincterToneStrain = 0.99
+    expect(types(run(sim, 0.5))).not.toContain('leakStart')
+
+    sim.sphincterToneStrain = 1.0
     const events = run(sim, DT)
     expect(types(events)).toContain('leakStart')
     expect(sim.isStressLeaking).toBe(true)
-    expect(sim.sphincterToneStrain).toBeCloseTo(0.25, 6)
-    expect(sim.flowRate).toBe(18)
+    expect(sim.flowRate).toBe(LEAK_FLOW)
   })
 
-  it('never leak at or below 50% fill, however high the pressure', () => {
-    const sim = quietSim(337) // fill 0.45
-    sim.squeezeAmountY = sim.targetSqueezeY = 0.65
-    cough(sim, [], fixed(0.5))
-    run(sim, DT)
-    expect(sim.pressure).toBeGreaterThan(50)
-    expect(sim.isStressLeaking).toBe(false)
-  })
-
-  it('a clench raises the threshold 2.5x and blocks the same cough', () => {
+  it('stop at the target loss and the sphincter regains some grip', () => {
     const sim = quietSim(600)
-    startClench(sim, [])
-    cough(sim, [], fixed(0.5))
-    run(sim, DT)
-    expect(sim.isStressLeaking).toBe(false)
-  })
-
-  it('lose 22 ml/s until the target loss is reached', () => {
-    const sim = quietSim(600)
-    cough(sim, [], fixed(0.5))
-    const events = run(sim, 3, { until: (s) => !s.isStressLeaking })
+    sim.sphincterToneStrain = 1.0
+    const events = run(sim, 5, { until: (s, e) => types(e).includes('leakEnd') })
     expect(types(events)).toContain('leakEnd')
-    // Pressure drops below the reseal threshold well before the 35 ml target.
-    expect(sim.totalLeakedVolume).toBeGreaterThan(0)
-    expect(sim.totalLeakedVolume).toBeLessThanOrEqual(35 + 22 * DT)
+    expect(sim.totalLeakedVolume).toBeCloseTo(35, 0) // 25 + 0.5·20
+    expect(sim.sphincterToneStrain).toBe(RESEAL_STRAIN)
+  })
+
+  it('a clench at 100 % holds the leak back, and shuts one already running', () => {
+    const sim = quietSim(600)
+    sim.sphincterToneStrain = 1.0
+    startClench(sim, [])
+    expect(types(run(sim, 0.5))).not.toContain('leakStart')
+
+    stopClench(sim, [])
+    sim.sphincterToneStrain = 1.0
+    run(sim, 0.5)
+    expect(sim.isStressLeaking).toBe(true)
+    startClench(sim, [])
+    const events = run(sim, DT)
+    expect(types(events)).toContain('leakEnd')
+    expect(sim.isStressLeaking).toBe(false)
+  })
+
+  it('holding a clench at 100 % against more strain burns stamina fast', () => {
+    const calm = quietSim(700)
+    calm.sphincterToneStrain = 1.0
+    calm.kegelReliefRate = 0
+    startClench(calm, [])
+    run(calm, 1)
+
+    const pushed = quietSim(700)
+    pushed.sphincterToneStrain = 1.0
+    pushed.kegelReliefRate = 0
+    startClench(pushed, [])
+    pushed.squeezeAmountY = pushed.targetSqueezeY = 0.6
+    run(pushed, 1)
+    expect(pushed.kegelStamina).toBeLessThan(calm.kegelStamina - 0.1)
   })
 })
 
 describe('total sphincter failure', () => {
-  it('starts at full strain above 65 cmH2O, drains to 70 ml, then recovers', () => {
+  it('replaces the spurt at 100 % strain above 65 cmH2O, drains to 70 ml as leaked, then recovers', () => {
     const sim = quietSim(700)
     sim.sphincterToneStrain = 1.0
-    cough(sim, [], fixed(0.5))
     const first = run(sim, DT)
+    expect(sim.pressure).toBeGreaterThan(FAILURE_PRESSURE)
     expect(types(first)).toContain('failureStart')
-    expect(sim.flowRate).toBe(28)
+    expect(types(first)).not.toContain('leakStart')
 
-    const events = run(sim, 40, { until: (s) => !s.involuntaryVoiding })
+    run(sim, DT)
+    expect(sim.flowRate).toBeCloseTo(PEAK_FLOW, 6)
+
+    const events = run(sim, 60, { until: (s) => !s.involuntaryVoiding })
     expect(types(events)).toContain('failureEnd')
     expect(sim.volume).toBeLessThanOrEqual(70)
     expect(sim.volume).toBeGreaterThan(69)
+    expect(sim.totalLeakedVolume).toBeCloseTo(700 - sim.volume, 3)
     expect(sim.sphincterToneStrain).toBe(0)
     expect(sim.kegelStamina).toBe(1)
   })
@@ -216,6 +315,28 @@ describe('urge waves', () => {
     const ending = run(sim, 3.1)
     expect(types(ending)).toContain('urgeEnd')
     expect(sim.urgeWaveTimer).toBeGreaterThan(0)
+  })
+
+  it('calm down under a held clench and pass early (freeze and squeeze)', () => {
+    const sim = quietSim(600)
+    sim.urgeWaveTimer = 0
+    run(sim, 0.5)
+    expect(sim.detrusorSpasmIntensity).toBeCloseTo(1, 6)
+    startClench(sim, [])
+    // 0.7/s calms a full spasm in ~1.4 s, well before the wave's 3.5 s are up.
+    expect(types(run(sim, 1.3))).not.toContain('urgeEnd')
+    expect(run(sim, 0.2)).toContainEqual({ type: 'urgeEnd', suppressed: true })
+    expect(sim.isUrgeWaveActive).toBe(false)
+    expect(sim.detrusorSpasmIntensity).toBe(0)
+  })
+
+  it('pass at once when the clench is already held as they land', () => {
+    const sim = quietSim(600)
+    startClench(sim, [])
+    sim.urgeWaveTimer = 0
+    const events = run(sim, DT)
+    expect(types(events)).toEqual(expect.arrayContaining(['urgeStart', 'urgeEnd']))
+    expect(sim.detrusorSpasmIntensity).toBe(0)
   })
 
   it('come sooner as the bladder fills (18 s → 7 s)', () => {
@@ -243,24 +364,51 @@ describe('tension creaks', () => {
 })
 
 describe('drinks', () => {
-  it('water adds 180 ml at 8 ml/s on top of the 1 ml/s drip', () => {
+  it('water adds 180 ml at 8 ml/s on top of the 1 ml / 30 s drip', () => {
     const sim = createSimState()
     ingestBeverage(sim, [], 'water', fixed(0.5))
     run(sim, 10)
-    expect(sim.volume).toBeCloseTo(120 + 80 + 10, 3)
+    expect(sim.volume).toBeCloseTo(120 + 80 + 10 / 30, 3)
     run(sim, 20)
     expect(sim.activeBeverages).toHaveLength(0)
-    expect(sim.volume).toBeCloseTo(120 + 180 + 30, 3)
+    expect(sim.volume).toBeCloseTo(120 + 180 + 1, 3)
+  })
+})
+
+describe('soothe', () => {
+  it('works whenever in the sandbox, and waits out a cooldown where the rules set one', () => {
+    const sim = quietSim(400)
+    sim.sphincterToneStrain = 0.9
+    soothe(sim, [])
+    soothe(sim, [])
+    expect(sim.sphincterToneStrain).toBeCloseTo(0.2, 6)
+
+    sim.sootheCooldownTime = 20
+    sim.sphincterToneStrain = 0.9
+    soothe(sim, [])
+    const out = []
+    soothe(sim, out)
+    expect(out).toEqual([])
+    expect(sim.sphincterToneStrain).toBeCloseTo(0.55, 6)
+    run(sim, 20.1)
+    soothe(sim, out)
+    expect(types(out)).toEqual(['soothe'])
   })
 })
 
 describe('reset', () => {
   it('empties to 40 ml, clears everything and says a deflated line', () => {
     const sim = quietSim(700)
-    Object.assign(sim, { sphincterToneStrain: 0.8, totalLeakedVolume: 50, isUrgeWaveActive: true, activeChallenge: 'commute' })
+    Object.assign(sim, {
+      sphincterToneStrain: 0.8, totalLeakedVolume: 50, isUrgeWaveActive: true, activeChallenge: 'arcade',
+      arcade: { score: 10 }, idleClenchCost: 3, leakGraceTime: 0.6, urgeWarned: true,
+    })
     const out = []
     resetOrgan(sim, out, fixed(0.5))
-    expect(sim).toMatchObject({ volume: 40, sphincterToneStrain: 0, totalLeakedVolume: 0, isUrgeWaveActive: false, activeChallenge: null })
+    expect(sim).toMatchObject({
+      volume: 40, sphincterToneStrain: 0, totalLeakedVolume: 0, isUrgeWaveActive: false, activeChallenge: null,
+      arcade: null, urgeWarned: false, ...SANDBOX_RULES,
+    })
     expect(types(out)).toEqual(['reset', 'agitation', 'voice'])
     expect(out[2].category).toBe('deflated')
   })

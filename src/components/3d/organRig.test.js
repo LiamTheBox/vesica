@@ -137,7 +137,9 @@ describe('sphincter', () => {
     sim.isClenching = false
     sim.sphincterDilation = 1
     play(rig, sim, 0.5, 1)
-    expect(outlet(rig)).toBeGreaterThan(rest.outlet * 2)
+    // It opens, but stays a narrow opening rather than a wide nozzle (requested).
+    expect(outlet(rig)).toBeGreaterThan(rest.outlet * 1.3)
+    expect(outlet(rig)).toBeLessThan(rest.outlet * 1.6)
   })
 
   it('shakes under strain and holds still without', () => {

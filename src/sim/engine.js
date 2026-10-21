@@ -1,4 +1,5 @@
-import { createSimState, stepSim } from './sim'
+import { createSimState } from './sim'
+import { scoreArcade, stepGame } from './arcade'
 import { useUiStore } from '../store/useUiStore'
 
 // The single live simulation, its event bus, and the bridge to React.
@@ -25,17 +26,19 @@ function dispatch(events) {
   }
 }
 
-// Runs a sim action, e.g. `act(ingestBeverage, 'water')`, then delivers its events.
+// Runs a sim action, e.g. `act(ingestBeverage, 'water')`, then delivers its events
+// (scored first, during an arcade run).
 export function act(action, ...args) {
   const out = []
   action(sim, out, ...args)
+  if (sim.arcade) scoreArcade(sim, out)
   dispatch(out)
   publishHud()
 }
 
 export function advance(dt) {
   const out = []
-  stepSim(sim, dt, out)
+  stepGame(sim, dt, out)
   dispatch(out)
   for (const listener of tickListeners) listener(sim, dt)
   publishHud()
@@ -74,6 +77,14 @@ function hudOf(s) {
     maxPressure: round1(s.maxRecordedPressure),
     activeChallenge: s.activeChallenge,
     challengeSeconds: Math.max(0, Math.round(s.challengeTimer)),
+    urgeWarned: s.urgeWarned,
+    coughWarned: s.coughWarned,
+    leakGrace: s.leakGrace > 0,
+    sootheSeconds: Math.ceil(s.sootheCooldown),
+    arcadeScore: s.arcade ? Math.floor(s.arcade.score) : 0,
+    arcadeCombo: s.arcade ? s.arcade.combo : 0,
+    arcadeLevel: s.arcade ? s.arcade.level : 0,
+    arcadeSeconds: s.arcade ? Math.floor(s.arcade.time) : 0,
   }
 }
 
