@@ -21,12 +21,16 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 - **Requested 2026-10-21:** new physiology (slow kidney fill, steeper pressure, tone-gated leaks, freeze and squeeze,
   20 ml/s flow), **arcade mode as the default**, camera panning and closer zoom, and a new urine stream. See the
   section below.
+- **From KNOWN_ISSUES (2026-10-21):** the wall keeps a smooth outside at any fill (the rugae fold only the lining,
+  which the urine is drawn with; the lower half eases out below the equator instead of stepping), and the ureters
+  come down behind the bladder and enter low on its back, beside the neck, without poking into the urine.
 - **Live:** https://liamthebox.github.io/vesica/ (deployed by GitHub Actions on every push to `main`). Check that
   Settings → Pages → Source is "GitHub Actions", or the old branch publish can overwrite the app.
-- **Tests:** `npm run check` green (124 unit tests). Browser tests are still paused at the user's request: the specs
-  were updated for the 2026-10-21 rules and `e2e/arcade.spec.js` was added, but **none of it has been run yet**
-  (last full run, before these changes: 85 passed). One flaky pinch-zoom test is open (KNOWN_ISSUES).
-- **Next:** run the browser suite, phone checks (on the live site), then M8 (minigames).
+- **Tests:** `npm run check` green (127 unit tests). The browser suite is not a requirement for now (the user's
+  choice: it loads the CPU): the specs were updated for the 2026-10-21 rules and `e2e/arcade.spec.js` was added,
+  but none of it has been run (last full run, before these changes: 85 passed). One flaky pinch-zoom test is open
+  (KNOWN_ISSUES).
+- **Next:** phone checks (on the live site), then M8 (minigames).
 
 ---
 

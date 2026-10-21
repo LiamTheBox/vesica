@@ -86,9 +86,12 @@ export function orientCutaway(plane, cameraPosition, center = ORGAN_CENTER) {
 const POKE = { radius: 1.4, powerScale: 1.0, velScale: 1.6, dentGain: 0.35, dentCap: 0.6 }
 const SLAP = { radius: 1.8, powerScale: 2.2, velScale: 1.0, dentGain: 0.4, dentCap: 0.8 }
 
-// Urine: Organ.jsx draws the wall's geometry again, scaled to the volume held (see
+// Urine: Organ.jsx draws the lining's geometry, scaled to the volume held (see
 // urineScale). Full, it fills the sac just inside the membrane.
 export const FLUID_INSET = 0.965
+// Rugae: an emptying bladder keeps a smooth outside and folds only its lining, by up to
+// this fraction of the lining's radius. The folds flatten out as it fills.
+const RUGAE_DEPTH = 0.1
 // What's left after voiding: the bladder counts as empty at or below this.
 export const RESIDUAL_ML = 10
 // The urine shrinks toward this point, 35 % of the way from the centre to the bottom of
@@ -111,14 +114,21 @@ export function urineScale(volume, maxCapacity) {
 const URETER_SEGMENTS = 32
 const URETER_RADIAL = 8
 const URETER_RADIUS = 0.11
+// Where a ureter goes into the wall it narrows, enters at an angle from above and sinks in
+// a little: little enough that its rim stays in the full bladder's thin membrane, never
+// poking through into the urine.
+const URETER_TIP = 0.5 // radius of the last ring, relative to the tube
+const URETER_ENTRY = Math.tan(THREE.MathUtils.degToRad(30)) // from square to the wall, toward above
+const URETER_SINK = 0.02
 // Ring orientation reference: the ureters run roughly in the x–y plane, never along z.
 const URETER_REF = new THREE.Vector3(0, 0, 1)
 // Arc-length table resolution, so rings and drops are spaced evenly along the tube.
 const ARC_SAMPLES = 64
 
 function createUreter(side, baseVertices) {
-  // Ureters enter the back of the bladder, above and to the side of the neck.
-  const dir = new THREE.Vector3(0.9 * side, 0.3, -0.35).normalize()
+  // Ureters come down behind the bladder and enter low on its back, either side of the
+  // neck (the upper corners of the trigone).
+  const dir = new THREE.Vector3(0.5 * side, -0.4, -0.75).normalize()
   let endIndex = 0
   let best = -Infinity
   const n = new THREE.Vector3()
@@ -127,11 +137,12 @@ function createUreter(side, baseVertices) {
     if (d > best) { best = d; endIndex = i }
   })
 
+  // From behind and above, past a bend behind the bladder and a short lead-in, to the wall.
   const curve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(3.2 * side, 4.2, -1.0),
-    new THREE.Vector3(2.4 * side, 2.0, -0.4),
-    baseVertices[endIndex].clone(),
+    new THREE.Vector3(3.0 * side, 4.4, -2.0), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(),
   ])
+  const end = baseVertices[endIndex]
+  routeUreter(curve.points, end, n.copy(end).normalize())
   // Only the topology (index, uvs) is kept; buildTube() writes the vertices.
   const geo = new THREE.TubeGeometry(curve, URETER_SEGMENTS, URETER_RADIUS, URETER_RADIAL, false)
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 2, 0), 6)
@@ -186,6 +197,7 @@ function buildTube({ curve, geo, arc }) {
     ringT.subVectors(ringAhead, ringBehind).normalize()
     ringN.crossVectors(ringT, URETER_REF).normalize()
     ringB.crossVectors(ringT, ringN)
+    const radius = i === URETER_SEGMENTS ? URETER_RADIUS * URETER_TIP : URETER_RADIUS
     for (let j = 0; j <= URETER_RADIAL; j++) {
       const v = (j / URETER_RADIAL) * Math.PI * 2
       const sin = Math.sin(v)
@@ -194,9 +206,9 @@ function buildTube({ curve, geo, arc }) {
       const ny = cos * ringN.y + sin * ringB.y
       const nz = cos * ringN.z + sin * ringB.z
       nrm[o] = nx; nrm[o + 1] = ny; nrm[o + 2] = nz
-      pos[o] = ringCenter.x + URETER_RADIUS * nx
-      pos[o + 1] = ringCenter.y + URETER_RADIUS * ny
-      pos[o + 2] = ringCenter.z + URETER_RADIUS * nz
+      pos[o] = ringCenter.x + radius * nx
+      pos[o + 1] = ringCenter.y + radius * ny
+      pos[o + 2] = ringCenter.z + radius * nz
       o += 3
     }
   }
@@ -204,17 +216,26 @@ function buildTube({ curve, geo, arc }) {
   geo.attributes.normal.needsUpdate = true
 }
 
-const outward = new THREE.Vector3()
+const UP = new THREE.Vector3(0, 1, 0)
+const entry = new THREE.Vector3()
+
+// The bend and the end of a ureter for a wall point and its normal. The lead-in comes from
+// a little above square to the wall, so the tube dives into the wall rather than hooking
+// up into it from below.
+function routeUreter([, bend, leadIn, end], wallPoint, normal) {
+  end.copy(wallPoint).addScaledVector(normal, -URETER_SINK)
+  entry.copy(UP).addScaledVector(normal, -normal.y).normalize() // up, along the wall
+  entry.multiplyScalar(URETER_ENTRY).add(normal).normalize()
+  leadIn.copy(end).addScaledVector(entry, 0.3)
+  bend.copy(end).addScaledVector(normal, 1.3)
+  bend.y += 0.8
+}
 
 // Re-routes a ureter so it always ends on the (moving) bladder wall.
-function updateUreter(ureter, wallPoint) {
+function updateUreter(ureter, wallPoint, wallNormal) {
   if (ureter.lastEnd.distanceToSquared(wallPoint) < 0.0004) return
   ureter.lastEnd.copy(wallPoint)
-  const [, mid, end] = ureter.curve.points
-  end.copy(wallPoint).multiplyScalar(0.97) // sink slightly into the wall
-  outward.copy(end).normalize()
-  mid.copy(end).addScaledVector(outward, 0.9)
-  mid.y += 1.1
+  routeUreter(ureter.curve.points, wallPoint, wallNormal)
   buildTube(ureter)
 }
 
@@ -264,7 +285,8 @@ export function createOrganRig() {
   const bPos = bladderGeo.attributes.position
   for (let i = 0; i < bPos.count; i++) {
     let x = bPos.getX(i), y = bPos.getY(i), z = bPos.getZ(i)
-    const neckFactor = y < 0 ? Math.max(0.35, 1.0 - Math.abs(y / 2.35) * 0.6) : 1.0
+    // Narrows toward the neck, easing in below the equator so the outline has no crease there.
+    const neckFactor = y < 0 ? 1.0 - THREE.MathUtils.smoothstep(-y / 2.35, 0, 1) * 0.6 : 1.0
     x *= neckFactor; z *= neckFactor * 0.94; y *= 1.12
     bPos.setXYZ(i, x, y, z)
   }
@@ -280,8 +302,14 @@ export function createOrganRig() {
   const velocity = new Float64Array(count * 3)
   const dentMemory = new Float32Array(count)
 
+  // The lining: the wall's shape with the rugae folded into it. The urine is drawn with it.
+  const liningGeo = bladderGeo.clone()
+  liningGeo.boundingSphere = bladderGeo.boundingSphere.clone()
+  const lining = liningGeo.attributes.position.array
+
   // Per-vertex constants of the deformation below, so a frame only does multiply-adds.
-  const wrinkle = new Float64Array(count) // rugae fold pattern, scaled by wrinkleAmp
+  const wrinkle = new Float64Array(count) // rugae fold pattern, scaled by rugae
+  const slump = new Float64Array(count) // how much of the flaccid spread this vertex takes
   const jiggleS3 = new Float64Array(count) // sin 3θ · sin 2φ
   const jiggleC3 = new Float64Array(count) // cos 3θ · sin 2φ
   const jiggleC2 = new Float64Array(count) // cos 2θ
@@ -292,6 +320,8 @@ export function createOrganRig() {
   for (let i = 0; i < count; i++) {
     const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2]
     wrinkle[i] = Math.sin(x * 3.5 + y * 4.5) * Math.cos(z * 4.0 + y * 2.5)
+    // The lower half spreads, easing in from the equator rather than stepping out there.
+    slump[i] = THREE.MathUtils.smoothstep(-y / 2.35, 0, 0.5)
     const theta = Math.atan2(z, x)
     const sin2phi = Math.sin(Math.acos(Math.max(-1, Math.min(1, y / 2.35))) * 2.0)
     jiggleS3[i] = Math.sin(theta * 3.0) * sin2phi
@@ -326,6 +356,7 @@ export function createOrganRig() {
 
   const scratch = new THREE.Vector3()
   const wallPoint = new THREE.Vector3()
+  const wallNormal = new THREE.Vector3()
 
   // Pushes vertices near `local` inward and leaves a slowly recovering dent.
   function impact(local, strength, profile) {
@@ -382,7 +413,7 @@ export function createOrganRig() {
     const jC = Math.cos(phase * 1.2) * jiggle2
     const jD = Math.sin(phase * 1.2) * jiggle2
     const bulgeXZ = Math.sqrt(1.0 / Math.max(0.2, (1.0 - compY * (0.45 + fillRatio * 0.45))))
-    const wrinkleAmp = Math.pow(1.0 - Math.min(1.0, fillRatio), 1.6) * 0.28
+    const rugae = Math.pow(1.0 - Math.min(1.0, fillRatio), 1.6) * RUGAE_DEPTH
     const sagFactor = Math.max(0, (1.0 - fillRatio * 2.2)) * 0.45
     const tremorAmp = (sim.sphincterToneStrain > 0.3) ? (sim.sphincterToneStrain * 0.045) : 0.0
     const tremorHalf = tremorAmp * 0.5
@@ -393,7 +424,7 @@ export function createOrganRig() {
     const sloshZ = Math.sin(sim.sloshAngleZ) * 0.22
     const coreX = sim.fluidCoreOffset.x * 0.35
     const coreZ = sim.fluidCoreOffset.z * 0.35
-    const lowerSpread = 1.0 + (1.0 - fillRatio) * 0.2
+    const lowerSpread = (1.0 - fillRatio) * 0.2
     const ripples = sim.ripples
     const springDt = phys.springK * dt
     const damping = phys.damping
@@ -413,8 +444,6 @@ export function createOrganRig() {
       const bx = base[o], by = base[o + 1], bz = base[o + 2]
       const yNorm = by / 2.35
 
-      // Rugae folds of a deflated bladder: broad enough for the mesh to show smoothly.
-      const wrinkleNoise = wrinkle[i] * wrinkleAmp
       const sloshPushX = sloshX * yNorm + coreX
       const sloshPushZ = sloshZ * yNorm + coreZ
       const jiggleWobble = jiggleS3[i] * jA + jiggleC3[i] * jB + jiggleC2[i] * jC + jiggleS2[i] * jD
@@ -436,12 +465,12 @@ export function createOrganRig() {
       }
 
       const sagY = by > 0 ? -sagFactor * yNorm : 0
-      const flaccidSpread = by < 0 ? lowerSpread : 1.0
+      const flaccidSpread = 1.0 + lowerSpread * slump[i]
       const totalRadMod = Math.max(0.2, (1.0 + jiggleWobble + rippleDisp - dentMemory[i])) * balloonBulge
 
-      const tx = ((bx * flaccidSpread * bulgeXZ + wrinkleNoise) * inflationScale + sloshPushX + tremorX) * totalRadMod
-      const ty = ((by * scaleY + sagY + wrinkleNoise * 0.5) * inflationScale + tremorY) * totalRadMod
-      const tz = ((bz * flaccidSpread * bulgeXZ + wrinkleNoise) * inflationScale + sloshPushZ + tremorZ) * totalRadMod
+      const tx = (bx * flaccidSpread * bulgeXZ * inflationScale + sloshPushX + tremorX) * totalRadMod
+      const ty = ((by * scaleY + sagY) * inflationScale + tremorY) * totalRadMod
+      const tz = (bz * flaccidSpread * bulgeXZ * inflationScale + sloshPushZ + tremorZ) * totalRadMod
 
       const cx = wall[o], cy = wall[o + 1], cz = wall[o + 2]
       const vx = (velocity[o] + (tx - cx) * springDt) * damping
@@ -451,11 +480,18 @@ export function createOrganRig() {
       wall[o] = cx + vx * dt
       wall[o + 1] = cy + vy * dt
       wall[o + 2] = cz + vz * dt
+      // Rugae folds, broad enough for the mesh to show smoothly.
+      const fold = 1.0 + wrinkle[i] * rugae
+      lining[o] = wall[o] * fold
+      lining[o + 1] = wall[o + 1] * fold
+      lining[o + 2] = wall[o + 2] * fold
     }
     bPos.needsUpdate = true
     computeNormals(bladderGeo)
+    liningGeo.attributes.position.needsUpdate = true
+    computeNormals(liningGeo)
 
-    // Urine: the wall's shape scaled about a point low in the sac, free to slosh within
+    // Urine: the lining's shape scaled about a point low in the sac, free to slosh within
     // whatever wall thickness there is around it.
     if (urine) {
       const k = urineScale(sim.volume, sim.maxCapacity)
@@ -468,7 +504,8 @@ export function createOrganRig() {
     // Ureters stay plugged into the wall as it inflates and wobbles.
     for (const ureter of ureters) {
       wallPoint.fromBufferAttribute(bPos, ureter.endIndex)
-      updateUreter(ureter, wallPoint)
+      wallNormal.fromBufferAttribute(bladderGeo.attributes.normal, ureter.endIndex)
+      updateUreter(ureter, wallPoint, wallNormal)
     }
 
     // Sphincter: a clench clamps the ring and deepens its folds, voiding opens it all
@@ -519,7 +556,7 @@ export function createOrganRig() {
   }
 
   return {
-    bladderGeo, sphincterGeo, stream,
+    bladderGeo, liningGeo, sphincterGeo, stream,
     ureterGeoLeft: ureters[0].geo, ureterGeoRight: ureters[1].geo,
     cutawayPlane, poke, slap, clearDents, update,
   }

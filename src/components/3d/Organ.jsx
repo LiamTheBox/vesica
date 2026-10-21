@@ -179,13 +179,13 @@ export default function Organ() {
           doesn't (a bladder holds no air); in the cutaway it's the cut face of the wall. */}
       <mesh name="wallTissue" geometry={rig.bladderGeo} material={cut.tissue} renderOrder={2} />
 
-      {/* Urine: the wall's own shape, scaled to the volume held (rig.update sets the
-          transform), so an empty bladder holds none. Drawn first so the membrane blends
+      {/* Urine: the lining's shape (the wall with the rugae folded in), scaled to the
+          volume held (rig.update sets the transform), so an empty bladder holds none. Drawn first so the membrane blends
           over it. High quality refracts what's behind it (transmission: a whole extra
           render pass); lower tiers let it through with plain transparency, which looks
           nearly the same. */}
       <group ref={urineRef} name="urine">
-        <mesh geometry={rig.bladderGeo} renderOrder={1}>
+        <mesh geometry={rig.liningGeo} renderOrder={1}>
           <meshPhysicalMaterial
             key={refractive ? 'refractive' : 'blended'}
             ref={fluidMatRef}
@@ -200,7 +200,7 @@ export default function Organ() {
           />
         </mesh>
         {/* Cross-section of the urine, shown only where the cutaway opens it. */}
-        <mesh name="urineCut" geometry={rig.bladderGeo} material={cut.urine} renderOrder={1} visible={isCutawayActive} />
+        <mesh name="urineCut" geometry={rig.liningGeo} material={cut.urine} renderOrder={1} visible={isCutawayActive} />
       </group>
 
       {/* Wall: a translucent membrane that thins out as it stretches. */}

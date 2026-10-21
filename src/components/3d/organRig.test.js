@@ -62,9 +62,9 @@ describe('per-frame geometry work (M7)', () => {
     }
     for (const geo of [rig.ureterGeoLeft, rig.ureterGeoRight]) {
       const end = lastRing(geo)
-      // Nearest wall vertex: the ureter sinks 3 % into the wall at its attachment point.
+      // Nearest wall vertex: the ureter sinks a little into the wall at its attachment point.
       let nearest = Infinity
-      for (let i = 0; i < wall.count; i++) nearest = Math.min(nearest, end.distanceTo(new THREE.Vector3().fromBufferAttribute(wall, i).multiplyScalar(0.97)))
+      for (let i = 0; i < wall.count; i++) nearest = Math.min(nearest, end.distanceTo(new THREE.Vector3().fromBufferAttribute(wall, i)))
       expect(nearest).toBeLessThan(0.15)
       const normals = geo.attributes.normal
       for (let i = 0; i < normals.count; i++) expect(new THREE.Vector3().fromBufferAttribute(normals, i).length()).toBeCloseTo(1, 5)
@@ -82,10 +82,67 @@ describe('per-frame geometry work (M7)', () => {
       return drop.position.clone()
     }
     rig.update(sim, 1 / 60, 0, {}) // settle the ureters on the wall first
-    const steps = [0.1, 0.3, 0.5, 0.7, 0.9].map(at)
+    // Short steps, so the straight gap between drops is close to the distance along the bends.
+    const steps = Array.from({ length: 19 }, (_, i) => at(0.05 + i * 0.05))
     const gaps = steps.slice(1).map((p, i) => p.distanceTo(steps[i]))
     for (const gap of gaps) expect(gap / gaps[0]).toBeCloseTo(1, 1)
   })
+})
+
+describe('ureters', () => {
+  const settled = (ml) => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    const urine = { visible: true, scale: new THREE.Vector3(), position: new THREE.Vector3() }
+    sim.volume = ml
+    for (let f = 0; f < 240; f++) rig.update(sim, 1 / 60, f / 60, { urine })
+    return { rig, urine }
+  }
+  // Centres of the tube's rings, from the top down to where it joins the wall.
+  const centreline = (geo) => {
+    const pos = geo.attributes.position
+    const points = []
+    for (let o = 0; o < pos.count; o += 9) {
+      const c = new THREE.Vector3()
+      for (let j = 0; j < 8; j++) c.add(new THREE.Vector3().fromBufferAttribute(pos, o + j))
+      points.push(c.divideScalar(8))
+    }
+    return points
+  }
+  // Whether `p` lies inside `geo`'s surface: closer to the centre than the surface is in its
+  // direction (the shapes are all star-shaped about their centre).
+  const raycaster = new THREE.Raycaster()
+  const inside = (geo, p) => {
+    raycaster.set(new THREE.Vector3(), p.clone().normalize())
+    const [hit] = raycaster.intersectObject(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })))
+    return p.length() < hit.distance
+  }
+
+  for (const ml of [120, 400, 750]) {
+    it(`enter low on the back, either side of the neck, from outside the wall (${ml} ml)`, () => {
+      const { rig, urine } = settled(ml)
+      const wall = rig.bladderGeo.attributes.position
+      let bottom = Infinity, back = Infinity
+      for (let i = 0; i < wall.count; i++) {
+        bottom = Math.min(bottom, wall.getY(i))
+        back = Math.min(back, wall.getZ(i))
+      }
+      for (const [geo, side] of [[rig.ureterGeoLeft, -1], [rig.ureterGeoRight, 1]]) {
+        const line = centreline(geo)
+        const end = line[line.length - 1]
+        expect(end.y).toBeLessThan(bottom * 0.25) // well below the middle
+        expect(end.z).toBeLessThan(back * 0.4) // on the back
+        expect(end.x * side).toBeGreaterThan(0.3) // beside the neck, not on it
+        for (const p of line.slice(0, -3)) expect(inside(rig.bladderGeo, p)).toBe(false)
+        // Its end stays in the wall: no part of the tube pokes into the urine.
+        const pos = geo.attributes.position
+        for (let i = 0; i < pos.count; i++) {
+          const local = new THREE.Vector3().fromBufferAttribute(pos, i).sub(urine.position).divideScalar(urine.scale.x)
+          expect(inside(rig.liningGeo, local)).toBe(false)
+        }
+      }
+    })
+  }
 })
 
 describe('urine inside the wall', () => {
