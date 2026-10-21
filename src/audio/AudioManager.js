@@ -38,7 +38,6 @@ export class AudioManager {
     this.dynamicJet = null
     this.clenchHumNode = null
     this.urgeRumbleNode = null
-    this.creakCooldown = 0
 
     this.femaleVoice = null
     this.clock = 0 // s, advanced by update()
@@ -393,7 +392,6 @@ export class AudioManager {
 
   update(dt) {
     this.clock += dt
-    if (this.creakCooldown > 0) this.creakCooldown -= dt
     // A waiting reaction gets its turn once the line before it ends.
     if (this.pending && this.clock >= this.busyUntil) {
       const { category, until } = this.pending
