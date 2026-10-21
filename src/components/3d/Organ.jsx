@@ -18,6 +18,9 @@ const FLUID_OPACITY = 0.9
 // Light through the urine turns amber with distance, so the far wall seen through it
 // reads as golden liquid rather than red muscle.
 const REFRACTIVE_URINE = { transmission: 0.55, ior: 1.333, thickness: 2.2, attenuationColor: 0xf59e0b, attenuationDistance: 1.2 }
+// Ureters: pale tan from vertex colours, with a warm glow of their own so they stay tan
+// under the blue back light too.
+const URETER_MATERIAL = { vertexColors: true, color: 0xffffff, emissive: 0x8a6a2e, emissiveIntensity: 0.55, roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.35 }
 
 export default function Organ() {
   const rig = useMemo(() => createOrganRig(), [])
@@ -28,8 +31,6 @@ export default function Organ() {
   const bladderRef = useRef()
   const streamRef = useRef()
   const dropsRef = useRef()
-  const leftDropRef = useRef()
-  const rightDropRef = useRef()
   const wallMatRef = useRef()
   const urineRef = useRef()
   const fluidMatRef = useRef()
@@ -161,8 +162,6 @@ export default function Organ() {
       fluidMat: fluidMatRef.current,
       stream: streamRef.current,
       drops: dropsRef.current,
-      leftDrop: leftDropRef.current,
-      rightDrop: rightDropRef.current,
       camera: state.camera,
       cutaway: isCutawayActive,
     })
@@ -236,21 +235,14 @@ export default function Organ() {
         frustumCulled={false}
       />
 
-      {/* Ureters are cut with the wall so a tube never dangles in front of the section. */}
+      {/* Ureters (ureter.js): pale tan tubes, amber where urine is squeezed down them,
+          flaring into the wall. Cut with the wall so a tube never dangles in front of the
+          section. */}
       <mesh geometry={rig.ureterGeoLeft} renderOrder={3}>
-        <meshPhysicalMaterial color={0x94a3b8} roughness={0.3} transparent opacity={0.85} clippingPlanes={clip} />
+        <meshPhysicalMaterial {...URETER_MATERIAL} clippingPlanes={clip} />
       </mesh>
       <mesh geometry={rig.ureterGeoRight} renderOrder={3}>
-        <meshPhysicalMaterial color={0x94a3b8} roughness={0.3} transparent opacity={0.85} clippingPlanes={clip} />
-      </mesh>
-
-      <mesh ref={leftDropRef} visible={false} renderOrder={4}>
-        <sphereGeometry args={[0.07, 16, 16]} />
-        <meshPhysicalMaterial color={0xfef08a} emissive={0xf59e0b} emissiveIntensity={0.9} roughness={0.1} />
-      </mesh>
-      <mesh ref={rightDropRef} visible={false} renderOrder={4}>
-        <sphereGeometry args={[0.07, 16, 16]} />
-        <meshPhysicalMaterial color={0xfef08a} emissive={0xf59e0b} emissiveIntensity={0.9} roughness={0.1} />
+        <meshPhysicalMaterial {...URETER_MATERIAL} clippingPlanes={clip} />
       </mesh>
     </group>
   )

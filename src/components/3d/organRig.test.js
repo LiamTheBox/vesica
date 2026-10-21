@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import {
   BLADDER_VERTICES, computeNormals, createOrganRig, FLUID_INSET, NECK_ROW, ORGAN_CENTER, orientCutaway, RESIDUAL_ML, RING_VERTICES, urineScale,
 } from './organRig'
+import { FLARE_RINGS, URETER_RING } from './ureter'
 import { createSimState } from '../../sim/sim'
 
 // Three.js clips points whose signed distance to a clipping plane is negative.
@@ -63,8 +64,8 @@ describe('per-frame geometry work (M7)', () => {
     const lastRing = (geo) => {
       const pos = geo.attributes.position
       const c = new THREE.Vector3()
-      for (let j = pos.count - 9; j < pos.count; j++) c.add(new THREE.Vector3().fromBufferAttribute(pos, j))
-      return c.divideScalar(9)
+      for (let j = pos.count - URETER_RING; j < pos.count - 1; j++) c.add(new THREE.Vector3().fromBufferAttribute(pos, j))
+      return c.divideScalar(URETER_RING - 1)
     }
     for (let f = 0; f < 120; f++) {
       sim.volume = 120 + f * 5
@@ -74,36 +75,13 @@ describe('per-frame geometry work (M7)', () => {
     }
     for (const geo of [rig.ureterGeoLeft, rig.ureterGeoRight]) {
       const end = lastRing(geo)
-      // Nearest wall vertex: the ureter sinks a little into the wall at its attachment point.
+      // Nearest wall vertex: the ureter's flared end lies on the wall at its attachment point.
       let nearest = Infinity
       for (let i = 0; i < wall.count; i++) nearest = Math.min(nearest, end.distanceTo(new THREE.Vector3().fromBufferAttribute(wall, i)))
       expect(nearest).toBeLessThan(0.15)
       const normals = geo.attributes.normal
       for (let i = 0; i < normals.count; i++) expect(new THREE.Vector3().fromBufferAttribute(normals, i).length()).toBeCloseTo(1, 5)
     }
-  })
-
-  it('moves the filtering drops at an even pace along the ureter', () => {
-    const rig = createOrganRig()
-    const sim = createSimState()
-    sim.activeBeverages = [{}]
-    const drop = { visible: false, position: new THREE.Vector3(), scale: { setScalar() {} } }
-    const other = { ...drop, position: new THREE.Vector3() }
-    const at = (u) => {
-      rig.update(sim, 1 / 60, u / 0.8, { leftDrop: drop, rightDrop: other })
-      return drop.position.clone()
-    }
-    play(rig, sim, 3) // settle the wall, and the ureters on it
-    // Distance along the tube between drops a twentieth of the way apart, summed in short
-    // steps so the bends count.
-    const path = Array.from({ length: 181 }, (_, i) => at(0.05 + i * 0.005))
-    const legs = []
-    for (let i = 0; i < 180; i += 10) {
-      let leg = 0
-      for (let j = i; j < i + 10; j++) leg += path[j].distanceTo(path[j + 1])
-      legs.push(leg)
-    }
-    for (const leg of legs) expect(leg / legs[0]).toBeCloseTo(1, 1)
   })
 })
 
@@ -120,10 +98,10 @@ describe('ureters', () => {
   const centreline = (geo) => {
     const pos = geo.attributes.position
     const points = []
-    for (let o = 0; o < pos.count; o += 9) {
+    for (let o = 0; o < pos.count; o += URETER_RING) {
       const c = new THREE.Vector3()
-      for (let j = 0; j < 8; j++) c.add(new THREE.Vector3().fromBufferAttribute(pos, o + j))
-      points.push(c.divideScalar(8))
+      for (let j = 0; j < URETER_RING - 1; j++) c.add(new THREE.Vector3().fromBufferAttribute(pos, o + j))
+      points.push(c.divideScalar(URETER_RING - 1))
     }
     return points
   }
@@ -151,7 +129,8 @@ describe('ureters', () => {
         expect(end.y).toBeLessThan(bottom * 0.25) // well below the middle
         expect(end.z).toBeLessThan(back * 0.4) // on the back
         expect(end.x * side).toBeGreaterThan(0.3) // beside the neck, not on it
-        for (const p of line.slice(0, -3)) expect(inside(rig.bladderGeo, p)).toBe(false)
+        // Outside the wall all the way down to the flare, which lies on it.
+        for (const p of line.slice(0, -FLARE_RINGS - 1)) expect(inside(rig.bladderGeo, p)).toBe(false)
         // Its end stays in the wall: no part of the tube pokes into the urine.
         const pos = geo.attributes.position
         for (let i = 0; i < pos.count; i++) {
@@ -292,6 +271,56 @@ describe('bladder wall', () => {
     sim.isActivelyVoiding = true
     play(rig, sim, 1, 7)
     expect(meanRadius(rig)).toBeLessThan(rest * 0.98)
+  })
+
+  // How sharply a ring of the wall bends anywhere around it: the largest second difference
+  // of its radius, relative to the radius (creases score high; a smooth oval scores ~0).
+  const crease = (rig, row) => {
+    const pos = rig.bladderGeo.attributes.position
+    const centre = rowCentre(rig, row)
+    const r = Array.from({ length: RING_VERTICES - 1 }, (_, ix) => {
+      const i = row * RING_VERTICES + ix
+      return Math.hypot(pos.getX(i) - centre.x, pos.getZ(i) - centre.z)
+    })
+    const mean = r.reduce((a, b) => a + b) / r.length
+    return Math.max(...r.map((v, j) => Math.abs(r[(j + r.length - 1) % r.length] - 2 * v + r[(j + 1) % r.length]))) / mean
+  }
+
+  it('folds like a deflated balloon when slack, and pulls smooth when full or contracting', () => {
+    const at = (state) => {
+      const rig = createOrganRig()
+      const sim = createSimState()
+      Object.assign(sim, state)
+      play(rig, sim, 3)
+      return crease(rig, 30)
+    }
+    const slack = at({ volume: 30 })
+    expect(slack).toBeGreaterThan(0.04)
+    expect(at({ volume: 750 })).toBeLessThan(0.01)
+    expect(at({ volume: 30, detrusorSpasmIntensity: 1 })).toBeLessThan(slack / 2)
+  })
+
+  it('swells where a ureter squirts urine in', () => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    sim.volume = 300
+    const pos = rig.bladderGeo.attributes.position
+    const radiusAt = (i) => new THREE.Vector3().fromBufferAttribute(pos, i).length()
+    // The left ureter's first bolus arrives 4.5 s in.
+    play(rig, sim, 4.4)
+    // The wall vertex under the left ureter's flared end, and one on the dome.
+    const ureterEnd = new THREE.Vector3()
+    const end = rig.ureterGeoLeft.attributes.position
+    for (let j = end.count - URETER_RING; j < end.count - 1; j++) ureterEnd.add(new THREE.Vector3().fromBufferAttribute(end, j))
+    ureterEnd.divideScalar(URETER_RING - 1)
+    let opening = 0
+    for (let i = 1; i < BLADDER_VERTICES; i++) {
+      if (new THREE.Vector3().fromBufferAttribute(pos, i).distanceTo(ureterEnd) < new THREE.Vector3().fromBufferAttribute(pos, opening).distanceTo(ureterEnd)) opening = i
+    }
+    const before = { opening: radiusAt(opening), dome: radiusAt(RING_VERTICES * 2) }
+    play(rig, sim, 0.25, 4.4)
+    expect(radiusAt(opening)).toBeGreaterThan(before.opening * 1.005)
+    expect(Math.abs(radiusAt(RING_VERTICES * 2) / before.dome - 1)).toBeLessThan(0.002)
   })
 
   it('is a see-through membrane that thins as it fills, over a solid sphincter', () => {
