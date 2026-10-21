@@ -205,6 +205,9 @@ describe('scoring', () => {
 
     const chosen = play(sim, ingestBeverage, 'water', fixed(0.5))
     expect(points(chosen, 'drink')).toEqual([{ type: 'arcadePoints', reason: 'drink', points: 90, combo: 0 }])
+    // Any drink from the menu, by its volume.
+    const fromMenu = play(sim, ingestBeverage, 'bubbleTea', fixed(0.5))
+    expect(points(fromMenu, 'drink')).toEqual([{ type: 'arcadePoints', reason: 'drink', points: 225, combo: 0 }])
   })
 
   it('announces sneezes from level 2; bracing for one scores', () => {

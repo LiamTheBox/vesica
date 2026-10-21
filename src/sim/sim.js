@@ -1,4 +1,5 @@
-import { BEVERAGE_TYPES, PHYSICS_CONFIGS } from '../physics/constants'
+import { PHYSICS_CONFIGS } from '../physics/constants'
+import { DRINKS } from './drinks'
 
 // Simulation core, ported from the original single-file game
 // (`Vesica 3D Mobile Web App.html`): `updatePhysics()` without the rendering, plus
@@ -181,7 +182,7 @@ export function agitate(sim, out, strength = 2.5, rng = Math.random) {
 
 // `served`: handed out by the arcade rather than chosen by the player.
 export function ingestBeverage(sim, out, type, rng = Math.random, { served = false } = {}) {
-  const b = BEVERAGE_TYPES[type]
+  const b = DRINKS[type]
   if (!b) return
   sim.activeBeverages.push({ rem: b.vol, rate: b.rate, hyd: b.hyd })
   impartSloshForce(sim, (rng() - 0.5) * 4.0, (rng() - 0.5) * 4.0)

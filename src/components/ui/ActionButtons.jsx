@@ -1,5 +1,6 @@
-import { useHud } from '../../store/useUiStore'
+import { useHud, useUiStore } from '../../store/useUiStore'
 import { BEVERAGE_TYPES } from '../../physics/constants'
+import { DRINK_COUNT } from '../../sim/drinks'
 import { act } from '../../sim/engine'
 import { ingestBeverage, soothe, startClench, startVoidAttempt, stopClench, stopVoidAttempt } from '../../sim/sim'
 import { slapRandom } from '../../sim/interactions'
@@ -36,6 +37,7 @@ export default function ActionButtons() {
   const sootheSeconds = useHud((h) => h.sootheSeconds)
   // An announced threat (arcade): the Clench button calls for the thumb.
   const clenchCue = useHud((h) => h.urgeWarned || h.coughWarned || h.leakGrace)
+  const setTab = useUiStore((s) => s.setTab)
 
   const clenchLabel = isClenching ? 'CLENCHING!' : clenchExhausted ? 'CLENCH EXHAUSTED!' : 'CLENCH (HOLD)'
   const voidLabel = isActivelyVoiding ? 'VOIDING…' : isAttemptingVoid ? 'RELAXING VALVE…' : 'EMPTY (HOLD)'
@@ -54,6 +56,12 @@ export default function ActionButtons() {
             <span className={`text-[8px] sm:text-[9px] font-mono ${BEVERAGE_LABELS[key].tone}`}>{BEVERAGE_LABELS[key].note}</span>
           </button>
         ))}
+        {/* The rest of the drinks, in a menu. */}
+        <button onClick={() => setTab('drinks')} aria-haspopup="dialog" className="flex-1 py-1.5 px-1 bg-fuchsia-950/50 hover:bg-fuchsia-900/50 active:scale-95 border border-fuchsia-700/70 hover:border-fuchsia-400/80 rounded-xl flex flex-col items-center transition">
+          <span className="text-sm sm:text-base">🍹</span>
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-200">Menu</span>
+          <span className="text-[8px] sm:text-[9px] font-mono text-fuchsia-300 whitespace-nowrap">{DRINK_COUNT} drinks</span>
+        </button>
       </div>
 
       {/* Main Actions */}

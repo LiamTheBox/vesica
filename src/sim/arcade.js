@@ -1,4 +1,4 @@
-import { BEVERAGE_TYPES } from '../physics/constants'
+import { DRINKS } from './drinks'
 import { cough, fillRatioOf, ingestBeverage, resetOrgan, SANDBOX_RULES, stepSim } from './sim'
 
 // Arcade mode, the default: an endless hold on top of the same simulation. The game
@@ -181,7 +181,7 @@ export function scoreArcade(sim, out, from = 0) {
         award(sim, out, 'saved', SAVED_POINTS)
         break
       case 'ingest':
-        if (!e.served) award(sim, out, 'drink', Math.round(BEVERAGE_TYPES[e.beverage].vol * DRINK_BONUS))
+        if (!e.served) award(sim, out, 'drink', Math.round(DRINKS[e.beverage].vol * DRINK_BONUS))
         break
       case 'voidStart':
         award(sim, out, 'bank', Math.round(sim.volume * fillMultiplier(fillRatioOf(sim))))

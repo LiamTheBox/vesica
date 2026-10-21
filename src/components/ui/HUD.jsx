@@ -14,6 +14,8 @@ import ActionRail from './ActionRail'
 const TelemetryTab = lazy(() => import('./Tabs/TelemetryTab'))
 const ChallengesTab = lazy(() => import('./Tabs/ChallengesTab'))
 const SettingsTab = lazy(() => import('./Tabs/SettingsTab'))
+// Opened from the drinks shelf rather than the nav, the same way.
+const DrinksMenu = lazy(() => import('./DrinksMenu'))
 
 function LazyTab({ id, children }) {
   const open = useUiStore((s) => s.currentTab === id)
@@ -164,6 +166,7 @@ export default function HUD() {
       <LazyTab id="telemetry"><TelemetryTab /></LazyTab>
       <LazyTab id="challenges"><ChallengesTab /></LazyTab>
       <LazyTab id="settings"><SettingsTab /></LazyTab>
+      <LazyTab id="drinks"><DrinksMenu /></LazyTab>
     </>
   )
 }

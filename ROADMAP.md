@@ -24,9 +24,13 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 - **From KNOWN_ISSUES (2026-10-21):** the wall keeps a smooth outside at any fill (the rugae fold only the lining,
   which the urine is drawn with; the lower half eases out below the equator instead of stepping), and the ureters
   come down behind the bladder and enter low on its back, beside the neck, without poking into the urine.
+- **Drinks menu (requested 2026-10-21):** a Menu button on the drinks shelf opens a sheet of 40 drinks in six groups
+  (`src/sim/drinks.js`; the shelf's four keep the original's numbers), each showing the ml it adds, how long it takes
+  to arrive and whether it's a diuretic. The sheet scrolls when they don't fit; choosing one drinks it (the arcade's
+  drink bonus counts it) and closes the menu. The game keeps running while it's open, like the other sheets.
 - **Live:** https://liamthebox.github.io/vesica/ (deployed by GitHub Actions on every push to `main`). Check that
   Settings → Pages → Source is "GitHub Actions", or the old branch publish can overwrite the app.
-- **Tests:** `npm run check` green (127 unit tests). The browser suite is not a requirement for now (the user's
+- **Tests:** `npm run check` green (131 unit tests). The browser suite is not a requirement for now (the user's
   choice: it loads the CPU): the specs were updated for the 2026-10-21 rules and `e2e/arcade.spec.js` was added,
   but none of it has been run (last full run, before these changes: 85 passed). One flaky pinch-zoom test is open
   (KNOWN_ISSUES).
