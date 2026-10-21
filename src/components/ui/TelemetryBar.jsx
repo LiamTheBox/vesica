@@ -17,6 +17,7 @@ export default function TelemetryBar() {
   countRender('TelemetryBar')
   const volume = useHud((h) => h.volume)
   const maxCapacity = useHud((h) => h.maxCapacity)
+  const endless = useHud((h) => h.endless)
   const stamPct = useHud((h) => h.staminaPct)
   const pressure = useHud((h) => h.pressure)
   const flowRate = useHud((h) => h.flowRate)
@@ -32,7 +33,8 @@ export default function TelemetryBar() {
         <div className="min-w-0">
           <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono mb-1">
             <span>VOLUME</span>
-            <span className="font-bold text-amber-300">{volume} / {maxCapacity} ml</span>
+            {/* With no limit (the arcade), the bar still fills up to full. */}
+            <span className="font-bold text-amber-300">{volume} / {endless ? '∞' : maxCapacity} ml</span>
           </div>
           <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden border border-slate-700/50">
             <div className="h-full bg-gradient-to-r from-amber-400 via-yellow-300 to-rose-500 transition-all duration-150" style={{ width: `${fillPct}%` }}></div>

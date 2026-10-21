@@ -3,7 +3,8 @@ import { cough, fillRatioOf, ingestBeverage, resetOrgan, SANDBOX_RULES, stepSim 
 
 // Arcade mode, the default: an endless hold on top of the same simulation. The game
 // serves drinks, announces every urge wave and (from level 2) every sneeze, and gets
-// harder every 30 s. Points come from holding (more the fuller you are), from clenching
+// harder every 30 s. The bladder has no limit (requested): it keeps filling past full,
+// but past full it feels no fuller, so the run lasts as long as the clench holds out. Points come from holding (more the fuller you are), from clenching
 // on time — as the wave lands, which calms it at once — and from bracing for sneezes.
 // Emptying the bladder banks the score; a total failure ends the run.
 
@@ -19,6 +20,8 @@ export const ARCADE_RULES = {
   clenchLockout: 0.3, // after giving out, the clench needs 30 % stamina back
   leakGraceTime: 0.6, // at 100 % strain there's a moment to clench before it leaks
   sootheCooldownTime: 20,
+  volumeCap: Infinity, // it never runs out of room...
+  fullAt: 1, // ...and past full, pressure and urgency hold at full's
 }
 
 const START_ML = 300

@@ -57,9 +57,13 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
     slap is unchanged, and the jolt never turns a spurt into a total failure.
   - **F, the lines** (`src/audio/lines.js`): rewritten short (under 5 words on average, 8 at most), in one voice,
     without the jargon.
+- **Arcade bladder without a limit (requested 2026-10-21):** in a run it keeps filling past full (the HUD reads
+  "/ ∞ ml"), but past full it feels no fuller: pressure, strain and urge waves hold at full's, so the run lasts as
+  long as the clench holds out, and holding past full keeps paying 5×. It keeps swelling, ever more slowly, within
+  the camera's frame. The sandbox still stops at 125 %.
 - **Live:** https://liamthebox.github.io/vesica/ (deployed by GitHub Actions on every push to `main`). Check that
   Settings → Pages → Source is "GitHub Actions", or the old branch publish can overwrite the app.
-- **Tests:** `npm run check` green (174 unit tests). The browser suite is not a requirement for now (the user's
+- **Tests:** `npm run check` green (177 unit tests). The browser suite is not a requirement for now (the user's
   choice: it loads the CPU): the specs were updated for the 2026-10-21 rules and `e2e/arcade.spec.js` was added,
   but none of it has been run (last full run, before these changes: 85 passed). One flaky pinch-zoom test is open
   (KNOWN_ISSUES).

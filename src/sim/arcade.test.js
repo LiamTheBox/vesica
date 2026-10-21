@@ -62,6 +62,43 @@ describe('starting a run', () => {
   })
 })
 
+describe('no limit to what it holds (requested)', () => {
+  it('keeps filling past full, and past full feels no fuller: pressure and urge waves hold', () => {
+    const sim = quietRun(750)
+    run(sim, DT)
+    const full = sim.pressure
+    sim.volume = 3000
+    sim.urgeWaveTimer = 999
+    run(sim, DT)
+    expect(sim.pressure).toBeCloseTo(full, 6)
+
+    ingestBeverage(sim, [], 'pitcher')
+    run(sim, 30)
+    expect(sim.volume).toBeCloseTo(3600, 0)
+    // Urge waves come no faster than when full (7 s apart, at this level's pace).
+    sim.urgeWaveTimer = 0
+    const events = run(sim, 2, { until: (_, e) => types(e).includes('urgeStart') })
+    expect(types(events)).toContain('urgeStart')
+    expect(sim.urgeWaveTimer).toBeCloseTo(7 * sim.urgeIntervalScale, 6)
+    // Holding it still pays the top rate.
+    expect(fillMultiplier(sim.volume / sim.maxCapacity)).toBe(5)
+  })
+
+  it("keeps what it holds when the run ends, but the sandbox's bladder fills no further than 125 %", () => {
+    const sim = quietRun(3000)
+    quitArcadeRun(sim, [])
+    sim.baseDrip = 1
+    run(sim, 1)
+    expect(sim.volume).toBe(3000)
+
+    resetOrgan(sim, [], fixed(0.5))
+    sim.volume = 930
+    sim.baseDrip = 5
+    run(sim, 5)
+    expect(sim.volume).toBeCloseTo(937.5, 6)
+  })
+})
+
 describe('urge waves', () => {
   it('are announced 1.2 s ahead', () => {
     const sim = quietRun()

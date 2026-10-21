@@ -115,6 +115,12 @@ const URINE_PIVOT_Y = -0.35 * 2.35 * 1.12
 
 const inflationOf = (fillRatio) => 0.55 + Math.pow(fillRatio, 0.45) * 0.75
 
+// Past what the sandbox can hold (125 %), an overfilling bladder (the arcade's has no limit)
+// keeps swelling, ever more slowly, toward a size that still fits the camera's frame.
+const SWELL_FROM = 1.25
+const SWELL_ROOM = 0.3
+export const shownFill = (fill) => (fill <= SWELL_FROM ? fill : SWELL_FROM + SWELL_ROOM * (1 - Math.exp(-(fill - SWELL_FROM) / SWELL_ROOM)))
+
 // Linear size of the urine relative to the wall. The urine's volume is the simulation's;
 // the wall's size is a visual function of fill that never drops below about half, so
 // whatever the urine doesn't fill is muscle wall: thick when empty, the thin membrane
@@ -122,7 +128,7 @@ const inflationOf = (fillRatio) => 0.55 + Math.pow(fillRatio, 0.45) * 0.75
 export function urineScale(volume, maxCapacity) {
   const urine = Math.max(0, (volume - RESIDUAL_ML) / (maxCapacity - RESIDUAL_ML))
   if (urine === 0) return 0
-  const wallGrowth = inflationOf(1) / inflationOf(Math.max(0.01, volume / maxCapacity))
+  const wallGrowth = inflationOf(1) / inflationOf(shownFill(Math.max(0.01, volume / maxCapacity)))
   return Math.min(FLUID_INSET, FLUID_INSET * wallGrowth * Math.cbrt(urine))
 }
 
@@ -477,7 +483,7 @@ export function createOrganRig() {
     const { wallMat, urine, camera, cutaway } = objects
     const phys = physicsOf(sim)
 
-    const fillRatio = Math.max(0.01, sim.volume / sim.maxCapacity)
+    const fillRatio = shownFill(Math.max(0.01, sim.volume / sim.maxCapacity))
     lastFill = fillRatio
     const compY = sim.squeezeAmountY || 0
     const scaleY = 1.0 - compY

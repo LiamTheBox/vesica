@@ -71,6 +71,8 @@ export const SANDBOX_RULES = {
   clenchLockout: 0, // stamina needed to clench again after giving out
   leakGraceTime: 0, // seconds at 100 % strain before the leak starts
   sootheCooldownTime: 0, // seconds before Soothe works again
+  volumeCap: 1.25, // the most it holds, as a share of its capacity (the arcade's has no limit)
+  fullAt: 1.25, // the fill past which pressure and urgency stop climbing (the arcade's: 1, full)
 }
 
 export function createSimState() {
@@ -327,10 +329,14 @@ export function stepSim(sim, dt, out, rng = Math.random) {
     if (b.rem <= 0) sim.activeBeverages.splice(i, 1)
   }
 
+  // It fills up to its limit, and keeps whatever is over it if the limit drops (an arcade
+  // run ending).
   const totalDrip = sim.baseDrip + extraDrip
-  sim.volume = Math.min(sim.maxCapacity * 1.25, sim.volume + totalDrip * dt)
+  const most = sim.maxCapacity * sim.volumeCap
+  if (sim.volume < most) sim.volume = Math.min(most, sim.volume + totalDrip * dt)
 
-  const fillRatio = fillRatioOf(sim)
+  // How full it feels: pressure and urgency follow the fill up to `fullAt`, then hold.
+  const fillRatio = Math.min(fillRatioOf(sim), sim.fullAt)
 
   sim.squeezeAmountY = lerp(sim.squeezeAmountY, sim.targetSqueezeY, dt * 10.0)
 

@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import {
   BLADDER_VERTICES, computeNormals, createOrganRig, emoteFor, FLUID_INSET, NECK_ROW, ORGAN_CENTER, orientCutaway, RESIDUAL_ML, RING_VERTICES,
-  urineScale, WALL_EMISSIVE,
+  shownFill, urineScale, WALL_EMISSIVE,
 } from './organRig'
+import { ORGAN_HALF_HEIGHT } from './stageFit'
 import { FLARE_RINGS, URETER_RING } from './ureter'
 import { createSimState } from '../../sim/sim'
 
@@ -344,6 +345,32 @@ describe('bladder wall', () => {
     expect(alpha(0)).toBeLessThan(empty)
     expect(alpha(BLADDER_VERTICES - 1)).toBeLessThan(1)
     expect(alpha(BLADDER_VERTICES)).toBe(1)
+  })
+})
+
+describe('overfilled (the arcade has no limit)', () => {
+  it('keeps swelling past 125 %, ever more slowly, and stays in the frame', () => {
+    expect(shownFill(1)).toBe(1)
+    expect(shownFill(1.25)).toBe(1.25)
+    const fills = [1.3, 2, 4, 8, 100].map(shownFill)
+    for (let i = 1; i < fills.length; i++) expect(fills[i]).toBeGreaterThan(fills[i - 1])
+    expect(fills.at(-1)).toBeLessThan(1.56)
+
+    const top = (ml) => {
+      const rig = createOrganRig()
+      const sim = createSimState()
+      sim.volume = ml
+      play(rig, sim, 3)
+      const pos = rig.bladderGeo.attributes.position
+      let highest = -Infinity
+      for (let i = 0; i < pos.count; i++) highest = Math.max(highest, pos.getY(i))
+      return highest + ORGAN_CENTER.y
+    }
+    const sandboxMost = top(937)
+    expect(top(3000)).toBeGreaterThan(sandboxMost + 0.1)
+    expect(top(20000)).toBeLessThan(ORGAN_HALF_HEIGHT)
+    // The urine still fills it, however much there is.
+    expect(urineScale(20000, 750)).toBe(FLUID_INSET)
   })
 })
 

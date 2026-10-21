@@ -59,6 +59,7 @@ function hudOf(s) {
   return {
     volume: Math.round(s.volume),
     maxCapacity: s.maxCapacity,
+    endless: s.volumeCap === Infinity,
     staminaPct: Math.min(100, Math.round(s.kegelStamina * 100)),
     pressure: round1(s.pressure),
     flowRate: round1(s.flowRate),
