@@ -1,5 +1,6 @@
 import {
-  BALANCE_FALLEN, CLENCH_RING_Y, HOLD_BAND, MATCH, RELEASE, RELEASE_ON, SEAL_RADIUS, SQUEEZE_BOTTOM, SQUEEZE_TOP,
+  BALANCE_FALLEN, CLENCH_RING_Y, DODGE_REACH, DODGE_Y, HOLD_BAND, MATCH, RELEASE, RELEASE_ON, SEAL_RADIUS, SQUEEZE_BOTTOM,
+  SQUEEZE_TOP,
 } from '../../sim/micro/games'
 
 // Draws a microgames run (M8) on a 2D canvas: the game's scene in a square play area, its
@@ -355,9 +356,89 @@ function drawRelease(ctx, g, V) {
   ctx.fillRect(V.X(x0), V.Y(y), V.S((x1 - x0) * spike), V.S(0.06))
 }
 
+function drawPulse(ctx, g, V) {
+  const next = g.beats.find((b) => !b.hit)
+  // The ring, and the next beat closing in on it.
+  ctx.strokeStyle = C.ring
+  ctx.lineWidth = V.S(0.05)
+  circle(ctx, V.X(0.5), V.Y(0.45), V.S(0.12))
+  ctx.stroke()
+  if (next) {
+    const lead = next.at - g.t
+    if (lead < g.gap * 1.2) {
+      ctx.strokeStyle = Math.abs(lead) <= g.window ? C.amber : 'rgba(251, 191, 36, 0.55)'
+      ctx.lineWidth = V.S(0.02)
+      circle(ctx, V.X(0.5), V.Y(0.45), V.S(0.12 + Math.max(0, lead) * 0.4))
+      ctx.stroke()
+    }
+  }
+  for (const beat of g.beats) {
+    if (beat.hit && g.t - beat.hitAt < 0.3) {
+      ctx.strokeStyle = `rgba(34, 211, 238, ${1 - (g.t - beat.hitAt) / 0.3})`
+      ctx.lineWidth = V.S(0.02)
+      circle(ctx, V.X(0.5), V.Y(0.45), V.S(0.12 + (g.t - beat.hitAt) * 0.5))
+      ctx.stroke()
+    }
+  }
+  // The beats, in a row: hit, and still to come.
+  g.beats.forEach((beat, i) => {
+    ctx.fillStyle = beat.hit ? C.cyan : C.faint
+    circle(ctx, V.X(0.5 + (i - (g.beats.length - 1) / 2) * 0.09), V.Y(0.82), V.S(0.022))
+    ctx.fill()
+  })
+}
+
+function drawSteady(ctx, g, V, run) {
+  const inside = run.input.down && Math.hypot(run.input.x - g.x, run.input.y - g.y) <= g.radius
+  ctx.fillStyle = inside ? 'rgba(52, 211, 153, 0.18)' : 'rgba(251, 113, 133, 0.12)'
+  circle(ctx, V.X(g.x), V.Y(g.y), V.S(g.radius))
+  ctx.fill()
+  ctx.strokeStyle = inside ? C.good : C.ring
+  ctx.lineWidth = V.S(0.02)
+  circle(ctx, V.X(g.x), V.Y(g.y), V.S(g.radius))
+  ctx.stroke()
+  // Waiting for the press: it pulses.
+  if (g.since === null) {
+    ctx.strokeStyle = `rgba(241, 245, 249, ${0.3 + 0.25 * Math.sin(g.t * 12)})`
+    ctx.lineWidth = V.S(0.01)
+    circle(ctx, V.X(g.x), V.Y(g.y), V.S(g.radius * 1.35))
+    ctx.stroke()
+  }
+}
+
+function drawDodge(ctx, g, V) {
+  ctx.strokeStyle = C.faint
+  ctx.lineWidth = V.S(0.008)
+  ctx.beginPath()
+  ctx.moveTo(V.X(0.04), V.Y(DODGE_Y + 0.06))
+  ctx.lineTo(V.X(0.96), V.Y(DODGE_Y + 0.06))
+  ctx.stroke()
+  // You: a small bladder.
+  ctx.fillStyle = C.deep
+  circle(ctx, V.X(g.x), V.Y(DODGE_Y), V.S(0.045))
+  ctx.fill()
+  ctx.strokeStyle = C.ring
+  ctx.lineWidth = V.S(0.014)
+  ctx.stroke()
+  ctx.fillStyle = C.amber
+  circle(ctx, V.X(g.x), V.Y(DODGE_Y + 0.012), V.S(0.025))
+  ctx.fill()
+  // The spikes.
+  ctx.fillStyle = C.bad
+  for (const spike of g.falling) {
+    const w = DODGE_REACH * 0.55
+    ctx.beginPath()
+    ctx.moveTo(V.X(spike.x - w), V.Y(spike.y - 0.05))
+    ctx.lineTo(V.X(spike.x + w), V.Y(spike.y - 0.05))
+    ctx.lineTo(V.X(spike.x), V.Y(spike.y + 0.03))
+    ctx.fill()
+  }
+}
+
 const SCENES = {
   clench: drawClench, push: drawPush, seal: drawSeal, balance: drawBalance,
   hold: drawHold, match: drawMatch, stop: drawStop, release: drawRelease,
+  pulse: drawPulse, steady: drawSteady, dodge: drawDodge,
 }
 
 // --- The frame around them -----------------------------------------------------

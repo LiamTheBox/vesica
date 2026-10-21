@@ -276,4 +276,113 @@ export const RELEASE = {
   timeout: 'lose',
 }
 
-export const GAMES = [CLENCH, PUSH, SEAL, BALANCE, HOLD, MATCH, STOP, RELEASE]
+// PULSE!: spikes come on a beat; tap on every one. A tap off the beat, or a beat missed,
+// loses.
+export const PULSE_BEATS = 5
+export const PULSE = {
+  id: 'pulse',
+  verb: 'PULSE!',
+  seconds: 4.5,
+  start(rng, speed) {
+    const gap = 0.55 / Math.pow(speed, 0.6)
+    const first = (0.7 + 0.2 * rng()) / speed
+    return {
+      t: 0, gap,
+      beats: Array.from({ length: PULSE_BEATS }, (_, i) => ({ at: first + i * gap, hit: false, hitAt: 0 })),
+      window: 0.13 / Math.sqrt(speed),
+    }
+  },
+  step(g, input, dt) {
+    g.t += dt
+    for (let i = 0; i < input.presses.length; i++) {
+      const beat = g.beats.find((b) => !b.hit && Math.abs(g.t - b.at) <= g.window)
+      if (!beat) return 'lose'
+      beat.hit = true
+      beat.hitAt = g.t
+    }
+    if (g.beats.some((b) => !b.hit && g.t > b.at + g.window)) return 'lose'
+    return g.beats.every((b) => b.hit) ? 'win' : null
+  },
+  timeout: 'lose',
+}
+
+// STEADY!: press inside the circle and hold there as it drifts and jolts; slip out of it or
+// let go and it's lost. It waits a moment for the press, then moves.
+export const STEADY = {
+  id: 'steady',
+  verb: 'STEADY!',
+  seconds: 4.5,
+  start(rng, speed) {
+    const jolts = []
+    for (let t = (0.6 + 0.4 * rng()) / speed; t < this.seconds / speed; t += (0.7 + 0.6 * rng()) / speed) {
+      const angle = rng() * Math.PI * 2
+      jolts.push([t, 0.07 * Math.cos(angle), 0.07 * Math.sin(angle)])
+    }
+    return {
+      t: 0, since: null, // when it was pressed
+      x: 0.5, y: 0.5,
+      radius: 0.13 / Math.pow(speed, 0.3),
+      wait: 1 / Math.sqrt(speed),
+      drift: [[0.2, 1.3 * speed, rng() * Math.PI * 2], [0.2, 1.7 * speed, rng() * Math.PI * 2]],
+      jolts,
+    }
+  },
+  // Where the circle is, `s` seconds after the press: a drift, plus jolts that ease in fast.
+  place(g, s) {
+    const [[ax, wx, px], [ay, wy, py]] = g.drift
+    let x = 0.5 + ax * (Math.sin(wx * s + px) - Math.sin(px))
+    let y = 0.5 + ay * (Math.sin(wy * s + py) - Math.sin(py))
+    for (const [at, dx, dy] of g.jolts) {
+      const k = Math.min(1, Math.max(0, (s - at) / 0.12))
+      x += dx * k
+      y += dy * k
+    }
+    return [Math.min(0.9, Math.max(0.1, x)), Math.min(0.9, Math.max(0.1, y))]
+  },
+  step(g, input, dt) {
+    g.t += dt
+    if (g.since === null) {
+      if (input.presses.some((p) => Math.hypot(p.x - g.x, p.y - g.y) <= g.radius)) g.since = g.t
+      return g.t > g.wait ? 'lose' : null
+    }
+    ;[g.x, g.y] = this.place(g, g.t - g.since)
+    if (!input.down || Math.hypot(input.x - g.x, input.y - g.y) > g.radius) return 'lose'
+    return null
+  },
+  timeout: 'win',
+}
+
+// DODGE!: spikes fall, some right at you; hold and drag sideways to stay clear of them.
+export const DODGE_Y = 0.86 // where you are
+export const DODGE_REACH = 0.07 // how close a spike's middle can pass
+export const DODGE = {
+  id: 'dodge',
+  verb: 'DODGE!',
+  seconds: 4.5,
+  start(rng, speed) {
+    const spikes = []
+    for (let t = 0.25; t < this.seconds / speed - 0.5; t += (0.42 + 0.2 * rng()) / Math.pow(speed, 0.8)) {
+      // Every other one at you (or near): standing still won't do.
+      spikes.push({ t, aim: spikes.length % 2 === 0, roll: rng() })
+    }
+    return { t: 0, x: 0.5, fall: 0.75 * speed, spikes, next: 0, falling: [] }
+  },
+  step(g, input, dt) {
+    g.t += dt
+    if (input.down) g.x = Math.min(0.94, Math.max(0.06, input.x))
+    while (g.next < g.spikes.length && g.spikes[g.next].t <= g.t) {
+      const { aim, roll } = g.spikes[g.next++]
+      const x = aim ? g.x + (roll - 0.5) * 0.2 : 0.08 + 0.84 * roll
+      g.falling.push({ x: Math.min(0.94, Math.max(0.06, x)), y: -0.05 })
+    }
+    for (const spike of g.falling) {
+      spike.y += g.fall * dt
+      if (Math.abs(spike.y - DODGE_Y) < 0.04 && Math.abs(spike.x - g.x) < DODGE_REACH) return 'lose'
+    }
+    g.falling = g.falling.filter((spike) => spike.y < 1.1)
+    return null
+  },
+  timeout: 'win',
+}
+
+export const GAMES = [CLENCH, PUSH, SEAL, BALANCE, HOLD, MATCH, STOP, RELEASE, PULSE, STEADY, DODGE]

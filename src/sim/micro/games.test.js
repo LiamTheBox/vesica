@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  BALANCE, CLENCH, GAMES, heightFor, HOLD, HOLD_BAND, HOLD_SQUEEZE, MATCH, MATCH_OPEN, MATCH_SHUT, PUSH, RELEASE, SEAL, STOP, STOP_CLOSE,
+  BALANCE, CLENCH, DODGE, DODGE_Y, GAMES, heightFor, HOLD, HOLD_BAND, HOLD_SQUEEZE, MATCH, MATCH_OPEN, MATCH_SHUT, PULSE, PUSH, RELEASE,
+  SEAL, STEADY, STOP, STOP_CLOSE,
 } from './games'
 import { DT, play } from '../../test/micro'
 
@@ -109,6 +110,53 @@ describe('the microgames (M8)', () => {
       expect(play(RELEASE, { speed, seed, control: () => ({ down: true }) })).toBe('lose') // never let go
       // Let go while it's on.
       expect(play(RELEASE, { speed, seed, control: (g) => ({ down: g.t + DT < g.begin + g.rise + g.stay / 2 }) })).toBe('lose')
+    })
+  })
+
+  it('PULSE!: a tap on every beat wins; a tap off the beat, or a missed one, loses', () => {
+    const onBeat = (g) => ({ down: g.beats.some((b) => !b.hit && Math.abs(g.t + DT - b.at) < DT / 2 + 1e-9) })
+    everyRound((speed, seed) => {
+      expect(play(PULSE, { speed, seed, control: onBeat })).toBe('win')
+      expect(play(PULSE, { speed, seed })).toBe('lose')
+      // The beats but one.
+      expect(play(PULSE, { speed, seed, control: (g) => ({ down: g.beats.filter((b) => b.hit).length < 4 && onBeat(g).down }) })).toBe('lose')
+      // An extra tap between two beats.
+      expect(play(PULSE, { speed, seed, control: (g) => ({ down: onBeat(g).down || Math.abs(g.t + DT - (g.beats[1].at + g.gap / 2)) < DT / 2 }) })).toBe('lose')
+    })
+  })
+
+  it('STEADY!: pressing in the circle and following it wins; slipping out, letting go or never pressing loses', () => {
+    const follow = (g) => {
+      if (g.since === null) return { down: g.t > 0.2, x: 0.5, y: 0.5 }
+      const [x, y] = STEADY.place(g, g.t + DT - g.since)
+      return { down: true, x, y }
+    }
+    everyRound((speed, seed) => {
+      expect(play(STEADY, { speed, seed, control: follow })).toBe('win')
+      expect(play(STEADY, { speed, seed })).toBe('lose')
+      expect(play(STEADY, { speed, seed, control: (g) => ({ down: g.t > 0.2, x: 0.5, y: 0.5 }) })).toBe('lose') // stayed put
+      expect(play(STEADY, { speed, seed, control: (g) => ({ ...follow(g), down: g.since === null ? g.t > 0.2 : g.t - g.since < 0.5 }) })).toBe('lose') // let go
+    })
+  })
+
+  it('DODGE!: moving out from under the spikes wins; standing still gets hit', () => {
+    // The spot on the line furthest from every spike that's about to land.
+    const clear = (g) => {
+      const near = g.falling.filter((s) => s.y > 0.35 && s.y < DODGE_Y + 0.05)
+      let best = g.x
+      let room = -1
+      for (let x = 0.06; x <= 0.94; x += 0.01) {
+        const gap = Math.min(1, ...near.map((s) => Math.abs(s.x - x)))
+        if (gap > room + 1e-9 || (Math.abs(gap - room) < 1e-9 && Math.abs(x - g.x) < Math.abs(best - g.x))) {
+          room = gap
+          best = x
+        }
+      }
+      return { down: true, x: best }
+    }
+    everyRound((speed, seed) => {
+      expect(play(DODGE, { speed, seed, control: clear })).toBe('win')
+      expect(play(DODGE, { speed, seed })).toBe('lose')
     })
   })
 })
