@@ -69,7 +69,7 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
   choice: it loads the CPU): the specs were updated for the 2026-10-21 rules and `e2e/arcade.spec.js` was added,
   but none of it has been run (last full run, before these changes: 85 passed). One flaky pinch-zoom test is open
   (KNOWN_ISSUES).
-- **Next:** phone checks (on the live site), then M8 (minigames).
+- **Next:** M8 (microgames) and M9 (stories) in progress; phone checks (on the live site) still open.
 
 ---
 
@@ -415,40 +415,63 @@ Quality to see which tier Auto chose.
 
 ---
 
-## M8 — Minigames (WarioWare-style) ☐
+## M8 — Microgames (WarioWare-style) ◐
 
-Requested: short, frantic microgames about holding on, built around moving or balancing something.
-Each lasts ~5 s, opens with a one-word prompt, speeds up as you win, and costs a "life" (a leak) when lost.
+Requested (2026-10-21): short, frantic, abstract challenges about controlling the sphincter. Each one is a pressure
+spike survived with one control action. They don't tell a story or explain themselves beyond a one-word verb.
 
-- ☐ Microgame runner: prompt → play → result, lives, rising speed, score, best score saved locally.
-- ☐ Touch-first input helpers: drag, tilt (device motion with drag fallback), hold, tap-on-cue.
-- ☐ First set of microgames, each tied to holding the sphincter:
-  - **BALANCE!**: keep a wobbling, sloshing bladder upright on a pedestal by dragging (or tilting) against the slosh.
-  - **HOLD!**: keep the pressure needle in the green band by holding and releasing Clench while urges push it.
-  - **DODGE!**: steer the bus left/right to miss potholes (each hit is a cough).
-  - **CLENCH!**: clench the instant the sneeze lands, not before.
-  - **CARRY!**: walk a brimming cup to the toilet by holding a steady drag speed without spilling.
-- ☐ Results feed the bladder sim (a lost microgame = a stress leak), so the 3D organ reacts between rounds.
-- Note (2026-10-21): HOLD! and CLENCH! can reuse the arcade's announced urges and sneezes and its timing rules.
+**Input, in every mode (requested 2026-10-21):** everything plays the same on a phone (touch) and a computer
+(mouse) with one pointer: tap, hold and drag. No right click, multi-touch or tilt is ever needed (pinch, wheel and
+right-drag only move the camera, which is optional). On a keyboard, Space is the press where a press is all a
+game needs, and Clench in the other modes. Offline, like the rest of the game.
 
-**Automated (unit):** each microgame's win/lose logic with scripted input; runner speed-up and lives.
-**Automated (e2e):** play each microgame on a phone profile through touch input, win and lose paths.
-**Manual:** play a 10-game run on the phone; inputs feel responsive.
+- ☐ Runner: the verb → a few seconds of play with a fuse → the result → the next game. Four lives; it speeds up
+  every 5 games; every 15th is a boss (three games back to back; winning one gives a life back). The score is
+  games cleared; the best is kept on the device. Starts from the start screen and the Challenges tab; pauses
+  while a sheet is open.
+- ☐ The bladder is the stakes. Each game is a spike: win, and it absorbs it; lose, and a life goes, shown as a
+  small leak, with the sphincter straining a quarter more each time (the strain readout shows it). Out of lives,
+  it gives way: a total failure ends the run. It fills a little every game, with no limit, as in the arcade.
+  Between games the overlay clears to show the 3D bladder react. A run has no urges, sneezes, served drinks,
+  chatter or subtitles of its own.
+- ☐ Microgames, one pointer each:
+  - **CLENCH!**: press as each pulse reaches the ring.
+  - **PUSH!**: tap fast to keep the rising pressure below the top.
+  - **SEAL!**: tap each crack on the ring before it opens.
+  - **BALANCE!**: drag sideways to keep the sloshing bladder upright as spikes shove it.
+  - **HOLD!**: hold and slide (higher squeezes harder) to keep the needle in the green band.
+  - **MATCH!**: hold and slide so your ring matches the target as it shrinks and grows.
+  - **STOP!**: press to shut the flow so the level stops in the band (it runs on a moment after).
+  - **RELEASE!**: hold through the spike, and let go in the window after it passes.
+  - **PULSE!**: tap on every beat.
+  - **STEADY!**: hold inside the circle as it drifts; don't slip out or let go.
+  - **DODGE!**: drag sideways to dodge the falling spikes.
+- Dropped (2026-10-21): BALANCE! on a pedestal by tilting, DODGE! the bus and CARRY! (they told a story or
+  needed tilt).
+
+**Automated (unit):** each microgame wins with scripted good input and loses with bad or no input; the runner's
+timing, lives, speed-up and boss; its effects on the sim (strain, leak, fill, failure).
+**Automated (e2e):** not required for now (the user's choice).
+**Manual:** a 10-game run on a phone and with a mouse: every game playable with one finger or the left button.
 
 ---
 
-## M9 — Story mode ☐
+## M9 — Stories (optional reading) ◐
 
-Requested: a story mode. A day in the life of one bladder, told in short chapters.
+Requested (2026-10-21): the story stays outside the games, for the player to read if they want. Nothing in play
+narrates it.
 
-- ☐ Chapter engine: scripted beats (dialogue lines, drinks, urges, challenges, microgames) over the live sim.
-- ☐ Chapters: morning coffee → the commute → the long meeting → date night → the concert queue → the road trip finale.
-- ☐ The bladder narrates (existing voice and subtitles), with new story lines per chapter.
-- ☐ Progress, chapter unlocks and best grades saved locally; resume where you left off.
+- ☐ A Stories sheet (📖 in the bottom bar): the chapters, and a reader that remembers the chapter and the place
+  in it, with a text size control.
+- ☐ Chapters are Markdown files in `src/stories/`, bundled with the app so they read offline; editing or adding a
+  file edits or adds a chapter.
+- ☐ Six chapters: morning coffee → the commute → the long meeting → date night → the concert queue → the road
+  trip. Safe for work: adult characters, no nudity or sexual content.
+- Dropped (2026-10-21): a chapter engine scripting play, and the bladder narrating chapters.
 
-**Automated (unit):** chapter scripts run to completion with scripted inputs; win/lose branches.
-**Automated (e2e):** start chapter 1 from the menu, finish it, chapter 2 unlocks and survives a reload.
-**Manual:** play the first two chapters on the phone.
+**Automated (unit):** every chapter parses into a title and paragraphs, in order; the reading place is saved and
+restored.
+**Manual:** read a chapter on a phone: comfortable text size and scrolling.
 
 ---
 
