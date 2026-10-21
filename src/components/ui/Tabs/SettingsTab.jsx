@@ -90,7 +90,7 @@ export default function SettingsTab() {
           step={5}
           onChange={(v) => updateSettings({ chatGap: v })}
         />
-        <p className="text-[10px] text-slate-500 font-mono">Reactions to what you do don't wait. Lines show as subtitles with the voice off too, and the last 5 of each kind aren't repeated.</p>
+        <p className="text-[10px] text-slate-500 font-mono">Reactions to what you do don't wait. Lines show as subtitles with the voice off too, and recent ones aren't repeated.</p>
       </div>
 
       <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">

@@ -125,13 +125,15 @@ export class AudioManager {
       }
     }
 
+    // Not one of the last few of this kind: up to `historySize`, and at most half the list,
+    // so the choice never narrows to a fixed rotation.
     let recent = this.recentHistory.get(category) || []
     let available = list.map((_, i) => i).filter(i => !recent.includes(i))
     if (available.length === 0) available = list.map((_, i) => i)
 
     const chosenIndex = available[Math.floor(Math.random() * available.length)]
     recent.push(chosenIndex)
-    if (recent.length > this.historySize) recent.shift()
+    while (recent.length > Math.min(this.historySize, Math.floor(list.length / 2))) recent.shift()
     this.recentHistory.set(category, recent)
 
     const text = list[chosenIndex]

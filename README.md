@@ -50,6 +50,8 @@ Pushing to `main` deploys the app to GitHub Pages.
 ## Where things are
 
 - `src/sim/`: the simulation (physiology, arcade rules, drinks)
+- `src/feedback/`: what the bladder feels (`mood.js`), says (`reactions.js`) and how events sound and buzz
+- `src/audio/`: the sound engine and the voice lines (`lines.js`)
 - `src/components/3d/`: the bladder, sphincter, ureters and stream
 - `src/components/ui/`: the HUD, buttons and menus
 - `ROADMAP.md`: what's done and what's next; `KNOWN_ISSUES.md`: open problems

@@ -40,9 +40,26 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
   (`src/sim/drinks.js`; the shelf's four keep the original's numbers), each showing the ml it adds, how long it takes
   to arrive and whether it's a diuretic. The sheet scrolls when they don't fit; choosing one drinks it (the arcade's
   drink bonus counts it) and closes the menu. The game keeps running while it's open, like the other sheets.
+- **Reactions and emotions (requested 2026-10-21, in six phases, one commit each):**
+  - **A, voice priority:** urgent lines (leak, failure, warnings) cut in over anything; reactions cut in over
+    chatter and wait briefly for each other; the bladder's own chatter waits its turn (Settings: "Chats on its own
+    at most every", 30 s by default, half when critical). Lines show as subtitles with the voice off too.
+  - **B, the silent moments:** lines for squeezes, each kind of drink, an exhausted clench, a save, a leak ending,
+    a failure's aftermath, urges starting, passing or fading, the arcade's warnings, perfect clenches and level-ups;
+    each ureter squirt is heard from its side as it arrives.
+  - **C, mood** (`src/feedback/mood.js`): sleepy, calm, uneasy, desperate, panic, relieved, embarrassed, annoyed or
+    proud, from fill, strain and what just happened; it's the HUD's face and the subtitles' icon, and picks the
+    lines (a poke tickles empty and alarms full; a run of pokes annoys it; a drink when full is protested).
+  - **D, body language** (on the organ's `body` group, about the neck): breathing by mood, a bounce, a sigh, a huff,
+    a shudder, a droop, a shiver before a warned urge or sneeze, a flash on a creak, a blush while embarrassed.
+  - **E, feel by fill:** slack dents deep and wobbles floppily, full dents a little and springs back fast and
+    carries ripples; a poke or slap jolts the pressure up to 12 cmH2O when full. The flat 5 % strain per poke or
+    slap is unchanged, and the jolt never turns a spurt into a total failure.
+  - **F, the lines** (`src/audio/lines.js`): rewritten short (under 5 words on average, 8 at most), in one voice,
+    without the jargon.
 - **Live:** https://liamthebox.github.io/vesica/ (deployed by GitHub Actions on every push to `main`). Check that
   Settings → Pages → Source is "GitHub Actions", or the old branch publish can overwrite the app.
-- **Tests:** `npm run check` green (140 unit tests). The browser suite is not a requirement for now (the user's
+- **Tests:** `npm run check` green (174 unit tests). The browser suite is not a requirement for now (the user's
   choice: it loads the CPU): the specs were updated for the 2026-10-21 rules and `e2e/arcade.spec.js` was added,
   but none of it has been run (last full run, before these changes: 85 passed). One flaky pinch-zoom test is open
   (KNOWN_ISSUES).
