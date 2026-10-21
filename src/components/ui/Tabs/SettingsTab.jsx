@@ -62,6 +62,38 @@ function VoicePicker() {
 
 const GRAPHICS_OPTIONS = [{ key: 'auto', label: 'Auto' }, ...TIER_ORDER.map((key) => ({ key, label: QUALITY_TIERS[key].label }))]
 
+// The original's four soft-body presets. How full it is still changes how it feels.
+const WALL_FEELS = [
+  { key: 'jello', label: 'Jelly', hint: 'Soft and wobbly, as in the original' },
+  { key: 'balloon', label: 'Balloon', hint: 'Springier: dents bounce back fast' },
+  { key: 'anatomical', label: 'Firm', hint: 'Dents less and settles quickly' },
+  { key: 'highTension', label: 'Tense', hint: 'Stiff, with quick, short quivers' },
+]
+
+function WallFeelPicker() {
+  const wallFeel = useUiStore((s) => s.settings.wallFeel)
+  const chosen = WALL_FEELS.find((feel) => feel.key === wallFeel) ?? WALL_FEELS[0]
+  return (
+    <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+      <span className="text-xs font-bold text-slate-300">🫧 Wall Feel</span>
+      <div role="radiogroup" aria-label="Wall feel" className="grid grid-cols-4 gap-1.5">
+        {WALL_FEELS.map((feel) => (
+          <button
+            key={feel.key}
+            role="radio"
+            aria-checked={chosen.key === feel.key}
+            onClick={() => updateSettings({ wallFeel: feel.key })}
+            className={`min-h-11 rounded-xl text-xs font-bold transition active:scale-95 ${chosen.key === feel.key ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          >
+            {feel.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-slate-500 font-mono">{chosen.hint}</p>
+    </div>
+  )
+}
+
 function GraphicsPicker() {
   const graphics = useUiStore((s) => s.settings.graphics)
   const autoQuality = useUiStore((s) => s.autoQuality)
@@ -145,6 +177,7 @@ export default function SettingsTab() {
         />
       </div>
 
+      <WallFeelPicker />
       <GraphicsPicker />
     </Sheet>
   )

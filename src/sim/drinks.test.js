@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BEVERAGE_TYPES } from '../physics/constants'
-import { DRINK_COUNT, DRINK_GROUPS, drinkKind, DRINKS } from './drinks'
+import { extractOriginalConst } from '../test/original'
+import { DRINK_COUNT, DRINK_GROUPS, drinkKind, DRINKS, SHELF } from './drinks'
 import { createSimState, ingestBeverage } from './sim'
 
 describe('drinks menu', () => {
@@ -15,9 +15,9 @@ describe('drinks menu', () => {
   })
 
   it("keeps the shelf's four drinks as the original has them", () => {
-    for (const [key, original] of Object.entries(BEVERAGE_TYPES)) {
-      expect(DRINKS[key]).toMatchObject(original)
-    }
+    const original = extractOriginalConst('BEVERAGE_TYPES')
+    expect(SHELF).toEqual(Object.keys(original))
+    for (const [key, numbers] of Object.entries(original)) expect(DRINKS[key]).toMatchObject(numbers)
   })
 
   it('gives every drink a name, an icon and numbers the bladder can take', () => {

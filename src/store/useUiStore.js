@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS = {
   haptics: true,
   shakeToSlosh: true, // device motion sloshes the bladder
   graphics: 'auto', // 'auto' or a tier from settings/quality.js
+  wallFeel: 'jello', // a soft-body preset from physics/constants.js
 }
 
 const savedAutoQuality = loadJson('quality', { tier: 'high' }).tier

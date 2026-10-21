@@ -1,16 +1,16 @@
 import { useEffect } from 'react'
 import { useHud, useUiStore } from '../../store/useUiStore'
-import { BEVERAGE_TYPES } from '../../physics/constants'
-import { DRINK_COUNT } from '../../sim/drinks'
+import { DRINK_COUNT, DRINKS, SHELF } from '../../sim/drinks'
 import { act } from '../../sim/engine'
 import { ingestBeverage, soothe, startClench, startVoidAttempt, stopClench, stopVoidAttempt } from '../../sim/sim'
 import { slapRandom } from '../../sim/interactions'
 
-const BEVERAGE_LABELS = {
-  water: { icon: '💧', name: 'Water', note: '+180ml', tone: 'text-cyan-400' },
-  coffee: { icon: '☕', name: 'Espresso', note: 'Diuretic', tone: 'text-amber-400' },
-  soda: { icon: '⚡', name: 'Energy', note: '+320ml', tone: 'text-rose-400' },
-  beer: { icon: '🍺', name: 'Brew', note: '+480ml', tone: 'text-yellow-400' },
+// The shelf drinks' note under the name, and its colour.
+const SHELF_NOTES = {
+  water: { note: '+180ml', tone: 'text-cyan-400' },
+  coffee: { note: 'Diuretic', tone: 'text-amber-400' },
+  soda: { note: '+320ml', tone: 'text-rose-400' },
+  beer: { note: '+480ml', tone: 'text-yellow-400' },
 }
 
 // Hold buttons capture their finger, so a thumb drifting off the edge keeps holding,
@@ -70,11 +70,11 @@ export default function ActionButtons() {
     <div className="w-full flex flex-col gap-2 max-w-xl mx-auto pointer-events-auto">
       {/* Fluid Ingestion */}
       <div className="glass-hud p-1.5 rounded-2xl flex items-center justify-between gap-1 sm:gap-2">
-        {Object.keys(BEVERAGE_TYPES).map((key) => (
+        {SHELF.map((key) => (
           <button key={key} onClick={() => act(ingestBeverage, key)} className="flex-1 py-1.5 px-1 bg-slate-800/70 hover:bg-cyan-950/70 active:scale-95 border border-slate-700 hover:border-cyan-500/80 rounded-xl flex flex-col items-center transition">
-            <span className="text-sm sm:text-base">{BEVERAGE_LABELS[key].icon}</span>
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-200">{BEVERAGE_LABELS[key].name}</span>
-            <span className={`text-[8px] sm:text-[9px] font-mono ${BEVERAGE_LABELS[key].tone}`}>{BEVERAGE_LABELS[key].note}</span>
+            <span className="text-sm sm:text-base">{DRINKS[key].icon}</span>
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-200">{DRINKS[key].name}</span>
+            <span className={`text-[8px] sm:text-[9px] font-mono ${SHELF_NOTES[key].tone}`}>{SHELF_NOTES[key].note}</span>
           </button>
         ))}
         {/* The rest of the drinks, in a menu. */}

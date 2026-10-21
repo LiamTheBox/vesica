@@ -1,6 +1,8 @@
 import { audio } from '../audio/AudioManager'
 import { voice } from '../audio/voice'
 import { feedbackSettings } from '../feedback/feedback'
+import { PHYSICS_CONFIGS } from '../physics/constants'
+import { sim } from '../sim/engine'
 import { saveJson } from '../store/persist'
 import { useUiStore } from '../store/useUiStore'
 
@@ -16,6 +18,7 @@ export function applySettings(settings) {
   audio.sfxEnabled = settings.sfxEnabled
   audio.sfxVolume = settings.sfxVolume
   feedbackSettings.haptics = settings.haptics
+  if (PHYSICS_CONFIGS[settings.wallFeel]) sim.physicsMode = settings.wallFeel
 
   if (audio.ctx) {
     const now = audio.ctx.currentTime

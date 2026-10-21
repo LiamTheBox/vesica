@@ -1,18 +1,18 @@
-import { BEVERAGE_TYPES } from '../physics/constants'
-
 // The drinks menu: the original's four shelf drinks (same keys and numbers) and 36 more.
 // vol: ml that reach the bladder; rate: ml/s they arrive at once drunk; hyd: how hydrating
 // it is (1 = water, pale urine). Caffeine and alcohol are diuretics: they arrive fast and
 // hydrate poorly, so a small espresso still sends 120 ml down.
 const drink = (name, icon, vol, rate, hyd) => ({ name, icon, vol, rate, hyd })
-const shelf = (key, name, icon) => ({ name, icon, ...BEVERAGE_TYPES[key] })
+
+// The four on the shelf under the bladder, in order.
+export const SHELF = ['water', 'coffee', 'soda', 'beer']
 
 export const DRINK_GROUPS = [
   {
     name: 'Water',
     kind: 'water',
     drinks: {
-      water: shelf('water', 'Water', '💧'),
+      water: drink('Water', '💧', 180, 8, 1.0),
       sparkling: drink('Sparkling Water', '🫧', 250, 9, 1.0),
       bottle: drink('Big Bottle', '🚰', 500, 10, 1.0),
       cucumber: drink('Cucumber Water', '🥒', 250, 8, 1.0),
@@ -23,7 +23,7 @@ export const DRINK_GROUPS = [
   {
     name: 'Coffee & Tea',
     drinks: {
-      coffee: shelf('coffee', 'Espresso', '☕'),
+      coffee: drink('Espresso', '☕', 120, 22, 0.3),
       americano: drink('Americano', '☕', 260, 20, 0.4),
       coldBrew: drink('Cold Brew', '🧊', 350, 24, 0.35),
       greenTea: drink('Green Tea', '🍵', 250, 16, 0.6),
@@ -37,7 +37,7 @@ export const DRINK_GROUPS = [
   {
     name: 'Soft Drinks',
     drinks: {
-      soda: shelf('soda', 'Energy', '⚡'),
+      soda: drink('Energy', '⚡', 320, 16, 0.45),
       energyShot: drink('Energy Shot', '🔋', 60, 30, 0.3),
       cola: drink('Cola', '🥤', 330, 15, 0.4),
       bigSoda: drink('Supersize Soda', '🥤', 600, 14, 0.4),
@@ -71,7 +71,7 @@ export const DRINK_GROUPS = [
     name: 'Alcohol',
     kind: 'alcohol',
     drinks: {
-      beer: shelf('beer', 'Brew', '🍺'),
+      beer: drink('Brew', '🍺', 480, 26, 0.4),
       pitcher: drink('Beer Pitcher', '🍻', 600, 28, 0.35),
       wine: drink('Red Wine', '🍷', 220, 24, 0.35),
       champagne: drink('Champagne', '🥂', 200, 26, 0.35),

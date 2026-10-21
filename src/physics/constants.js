@@ -1,10 +1,4 @@
-export const BEVERAGE_TYPES = {
-  water: { vol: 180, rate: 8.0, hyd: 1.0 },
-  coffee: { vol: 120, rate: 22.0, hyd: 0.3 },
-  soda: { vol: 320, rate: 16.0, hyd: 0.45 },
-  beer: { vol: 480, rate: 26.0, hyd: 0.4 }
-};
-
+// The original's soft-body presets (Settings → Wall feel); jello is the original's own.
 export const PHYSICS_CONFIGS = {
   jello: {
     springK: 18.0,
