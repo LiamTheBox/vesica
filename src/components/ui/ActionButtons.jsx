@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useHud, useUiStore } from '../../store/useUiStore'
 import { BEVERAGE_TYPES } from '../../physics/constants'
 import { DRINK_COUNT } from '../../sim/drinks'
@@ -27,7 +28,27 @@ const holdProps = (start, stop) => ({
   onContextMenu: (e) => e.preventDefault(),
 })
 
+// On a keyboard, Space holds Clench too (everything else is a tap or a hold on a button), but
+// not while a sheet is open or text is being typed.
+function useSpaceToClench() {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.code !== 'Space' || e.target?.closest?.('input, textarea, select')) return
+      if (useUiStore.getState().currentTab !== 'sim') return
+      e.preventDefault() // no scrolling, and no click on a focused button
+      if (!e.repeat) act(e.type === 'keydown' ? startClench : stopClench)
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('keyup', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keyup', onKey)
+    }
+  }, [])
+}
+
 export default function ActionButtons() {
+  useSpaceToClench()
   const isClenching = useHud((h) => h.isClenching)
   const clenchExhausted = useHud((h) => h.clenchExhausted)
   const isAttemptingVoid = useHud((h) => h.isAttemptingVoid)
@@ -68,6 +89,7 @@ export default function ActionButtons() {
       <div className="flex items-stretch gap-1.5 sm:gap-2">
         <button
           {...holdProps(startClench, stopClench)}
+          title="Hold to clench (Space on a keyboard)"
           className={`flex-1 basis-0 min-w-0 py-3 px-2 rounded-2xl font-extrabold text-xs tracking-wide uppercase shadow-lg transition flex flex-col items-center justify-center border-2 select-none cursor-pointer touch-none ${isClenching ? 'bg-cyan-500 border-cyan-200 scale-95 shadow-cyan-500/50 text-white' : 'bg-gradient-to-r from-sky-600 via-cyan-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 border-cyan-300 text-white shadow-cyan-600/30'} ${clenchCue && !isClenching ? 'ring-4 ring-amber-300 animate-pulse' : ''}`}
         >
           <div className="flex flex-wrap items-center justify-center gap-x-1.5 text-center">

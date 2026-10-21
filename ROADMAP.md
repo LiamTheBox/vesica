@@ -65,11 +65,14 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
   the gauge leap. The sandbox still stops at 125 %.
 - **Live:** https://liamthebox.github.io/vesica/ (deployed by GitHub Actions on every push to `main`). Check that
   Settings → Pages → Source is "GitHub Actions", or the old branch publish can overwrite the app.
-- **Tests:** `npm run check` green (181 unit tests). The browser suite is not a requirement for now (the user's
+- **Tests:** `npm run check` green (202 unit tests). The browser suite is not a requirement for now (the user's
   choice: it loads the CPU): the specs were updated for the 2026-10-21 rules and `e2e/arcade.spec.js` was added,
   but none of it has been run (last full run, before these changes: 85 passed). One flaky pinch-zoom test is open
   (KNOWN_ISSUES).
-- **Next:** M8 (microgames) and M9 (stories) in progress; phone checks (on the live site) still open.
+- **Microgames (M8, requested 2026-10-21):** a WarioWare-style mode of eleven abstract one-pointer games about
+  controlling the sphincter, each a spike the bladder survives or leaks under (see M8). Every mode plays with one
+  pointer, touch or mouse; Space presses on a keyboard.
+- **Next:** M9 (stories); phone checks (on the live site) still open.
 
 ---
 
@@ -415,7 +418,7 @@ Quality to see which tier Auto chose.
 
 ---
 
-## M8 — Microgames (WarioWare-style) ◐
+## M8 — Microgames (WarioWare-style) ◐ (automated gate passed; phone check pending)
 
 Requested (2026-10-21): short, frantic, abstract challenges about controlling the sphincter. Each one is a pressure
 spike survived with one control action. They don't tell a story or explain themselves beyond a one-word verb.
@@ -425,16 +428,17 @@ spike survived with one control action. They don't tell a story or explain thems
 right-drag only move the camera, which is optional). On a keyboard, Space is the press where a press is all a
 game needs, and Clench in the other modes. Offline, like the rest of the game.
 
-- ☐ Runner: the verb → a few seconds of play with a fuse → the result → the next game. Four lives; it speeds up
+- ☑ Runner (`src/sim/micro/runner.js`, drawn by `src/components/micro/`): the verb → a few seconds of play with
+  a fuse → the result → the next game. Four lives; it speeds up
   every 5 games; every 15th is a boss (three games back to back; winning one gives a life back). The score is
   games cleared; the best is kept on the device. Starts from the start screen and the Challenges tab; pauses
   while a sheet is open.
-- ☐ The bladder is the stakes. Each game is a spike: win, and it absorbs it; lose, and a life goes, shown as a
+- ☑ The bladder is the stakes. Each game is a spike: win, and it absorbs it; lose, and a life goes, shown as a
   small leak, with the sphincter straining a quarter more each time (the strain readout shows it). Out of lives,
   it gives way: a total failure ends the run. It fills a little every game, with no limit, as in the arcade.
   Between games the overlay clears to show the 3D bladder react. A run has no urges, sneezes, served drinks,
   chatter or subtitles of its own.
-- ☐ Microgames, one pointer each:
+- ☑ Microgames (`src/sim/micro/games.js`), one pointer each:
   - **CLENCH!**: press as each pulse reaches the ring.
   - **PUSH!**: tap fast to keep the rising pressure below the top.
   - **SEAL!**: tap each crack on the ring before it opens.
@@ -446,6 +450,9 @@ game needs, and Clench in the other modes. Offline, like the rest of the game.
   - **PULSE!**: tap on every beat.
   - **STEADY!**: hold inside the circle as it drifts; don't slip out or let go.
   - **DODGE!**: drag sideways to dodge the falling spikes.
+- ☑ One pointer in every mode: the existing modes already were (their actions are taps and holds on buttons, and
+  one finger or the left button on the bladder); Space now holds Clench there too. Dev hook:
+  `window.__vesica.microRun(['hold'])` starts a run of chosen games.
 - Dropped (2026-10-21): BALANCE! on a pedestal by tilting, DODGE! the bus and CARRY! (they told a story or
   needed tilt).
 
