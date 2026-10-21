@@ -365,6 +365,78 @@ export class AudioManager {
     this.playGlide(320, 120, 0.6, 0.2)
   }
 
+  // Breath let out: a sigh (long and soft) or a huff (short and sharp).
+  playExhale(huff = false) {
+    const now = this.begin()
+    if (now === null) return
+    const seconds = huff ? 0.28 : 0.75
+    const source = this.noise(seconds, (i, n) => Math.sin((i / n) * Math.PI) ** (huff ? 0.6 : 1.4))
+    const filter = this.ctx.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.setValueAtTime(huff ? 1100 : 900, now)
+    filter.frequency.exponentialRampToValueAtTime(huff ? 700 : 420, now + seconds)
+    filter.Q.setValueAtTime(0.9, now)
+    const gain = this.ctx.createGain()
+    gain.gain.setValueAtTime(huff ? 0.22 : 0.14, now)
+    source.connect(filter)
+    filter.connect(gain)
+    gain.connect(this.sfxGain)
+    source.start(now)
+  }
+
+  // A happy bounce: a small boing, up and back down with a wobble.
+  playBoing() {
+    const now = this.begin()
+    if (now === null) return
+    const osc = this.ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(260, now)
+    osc.frequency.exponentialRampToValueAtTime(620, now + 0.07)
+    osc.frequency.exponentialRampToValueAtTime(300, now + 0.32)
+    const wobble = this.ctx.createOscillator()
+    wobble.frequency.setValueAtTime(14, now)
+    const depth = this.ctx.createGain()
+    depth.gain.setValueAtTime(30, now)
+    wobble.connect(depth)
+    depth.connect(osc.frequency)
+    const gain = this.ctx.createGain()
+    gain.gain.setValueAtTime(0.0001, now)
+    gain.gain.linearRampToValueAtTime(0.12, now + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.34)
+    osc.connect(gain)
+    gain.connect(this.sfxGain)
+    wobble.start(now)
+    osc.start(now)
+    wobble.stop(now + 0.35)
+    osc.stop(now + 0.35)
+  }
+
+  // A shiver as a warned urge or sneeze nears: a quiet, trembling hum.
+  playShiver() {
+    const now = this.begin()
+    if (now === null) return
+    const osc = this.ctx.createOscillator()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(150, now)
+    const tremolo = this.ctx.createOscillator()
+    tremolo.type = 'square'
+    tremolo.frequency.setValueAtTime(19, now)
+    const depth = this.ctx.createGain()
+    depth.gain.setValueAtTime(0.04, now)
+    tremolo.connect(depth)
+    const gain = this.ctx.createGain()
+    gain.gain.setValueAtTime(0.0001, now)
+    gain.gain.linearRampToValueAtTime(0.05, now + 0.05)
+    gain.gain.linearRampToValueAtTime(0.0001, now + 0.45)
+    depth.connect(gain.gain)
+    osc.connect(gain)
+    gain.connect(this.sfxGain)
+    tremolo.start(now)
+    osc.start(now)
+    tremolo.stop(now + 0.46)
+    osc.stop(now + 0.46)
+  }
+
   playCue(kind) {
     const notes = CUES[kind]
     const now = notes ? this.begin() : null

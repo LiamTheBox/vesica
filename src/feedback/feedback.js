@@ -2,6 +2,7 @@ import { audio } from '../audio/AudioManager'
 import { voice } from '../audio/voice'
 import { chatterLine, reactionLine } from './reactions'
 import { createMood, feel, moodOf, stepMood } from './mood'
+import { emoteFor } from './emotes'
 import { onSimEvent, onSimTick, sim } from '../sim/engine'
 import { useUiStore } from '../store/useUiStore'
 import { clock, recordResult } from '../challenges/bests'
@@ -96,13 +97,15 @@ const handlers = {
   },
   clenchStop: () => audio.stopClenchHum(),
   clenchExhausted: () => audio.stopClenchHum(),
-  // Announced threats (arcade): a short cue and a tap on the hand.
+  // Announced threats (arcade): a short cue and a tap on the hand, and the bladder shivers.
   urgeWarning: () => {
     audio.playCue('warning')
+    audio.playShiver()
     haptic([15, 40, 15])
   },
   sneezeWarning: () => {
     audio.playCue('warning')
+    audio.playShiver()
     haptic([15, 40, 15])
   },
   leakWarning: () => {
@@ -214,13 +217,26 @@ const handlers = {
   },
 }
 
+// The body language's moves (emotes.js; the 3D model makes them), heard and felt.
+const EMOTE_SOUNDS = {
+  sigh: () => audio.playExhale(),
+  huff: () => audio.playExhale(true),
+  hop: () => {
+    audio.playBoing()
+    haptic(15)
+  },
+}
+
 // How the bladder feels (mood.js); the HUD shows it as `mood` in the store.
 const mood = createMood()
 
-// Each event's sound and haptics; then the bladder feels it, and says something about it.
-function onEvent(event) {
+// Each event's sound and haptics; then the bladder feels it, moves, and says something
+// about it.
+export function onEvent(event) {
   handlers[event.type]?.(event)
   feel(mood, event)
+  // The same mood the 3D model moves with (Organ.jsx), so the sound matches the move.
+  EMOTE_SOUNDS[emoteFor(event, useUiStore.getState().mood)]?.()
   const line = reactionLine(event, sim, mood)
   if (line) voice.speak(line)
 }
