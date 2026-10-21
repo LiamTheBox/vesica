@@ -10,6 +10,7 @@ import {
 } from '../../sim/interactions'
 import { createOrganRig, createOrganTextures } from './organRig'
 import { createCutMaterials } from './cutMaterials'
+import { ureterSquirt } from '../../feedback/feedback'
 
 const ndc = new THREE.Vector2()
 // Liquid opacity without transmission. Transmission only replaces the diffuse light and
@@ -164,6 +165,7 @@ export default function Organ() {
       drops: dropsRef.current,
       camera: state.camera,
       cutaway: isCutawayActive,
+      onSquirt: ureterSquirt,
     })
     cut.update(sim, dt, rig.cutawayPlane, isCutawayActive)
   })

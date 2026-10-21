@@ -249,14 +249,22 @@ export class AudioManager {
     osc.connect(gain); gain.connect(this.sfxGain); osc.start(now); osc.stop(now + 0.065)
   }
 
-  playUreterSquirt() {
+  // `volume` scales it, `pan` places it left (-1) to right (1).
+  playUreterSquirt(volume = 1, pan = 0) {
     if (!this.sfxEnabled || this.isMasterMuted) return
     this.initCtx(); const now = this.ctx.currentTime
     const osc = this.ctx.createOscillator(); const filter = this.ctx.createBiquadFilter(); const gain = this.ctx.createGain()
     osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now); osc.frequency.exponentialRampToValueAtTime(80, now + 0.14)
     filter.type = 'bandpass'; filter.frequency.setValueAtTime(350, now); filter.frequency.linearRampToValueAtTime(950, now + 0.12); filter.Q.setValueAtTime(4.0, now)
-    gain.gain.setValueAtTime(0.18, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14)
-    osc.connect(filter); filter.connect(gain); gain.connect(this.sfxGain); osc.start(now); osc.stop(now + 0.15)
+    gain.gain.setValueAtTime(0.18 * volume, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14)
+    osc.connect(filter); filter.connect(gain)
+    if (pan && this.ctx.createStereoPanner) {
+      const panner = this.ctx.createStereoPanner(); panner.pan.setValueAtTime(pan, now)
+      gain.connect(panner); panner.connect(this.sfxGain)
+    } else {
+      gain.connect(this.sfxGain)
+    }
+    osc.start(now); osc.stop(now + 0.15)
   }
 
   startClenchHum() {

@@ -1,5 +1,6 @@
 import { audio } from '../audio/AudioManager'
 import { ambientVoiceCategory } from '../sim/sim'
+import { reactionLine } from './reactions'
 import { onSimEvent, onSimTick, sim } from '../sim/engine'
 import { useUiStore } from '../store/useUiStore'
 import { clock, recordResult } from '../challenges/bests'
@@ -83,15 +84,14 @@ function arcadeLine(text, tone, cue) {
 }
 
 const handlers = {
+  // The gulp; the urine is heard squirting in later, as it arrives (ureterSquirt).
   ingest: () => {
     audio.playIngest()
     haptic(30)
-    audio.playUreterSquirt()
   },
   clenchStart: () => {
     haptic([20, 30, 20])
     audio.startClenchHum()
-    audio.speak('clench')
   },
   clenchStop: () => audio.stopClenchHum(),
   clenchExhausted: () => audio.stopClenchHum(),
@@ -112,23 +112,17 @@ const handlers = {
   voidStart: () => {
     audio.startDynamicJet()
     haptic(50)
-    audio.speak('voiding')
   },
   voidStop: () => audio.stopDynamicJet(),
   leakStart: () => {
     audio.playLeakSpurt()
     haptic(60)
-    audio.speak('leak')
   },
   failureStart: () => {
     audio.startDynamicJet()
     haptic([100, 50, 100, 50])
-    audio.speak('involuntary')
   },
-  failureEnd: () => {
-    audio.stopDynamicJet()
-    audio.speak('deflated')
-  },
+  failureEnd: () => audio.stopDynamicJet(),
   urgeStart: () => audio.startUrgeRumble(),
   urgeEnd: (e) => {
     audio.stopUrgeRumble()
@@ -146,12 +140,10 @@ const handlers = {
     audio.playGranularSlosh(e.strength * 0.4)
     shakeScreen()
     haptic(45)
-    if (e.speakShaken) audio.speak('shaken')
   },
   soothe: () => {
     audio.playSootheBreath()
     haptic(30)
-    audio.speak('soothe')
   },
   // A reset also ends any challenge (a new one starts right after, if that's why).
   reset: () => {
@@ -160,18 +152,15 @@ const handlers = {
     audio.stopClenchHum()
     audio.stopUrgeRumble()
   },
-  voice: (e) => audio.speak(e.category),
   poke: (e) => {
     if (e.touch) {
       audio.playSquish(1.0)
       haptic(30)
     }
-    audio.speak('poked')
   },
   slap: (e) => {
     audio.playSlap(e.strength)
     if (e.haptic) haptic(50)
-    audio.speak('poked')
   },
   squeezeStart: () => {
     audio.playSquish(1.2)
@@ -203,6 +192,18 @@ const handlers = {
   },
 }
 
+// Each event's sound and haptics, then what the bladder says about it.
+function onEvent(event) {
+  handlers[event.type]?.(event)
+  const line = reactionLine(event)
+  if (line) audio.speak(line)
+}
+
+// A bolus of urine squirting in from a ureter (organRig): a soft gulp from that side.
+export function ureterSquirt(side) {
+  audio.playUreterSquirt(0.3, side * 0.5)
+}
+
 function onTick(sim, dt) {
   audio.update(dt)
   if (sim.isClenching) audio.updateClenchHum(sim.kegelStamina)
@@ -229,7 +230,7 @@ export function installFeedback() {
   audio.onSubtitle = (text, category) => {
     useUiStore.setState({ currentSubtitle: { text, category, id: Date.now() } })
   }
-  const offEvent = onSimEvent((event) => handlers[event.type]?.(event))
+  const offEvent = onSimEvent(onEvent)
   const offTick = onSimTick(onTick)
   document.addEventListener('visibilitychange', onVisibilityChange)
   return () => {

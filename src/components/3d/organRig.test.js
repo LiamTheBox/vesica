@@ -323,6 +323,14 @@ describe('bladder wall', () => {
     expect(Math.abs(radiusAt(RING_VERTICES * 2) / before.dome - 1)).toBeLessThan(0.002)
   })
 
+  it('says which side each squirt comes from, so it can be heard there (B)', () => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    const sides = []
+    for (let f = 0; f < 12 * 60; f++) rig.update(sim, 1 / 60, f / 60, { onSquirt: (side) => sides.push(side) })
+    expect(sides).toEqual([-1, 1]) // left at 4.5 s, right at 9 s
+  })
+
   it('is a see-through membrane that thins as it fills, over a solid sphincter', () => {
     const rig = createOrganRig()
     const sim = createSimState()

@@ -14,23 +14,42 @@ export const LINES = {
   poked: ["Hey! Don't poke me while I'm holding this!", "Ouch! That sloshed everything around!", "Hands off! It's delicate in here!", "Careful! You're making the pressure spike!", "Whoa! That prod sent shockwaves to the valve!", "Stop poking! You'll trigger a spasm!", "Eep! That indentation rattled the sphincter!", "Hands to yourself! That was right on the trigone!", "Quit prodding me, I'm under enough stress!", "That poke nearly forced a leak!", "Oof! Watch where your fingers are going!", "You're squishing the walls too roughly!", "Hey! That caused a massive pressure wave!", "Do not prod a full bladder like that!", "Careful! That soft-body dent hurts!", "That direct hit rattled the detrusor!"],
   squeezed: ["Hey! Squeezing me is raising the pressure dangerously!", "Careful! You're gonna pop me if you squeeze so hard!", "Oof! The fluid has nowhere else to go!", "You're compressing the walls! The valve is straining!", "Stop squeezing! That's spiking the hydrostatic load!", "The lateral bulge is stretching me to the limit!", "You're forcing fluid straight into the sphincter neck!", "Aah! The Poisson expansion is too intense!", "Don't crush me like that, it's about to leak!", "Squeeze release! The pressure is off the charts!", "Compressing me is making retention impossible!", "Ouch! The internal walls can't take this clamp!", "You're squeezing out micro-spurts, stop!", "Let go! The squeeze is overwhelming the tone!", "High compression detected! Release the grip!", "You're crushing the lumen, let it expand!"],
   shaken: ["Whoaaa! Stop shaking me!", "Everything is sloshing wildly inside!", "Ahhh! The fluid waves are hitting the valve!", "Hey! I'm not a cocktail shaker!", "You're making the fluid slosh everywhere!", "Stop! The slosh inertia is battering the sphincter!", "Whoa! The dual-body fluid lag is rocking me!", "Internal waves crashing against the neck!", "Quit jostling me around so violently!", "The slosh resonance is peaking! Stop shaking!", "All that sloshing is triggering reflex spasms!", "You're tossing fluid mass all over the place!", "Stop the agitation! I'm getting dizzy down here!", "The hydrodynamic waves are pushing the limit!", "Violent slosh detected! Keep it steady!", "Whoa! The fluid momentum is smashing the walls!"],
-  voiding: ["Aaaahhh... sweet, glorious relief!", "Yes! Let it all flow out!", "Oh, that feels so much better...", "Pressure dropping... ahhh, heaven.", "Sphincter dilating... emptying in progress.", "Look at that stream go! What a release!", "Finally, the tension is melting away!", "Ahhh, my elastic walls are shrinking back.", "Steady stream, optimal drainage velocity.", "All that heavy fluid... just washing away.", "Relaxing every muscle fiber as it drains.", "What a wonderful feeling of decompression.", "Deflating smoothly back to baseline.", "The relief is overwhelming... draining out.", "Sphincter wide open, steady evacuation.", "Almost done... draining the final drops.", "Pure comfort as the volume recedes.", "Back to normal capacity... ahhh."]
+  voiding: ["Aaaahhh... sweet, glorious relief!", "Yes! Let it all flow out!", "Oh, that feels so much better...", "Pressure dropping... ahhh, heaven.", "Sphincter dilating... emptying in progress.", "Look at that stream go! What a release!", "Finally, the tension is melting away!", "Ahhh, my elastic walls are shrinking back.", "Steady stream, optimal drainage velocity.", "All that heavy fluid... just washing away.", "Relaxing every muscle fiber as it drains.", "What a wonderful feeling of decompression.", "Deflating smoothly back to baseline.", "The relief is overwhelming... draining out.", "Sphincter wide open, steady evacuation.", "Almost done... draining the final drops.", "Pure comfort as the volume recedes.", "Back to normal capacity... ahhh."],
+  drinkWater: ["Ooh, water. Classy.", "Hydration! Fine, I'll take it.", "Water's on its way down.", "Good choice. Still my problem later.", "Fresh water incoming. Lovely.", "Water again? You know where it ends up."],
+  drinkCaffeine: ["Caffeine? Oh no, the express lane.", "Coffee goes straight through you. To me.", "Caffeine! Everything's speeding up.", "A diuretic. Brace yourself.", "Wired kidneys incoming!", "That buzz comes with a bill. Me."],
+  drinkAlcohol: ["Booze? You'll be visiting me a lot.", "Breaking the seal, are we?", "Cheers. I'll do the hard work.", "That's going to hit me fast.", "Party for you, overtime for me.", "Oh no. Here comes the seal-breaker."],
+  drinkBig: ["All of that? Seriously?", "That's huge! Where do you think it goes?", "I'm not a reservoir!", "Whoa, slow down!", "Big gulp. Big problem. My problem.", "That's a lot of incoming."],
+  drinkOther: ["Glug, glug. It all comes to me.", "Tasty for you, homework for me.", "Another one? Noted.", "I'll file that under 'later'.", "Mm. Sweet. It all ends up here.", "The kidneys say thanks. I say hmm."],
+  exhausted: ["I can't squeeze any more...", "My grip's gone. Give me a second.", "Too tired to clench...", "Ugh. My muscles are jelly.", "Out of squeeze. Need a breather."],
+  saved: ["Caught it! Phew!", "Whoa, that was close!", "Saved it! Barely!", "Nice clench! Not a drop!", "Close one! Good reflexes!"],
+  leakOver: ["Sealed. Let's never speak of this.", "That was embarrassing.", "Pretend that didn't happen.", "Ugh. A little damp now.", "Stopped it. Mostly.", "Oops. Sorry about that."],
+  aftermath: ["...Well. That happened.", "I'm so sorry. I really tried.", "Empty. And mortified.", "Don't look at me.", "Let's just... start over.", "Not my finest moment."],
+  urge: ["Oh no. Here it comes!", "Wave! Hold on!", "I need to GO!", "Urge! Squeeze!", "Uh-oh. Big one!"],
+  urgePassed: ["Phew. Squeezed it away.", "And... it's passing. Nice.", "Wave calmed. Good job.", "Crisis averted!", "That's how it's done."],
+  urgeFaded: ["It's fading... for now.", "Phew. That wave's gone.", "Okay, it passed. Barely.", "That one rattled me.", "It'll be back, you know."],
+  urgeIncoming: ["Uh-oh...", "Something's coming!", "Get ready!", "I feel one coming!", "Wait for it..."],
+  sneezeIncoming: ["Ah... aah...", "Oh no, a sneeze!", "Ah... ahh... brace!", "Sneeze! Squeeze!", "Here comes a sneeze!"],
+  slipping: ["I'm slipping! Clench!", "Losing it! Squeeze now!", "Help! Clench!", "It's coming out! Squeeze!", "Now! Clench now!"],
+  proud: ["Nailed it!", "Perfect timing!", "Ooh, smooth!", "That's my pelvic floor!", "Flawless!", "Textbook!"],
+  levelUp: ["Level up! It gets harder, huh?", "Next level. I'm nervous.", "Harder now? Great. Just great.", "New level! Stay with me.", "Levelling up. Hold tight!"],
 }
 
 // Who gets to speak (see AudioManager.speak): urgent lines cut in over anything, the
 // bladder's own chatter about how full it is waits its turn, and everything else is a
 // reaction to what just happened.
-export const URGENT = new Set(['leak', 'involuntary'])
+export const URGENT = new Set(['leak', 'involuntary', 'slipping', 'saved', 'urgeIncoming', 'sneezeIncoming'])
 export const CHATTER = new Set(['nominal', 'distended', 'full', 'critical'])
 
 // How each kind of line is said.
 const FRANTIC = { pitch: 1.45, rate: 1.25 }
 const EXCITED = { pitch: 1.35, rate: 1.2 }
 const RELAXED = { pitch: 1.15, rate: 0.95 }
+const TIRED = { pitch: 1.05, rate: 0.85 }
 export const NORMAL_VOICE = { pitch: 1.2, rate: 1.05 }
 export const VOICE_STYLE = {
-  critical: FRANTIC, involuntary: FRANTIC, leak: FRANTIC,
-  shaken: EXCITED, squeezed: EXCITED, clench: EXCITED, cough: EXCITED,
+  critical: FRANTIC, involuntary: FRANTIC, leak: FRANTIC, slipping: FRANTIC, urgeIncoming: FRANTIC, sneezeIncoming: FRANTIC,
+  shaken: EXCITED, squeezed: EXCITED, clench: EXCITED, cough: EXCITED, urge: EXCITED, saved: EXCITED, proud: EXCITED, levelUp: EXCITED,
   soothe: { pitch: 1.15, rate: 0.9 },
-  voiding: RELAXED, deflated: RELAXED,
+  voiding: RELAXED, deflated: RELAXED, urgePassed: RELAXED, urgeFaded: RELAXED, leakOver: RELAXED,
+  exhausted: TIRED, aftermath: TIRED,
 }

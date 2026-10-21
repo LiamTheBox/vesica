@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BEVERAGE_TYPES } from '../physics/constants'
-import { DRINK_COUNT, DRINK_GROUPS, DRINKS } from './drinks'
+import { DRINK_COUNT, DRINK_GROUPS, drinkKind, DRINKS } from './drinks'
 import { createSimState, ingestBeverage } from './sim'
 
 describe('drinks menu', () => {
@@ -41,5 +41,14 @@ describe('drinks menu', () => {
       expect(sim.activeBeverages).toEqual([{ rem: d.vol, rate: d.rate, hyd: d.hyd }])
       expect(out).toContainEqual({ type: 'ingest', beverage: key, served: false })
     }
+  })
+
+  it('sorts every drink into what the bladder makes of it (B)', () => {
+    const kinds = Object.fromEntries(Object.keys(DRINKS).map((key) => [key, drinkKind(key)]))
+    expect(new Set(Object.values(kinds))).toEqual(new Set(['water', 'caffeine', 'alcohol', 'big', 'other']))
+    expect(kinds).toMatchObject({
+      water: 'water', bottle: 'big', coffee: 'caffeine', cola: 'caffeine', bigSoda: 'big', chamomile: 'other',
+      beer: 'alcohol', pitcher: 'alcohol', whisky: 'alcohol', milk: 'other', lemonade: 'other',
+    })
   })
 })

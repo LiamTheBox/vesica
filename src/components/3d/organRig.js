@@ -398,7 +398,8 @@ export function createOrganRig() {
   const slap = (local, strength) => impact(local, strength, SLAP)
   const clearDents = () => dentMemory.fill(0)
 
-  // `objects`: live meshes/materials from Organ.jsx refs, plus the camera.
+  // `objects`: live meshes/materials from Organ.jsx refs, the camera, and what to call when
+  // a ureter squirts (onSquirt(side), -1 left, 1 right).
   function update(sim, dt, timeSec, objects) {
     const { wallMat, urine, camera, cutaway } = objects
     const phys = physicsOf(sim)
@@ -602,7 +603,7 @@ export function createOrganRig() {
     }
 
     // Ureters stay plugged into the wall as it inflates and wobbles, and squeeze urine
-    // down: faster while drinks are being filtered.
+    // down: faster while drinks are being filtered. Each squirt is heard from its side.
     let filtration = 0
     for (const b of sim.activeBeverages) filtration += b.rate
     ureters.forEach((ureter, k) => {
@@ -612,6 +613,7 @@ export function createOrganRig() {
       if (ureter.step(dt, filtration) > 0) {
         inflowAge[k] = 0
         squirt(k)
+        objects.onSquirt?.(k === 0 ? -1 : 1)
       }
     })
 

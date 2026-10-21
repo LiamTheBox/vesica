@@ -10,6 +10,7 @@ const shelf = (key, name, icon) => ({ name, icon, ...BEVERAGE_TYPES[key] })
 export const DRINK_GROUPS = [
   {
     name: 'Water',
+    kind: 'water',
     drinks: {
       water: shelf('water', 'Water', '💧'),
       sparkling: drink('Sparkling Water', '🫧', 250, 9, 1.0),
@@ -68,6 +69,7 @@ export const DRINK_GROUPS = [
   },
   {
     name: 'Alcohol',
+    kind: 'alcohol',
     drinks: {
       beer: shelf('beer', 'Brew', '🍺'),
       pitcher: drink('Beer Pitcher', '🍻', 600, 28, 0.35),
@@ -85,3 +87,14 @@ export const DRINKS = Object.fromEntries(DRINK_GROUPS.flatMap((group) => Object.
 export const DRINK_COUNT = Object.keys(DRINKS).length
 // Shown as a diuretic on the menu: hydrates no better than this.
 export const DIURETIC_HYD = 0.4
+
+// What the bladder makes of a drink, for what it says: alcohol, then a big one (a lot at
+// once, whatever it is), then water, caffeine or anything else.
+export const BIG_DRINK = 450
+const CAFFEINE = new Set(['coffee', 'americano', 'coldBrew', 'greenTea', 'matcha', 'blackTea', 'mate', 'bubbleTea', 'soda', 'energyShot', 'cola', 'bigSoda'])
+const KINDS = Object.fromEntries(DRINK_GROUPS.flatMap((group) => Object.keys(group.drinks).map((key) => [key, group.kind])))
+export function drinkKind(key) {
+  if (KINDS[key] === 'alcohol') return 'alcohol'
+  if (DRINKS[key].vol >= BIG_DRINK) return 'big'
+  return KINDS[key] ?? (CAFFEINE.has(key) ? 'caffeine' : 'other')
+}

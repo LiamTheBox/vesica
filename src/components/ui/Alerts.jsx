@@ -5,6 +5,9 @@ import { organStatus } from './status'
 const SUBTITLE_ICONS = {
   critical: '😫', involuntary: '😫', leak: '💦', clench: '🛡️', soothe: '🧘', cough: '🤧',
   shaken: '📳', squeezed: '🤏', full: '😬', voiding: '😌', poked: '⚡', deflated: '💤',
+  drinkWater: '💧', drinkCaffeine: '☕', drinkAlcohol: '🍺', drinkBig: '🌊', drinkOther: '🥤',
+  exhausted: '🥵', saved: '😅', leakOver: '😳', aftermath: '😳', urge: '⚡', urgePassed: '😮‍💨', urgeFaded: '😮‍💨',
+  urgeIncoming: '⚠️', sneezeIncoming: '🤧', slipping: '💦', proud: '😎', levelUp: '⭐',
 }
 
 // What the bladder just said. Sits in the stage's top stack; fades after 5 s.
