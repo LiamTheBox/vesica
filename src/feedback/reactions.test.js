@@ -90,4 +90,25 @@ describe('what it says depends on how full it is and how it feels (C)', () => {
     for (const category of lines) expect(LINES[category], category).toBeDefined()
     for (const category of Object.keys(LINES)) expect(lines.has(category) || CHATTER.has(category), category).toBe(true)
   })
+
+  it("says nothing but the voiding while it voids, then speaks again when it's done (bug fix)", () => {
+    const voiding = at(600, { isActivelyVoiding: true })
+    const others = [
+      { type: 'poke', touch: true }, { type: 'slap' }, { type: 'squeezeStart' }, { type: 'ingest', beverage: 'water' },
+      { type: 'urgeEnd', suppressed: false }, { type: 'clenchStart' }, { type: 'agitation', speakShaken: true },
+      { type: 'voice', category: 'cough' }, { type: 'soothe' }, { type: 'arcadePoints', reason: 'bank' },
+    ]
+    for (const event of others) expect(said(event, voiding), event.type).toBe(null)
+    expect(said({ type: 'voidStart' }, voiding)).toBe('voiding')
+
+    const failing = at(600, { involuntaryVoiding: true })
+    expect(said({ type: 'failureStart' }, failing)).toBe('involuntary')
+    expect(said({ type: 'poke', touch: true }, failing)).toBe(null)
+
+    // Done: the line about it, then back to normal.
+    expect(said({ type: 'voice', category: 'deflated' }, at(10))).toBe('deflated')
+    expect(said({ type: 'failureEnd' }, at(70))).toBe('aftermath')
+    expect(said({ type: 'poke', touch: true }, at(10))).toBe('pokeEmpty')
+  })
 })
+

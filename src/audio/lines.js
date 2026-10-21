@@ -61,8 +61,9 @@ export const LINES = {
 
 // Who gets to speak (see AudioManager.speak): urgent lines cut in over anything, the
 // bladder's own chatter about how full it is waits its turn, and everything else is a
-// reaction to what just happened.
-export const URGENT = new Set(['leak', 'involuntary', 'slipping', 'saved', 'urgeIncoming', 'sneezeIncoming'])
+// reaction to what just happened. Starting to empty counts as urgent, so it cuts off
+// whatever was being said and drops any line waiting.
+export const URGENT = new Set(['leak', 'involuntary', 'slipping', 'saved', 'urgeIncoming', 'sneezeIncoming', 'voiding'])
 export const CHATTER = new Set(['sleepy', 'nominal', 'distended', 'full', 'critical'])
 
 // How each kind of line is said.

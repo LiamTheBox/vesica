@@ -41,7 +41,7 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
   to arrive and whether it's a diuretic. The sheet scrolls when they don't fit; choosing one drinks it (the arcade's
   drink bonus counts it) and closes the menu. The game keeps running while it's open, like the other sheets.
 - **Reactions and emotions (requested 2026-10-21, in six phases, one commit each):**
-  - **A, voice priority:** urgent lines (leak, failure, warnings) cut in over anything; reactions cut in over
+  - **A, voice priority:** urgent lines (leak, failure, warnings, starting to void) cut in over anything; reactions cut in over
     chatter and wait briefly for each other; the bladder's own chatter waits its turn (Settings: "Chats on its own
     at most every", 30 s by default, half when critical). Lines show as subtitles with the voice off too.
   - **B, the silent moments:** lines for squeezes, each kind of drink, an exhausted clench, a save, a leak ending,

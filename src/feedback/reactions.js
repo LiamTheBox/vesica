@@ -49,9 +49,16 @@ const LINE_FOR = {
   voice: (e, sim) => (e.category === 'cough' && sim.isClenching ? 'coughBraced' : e.category),
 }
 
+// While it empties, on purpose or not, it has one thing on its mind: it says the line that
+// starts it, and nothing else until it stops (a drink, a poke or an urge fading mid-stream
+// used to start another line).
+const VOIDING_LINES = new Set(['voiding', 'involuntary'])
+
 // `mood` has already taken the event in (mood.feel).
 export function reactionLine(event, sim, mood) {
-  return LINE_FOR[event.type]?.(event, sim, mood) ?? null
+  const line = LINE_FOR[event.type]?.(event, sim, mood) ?? null
+  const voiding = sim.isActivelyVoiding || sim.involuntaryVoiding
+  return voiding && !VOIDING_LINES.has(line) ? null : line
 }
 
 // What it says on its own, now and then: about how full it is, or a sleepy murmur. Not in

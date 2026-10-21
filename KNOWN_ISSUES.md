@@ -41,3 +41,4 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 | No audio suspend in the background (the original had one) | M7 |
 | Empty bladder looked jagged, like crumpled cellophane: fine rugae folds pushed the outer surface sideways (the rugae now fold only the lining; the outside has soft deflated-balloon folds instead, as requested), and the lower half stepped out at the equator | 2026-10-21 |
 | Ureters attached high on the sides; real ones enter low on the back, beside the neck | 2026-10-21 |
+| Other voice lines started while voiding (a drink, a poke, an urge fading, a line already under way or waiting its turn); now it says only the line that starts the void until it stops | 2026-10-21 |

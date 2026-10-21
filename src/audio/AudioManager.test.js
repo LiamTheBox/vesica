@@ -52,6 +52,16 @@ describe('who gets to speak (A)', () => {
     expect(slow.said).toEqual(['leak'])
   })
 
+  it('cuts off whatever is being said when it starts to void, and drops the line waiting (bug fix)', () => {
+    const { audio, said, wait } = voice()
+    audio.speak('drinkWater')
+    wait(0.2)
+    audio.speak('poked') // waits for the drink line
+    expect(audio.speak('voiding')).toBe(true)
+    wait(10)
+    expect(said).toEqual(['drinkWater', 'voiding'])
+  })
+
   it("doesn't repeat a reaction straight away", () => {
     const { audio, said, wait } = voice()
     audio.speak('poked')
