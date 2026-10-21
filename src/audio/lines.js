@@ -8,6 +8,9 @@ export const LINES = {
   nominal: ["Something's trickling in.", "Starting to fill. No big deal.", "All good down here.", "I've got room. Plenty of room.", "A little sloshy. I like it.", "Just a splash so far.", "Easy. I could hold this all day.", "Filling up nicely.", "Comfy. Carry on.", "Nothing to report. Yet."],
   distended: ["Okay, I'm noticing myself now.", "Halfway there. Just saying.", "Getting a bit heavy.", "Maybe think about a bathroom?", "Not urgent. Yet.", "Starting to stretch here.", "Don't ignore me, okay?", "Feeling round. Very round.", "A bathroom break wouldn't hurt.", "I'm being patient. For now."],
   full: ["This is getting tight!", "Bathroom. Soon. Please.", "I'm a water balloon here!", "Every step sloshes!", "No more drinks, I mean it!", "I'm stretched thin!", "Find a toilet. Any toilet.", "Hold it... hold it...", "So full it hurts!", "We need to talk. Urgently."],
+  // Full for minutes and still not let go: it pleads, then sulks (see reactions.chatterLine).
+  pleading: ["Please. I really need to go.", "Pretty please?", "I'm begging you here.", "Have mercy.", "I'll be good. Let me go.", "Just a little? Please?"],
+  sulking: ["Fine. Ignore me.", "I'm not talking to you.", "Whatever. I'll just burst.", "Nobody listens to me.", "Hmph.", "See if I care."],
   critical: ["I can't hold it much longer!", "Toilet! Now!", "It's going to come out!", "I'm shaking down here!", "Any second now!", "Squeeze! Squeeze everything!", "I'm at my limit!", "This is an emergency!", "Please, please, please!", "I'm about to burst!"],
 
   // Touch: by how full it is, and how much it has had.
@@ -54,17 +57,22 @@ export const LINES = {
   voiding: ["Aaahhh... relief!", "Yes! Let it all out!", "Oh, that's so much better.", "Sweet, sweet relief.", "Ahh, heaven.", "Finally!", "Let it flow...", "Best. Feeling. Ever.", "Mmm, emptying...", "I could cry. Happy tears."],
   emptied: ["Ahh. Empty. Thank you.", "Light as a feather.", "Empty and fabulous.", "That's better. So much better.", "Back to zero. Bliss.", "All clear down here.", "Fresh start. Let's keep it that way.", "Ahh, I can breathe again.", "Nothing left. Perfect.", "Ready for round two. Slowly, please."],
 
+  // The camera: the cutaway opening, zooming right in, spinning it round.
+  cutaway: ["Hey! Privacy, please!", "Excuse me! Eyes up here.", "Do you mind?", "Rude. Close that.", "Hey, that's my inside!", "Is this a checkup?"],
+  tooClose: ["Too close!", "Personal space, please!", "Whoa, back up a bit.", "Hi. That's very close.", "Can I help you?"],
+  dizzy: ["Whoa, the room's spinning.", "Stop spinning me!", "I'm getting dizzy.", "Round and round. Ugh.", "Everything's spinning!"],
+
   // The arcade.
   proud: ["Nailed it!", "Perfect timing!", "Ooh, smooth!", "That's my pelvic floor!", "Flawless!", "Textbook!"],
   levelUp: ["Level up! It gets harder, huh?", "Next level. I'm nervous.", "Harder now? Great. Just great.", "New level! Stay with me.", "Levelling up. Hold tight!"],
 }
 
-// Who gets to speak (see AudioManager.speak): urgent lines cut in over anything, the
+// Who gets to speak (see voice.speak): urgent lines cut in over anything, the
 // bladder's own chatter about how full it is waits its turn, and everything else is a
 // reaction to what just happened. Starting to empty counts as urgent, so it cuts off
 // whatever was being said and drops any line waiting.
 export const URGENT = new Set(['leak', 'involuntary', 'slipping', 'saved', 'urgeIncoming', 'sneezeIncoming', 'voiding'])
-export const CHATTER = new Set(['sleepy', 'nominal', 'distended', 'full', 'critical'])
+export const CHATTER = new Set(['sleepy', 'nominal', 'distended', 'full', 'critical', 'pleading', 'sulking'])
 
 // How each kind of line is said.
 const FRANTIC = { pitch: 1.45, rate: 1.25 }
@@ -82,6 +90,7 @@ export const VOICE_STYLE = {
   exhausted: TIRED, aftermath: TIRED,
   pokeEmpty: PLAYFUL, squeezeEmpty: PLAYFUL, clenchIdle: PLAYFUL,
   pokeFull: EXCITED, slapped: EXCITED, slapFull: FRANTIC, drinkFull: FRANTIC, coughBraced: EXCITED,
-  annoyed: GRUMPY,
+  annoyed: GRUMPY, sulking: GRUMPY, cutaway: EXCITED, tooClose: PLAYFUL, dizzy: TIRED,
+  pleading: { pitch: 1.3, rate: 0.95 },
   sleepy: { pitch: 1.0, rate: 0.8 },
 }

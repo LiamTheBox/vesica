@@ -22,9 +22,12 @@ const PANIC_STRAIN = 0.85
 const DESPERATE_STRAIN = 0.5
 export const LOW_FILL = 0.3
 export const HIGH_FILL = 0.65
+// Full from this much on, it counts how long it's been held there (heldFull, in seconds)
+// until it's let go, for its pleading (reactions.chatterLine).
+export const FULL_FILL = 0.72
 
 export function createMood() {
-  return { annoyance: 0, embarrassment: 0, relief: 0, pride: 0, idle: 0 }
+  return { annoyance: 0, embarrassment: 0, relief: 0, pride: 0, idle: 0, heldFull: 0 }
 }
 
 const PROUD_POINTS = new Set(['perfect', 'braced', 'saved'])
@@ -71,18 +74,27 @@ export function feel(mood, event) {
     case 'microWin':
       mood.pride = Math.max(mood.pride, 0.5)
       break
+    // Looked at (A5): opened up, it's embarrassed; stared at close up, a little.
+    case 'cutaway':
+      mood.embarrassment = Math.max(mood.embarrassment, 0.5)
+      break
+    case 'tooClose':
+      mood.embarrassment = Math.max(mood.embarrassment, 0.3)
+      break
     case 'reset':
       Object.assign(mood, createMood())
       break
   }
 }
 
-export function stepMood(mood, dt) {
+// `sim`, when given, keeps count of how long it's been held full.
+export function stepMood(mood, dt, sim = null) {
   mood.annoyance = Math.max(0, mood.annoyance - FADE.annoyance * dt)
   mood.embarrassment = Math.max(0, mood.embarrassment - FADE.embarrassment * dt)
   mood.relief = Math.max(0, mood.relief - FADE.relief * dt)
   mood.pride = Math.max(0, mood.pride - FADE.pride * dt)
   mood.idle += dt
+  if (sim) mood.heldFull = fillRatioOf(sim) > FULL_FILL && !sim.isActivelyVoiding && !sim.involuntaryVoiding ? mood.heldFull + dt : 0
 }
 
 // The mood that shows, most pressing first.
@@ -94,7 +106,7 @@ export function moodOf(mood, sim) {
   if (sim.isActivelyVoiding) return 'relieved'
   if (mood.pride > 0) return 'proud'
   if (mood.annoyance >= ANNOYED) return 'annoyed'
-  if (fill > 0.72 || strain > DESPERATE_STRAIN || sim.isUrgeWaveActive) return 'desperate'
+  if (fill > FULL_FILL || strain > DESPERATE_STRAIN || sim.isUrgeWaveActive) return 'desperate'
   if (mood.relief > 0) return 'relieved'
   if (fill > 0.45 || sim.urgeWarned || sim.coughWarned) return 'uneasy'
   if (fill < SLEEPY_FILL && mood.idle >= SLEEPY_AFTER) return 'sleepy'

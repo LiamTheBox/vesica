@@ -3,6 +3,8 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useUiStore } from '../../store/useUiStore'
 import { sim } from '../../sim/engine'
+import { createCameraWatch, watchCamera } from '../../feedback/camera'
+import { noticeCamera } from '../../feedback/feedback'
 import { overfillGrowth } from './organGeometry'
 import { stageFit } from './stageFit'
 
@@ -61,7 +63,8 @@ function frameStage({ camera, controls, scene, size, stage, growth }) {
 // recenter (see stageFit.js): keeps the orbit angle, resets pan and zoom. While the player
 // pans or zooms, it keeps the view near the organ and tells the HUD the view has moved.
 // When an overfilled bladder (the arcade's has no limit) outgrows the frame, the camera
-// backs off as it grows, keeping the player's zoom and angle.
+// backs off as it grows, keeping the player's zoom and angle. The bladder notices being
+// zoomed right in or spun round (feedback/camera.js).
 export function StageFit() {
   const stage = useUiStore((s) => s.stageRect)
   const resetId = useUiStore((s) => s.viewResetId)
@@ -71,6 +74,7 @@ export function StageFit() {
   const size = useThree((s) => s.size)
   const fitDistance = useRef(0)
   const growth = useRef(1) // how far the view has backed off for an overfilled bladder
+  const watch = useRef(createCameraWatch()) // what the bladder notices of the view
 
   useEffect(() => {
     if (!stage || stage.width < 1 || stage.height < 1) return
@@ -102,8 +106,11 @@ export function StageFit() {
         camera.position.add(clamped)
       }
       const distance = camera.position.distanceTo(controls.target)
-      const moved = controls.target.lengthSq() > 0.09 || Math.abs(distance / fitDistance.current - 1) > 0.15
+      const zoom = distance / fitDistance.current
+      const moved = controls.target.lengthSq() > 0.09 || Math.abs(zoom - 1) > 0.15
       if (moved !== useUiStore.getState().viewMoved) useUiStore.setState({ viewMoved: moved })
+      const noticed = watchCamera(watch.current, zoom, controls.getAzimuthalAngle(), performance.now() / 1000)
+      if (noticed) noticeCamera(noticed)
     }
     controls.addEventListener('change', onChange)
     return () => controls.removeEventListener('change', onChange)

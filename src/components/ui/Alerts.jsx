@@ -9,6 +9,7 @@ const SUBTITLE_ICONS = {
   leak: '💦', slipping: '💦', clench: '🛡️', coughBraced: '🛡️', soothe: '🧘', cough: '🤧', sneezeIncoming: '🤧',
   shaken: '📳', squeezed: '🤏', squeezeEmpty: '🤏', urge: '⚡', urgeIncoming: '⚠️', levelUp: '⭐', sleepy: '💤',
   drinkWater: '💧', drinkCaffeine: '☕', drinkAlcohol: '🍺', drinkBig: '🌊', drinkOther: '🥤', drinkFull: '🙅',
+  cutaway: '🔬', tooClose: '👀', dizzy: '😵‍💫', pleading: '🥺', sulking: '😒',
 }
 
 // How long a subtitle stays: the line's spoken length (estimated by the voice) and a

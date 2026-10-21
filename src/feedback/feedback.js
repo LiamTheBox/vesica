@@ -246,11 +246,17 @@ export function ureterSquirt(side) {
   audio.playUreterSquirt(0.3, side * 0.5)
 }
 
+// What the bladder noticed about the camera (StageFit, with feedback/camera.js): it was
+// zoomed right in ('tooClose') or spun round ('dizzy').
+export function noticeCamera(type) {
+  onEvent({ type })
+}
+
 function onTick(sim, dt) {
   voice.update(dt)
   if (sim.isClenching) audio.updateClenchHum(sim.kegelStamina)
   if (sim.flowRate > 0) audio.updateDynamicJet(sim.flowRate, sim.pressure)
-  stepMood(mood, dt)
+  stepMood(mood, dt, sim)
   const now = moodOf(mood, sim)
   if (now !== useUiStore.getState().mood) useUiStore.setState({ mood: now })
   const category = chatterLine(sim, mood)
@@ -278,10 +284,15 @@ export function installFeedback() {
   }
   const offEvent = onSimEvent(onEvent)
   const offTick = onSimTick(onTick)
+  // Opening the cutaway is noticed (A5).
+  const offCutaway = useUiStore.subscribe((state, prev) => {
+    if (state.isCutawayActive && !prev.isCutawayActive) onEvent({ type: 'cutaway' })
+  })
   document.addEventListener('visibilitychange', onVisibilityChange)
   return () => {
     offEvent()
     offTick()
+    offCutaway()
     document.removeEventListener('visibilitychange', onVisibilityChange)
     voice.onSubtitle = null
   }

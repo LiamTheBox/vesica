@@ -55,6 +55,10 @@ const LINE_FOR = {
   arcadeLevel: () => 'levelUp',
   microLevel: () => 'levelUp',
   microBoss: (e) => (e.won ? 'proud' : null),
+  // The camera (A5).
+  cutaway: () => 'cutaway',
+  tooClose: () => 'tooClose',
+  dizzy: () => 'dizzy',
 }
 
 // While it empties, on purpose or not, it has one thing on its mind: it says the line that
@@ -80,6 +84,12 @@ export function fullnessLine(sim) {
   return null
 }
 
+// Held full this long (s) without letting go, it pleads instead of saying it's full, and
+// then sulks (A6). Not while it's strained hard: then it's an emergency.
+export const PLEAD_AFTER = 90
+export const SULK_AFTER = 180
+const PLEAD_STRAIN = 0.5
+
 // What it says on its own, now and then: about how full it is, or a sleepy murmur. Not in
 // the middle of a feeling (an embarrassment, the relief, the pride) or a strop.
 const QUIET_MOODS = new Set(['embarrassed', 'relieved', 'proud', 'annoyed'])
@@ -87,5 +97,10 @@ export function chatterLine(sim, mood) {
   if (sim.micro) return null // microgames speak for themselves
   const now = moodOf(mood, sim)
   if (now === 'sleepy') return 'sleepy'
-  return QUIET_MOODS.has(now) ? null : fullnessLine(sim)
+  if (QUIET_MOODS.has(now)) return null
+  const line = fullnessLine(sim)
+  if ((line === 'full' || line === 'critical') && mood.heldFull >= PLEAD_AFTER && sim.sphincterToneStrain < PLEAD_STRAIN) {
+    return mood.heldFull >= SULK_AFTER ? 'sulking' : 'pleading'
+  }
+  return line
 }

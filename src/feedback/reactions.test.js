@@ -5,7 +5,8 @@ import { createSimState, startCommuteChallenge, startPrecisionChallenge } from '
 import { startArcadeRun } from '../sim/arcade'
 import { startMicroRun } from '../sim/micro/runner'
 import { createMood, feel, SLEEPY_AFTER, stepMood } from './mood'
-import { chatterLine, fullnessLine, reactionLine } from './reactions'
+import { chatterLine, fullnessLine, PLEAD_AFTER, reactionLine, SULK_AFTER } from './reactions'
+import { createCameraWatch, watchCamera } from './camera'
 
 // Every event the simulation and the arcade emit that the bladder might talk about.
 const EVENTS = [
@@ -19,6 +20,7 @@ const EVENTS = [
   { type: 'poke', touch: true }, { type: 'slap' }, { type: 'squeezeStart' },
   { type: 'arcadePoints', reason: 'perfect' }, { type: 'arcadePoints', reason: 'braced' }, { type: 'arcadeLevel', level: 2 },
   { type: 'voidStop' }, { type: 'reset' }, { type: 'cough' },
+  { type: 'cutaway' }, { type: 'tooClose' }, { type: 'dizzy' },
 ]
 
 const at = (volume, state = {}) => Object.assign(createSimState(), { volume }, state)
@@ -150,5 +152,64 @@ describe('lines the simulation used to choose (C2)', () => {
   it('keeps its fill to itself while voiding or leaking', () => {
     expect(fullnessLine(at(700, { isStressLeaking: true }))).toBe(null)
     expect(fullnessLine(at(700, { isActivelyVoiding: true }))).toBe(null)
+  })
+})
+
+describe('being looked at (A5)', () => {
+  it('minds the cutaway and a close look, which embarrass it a little', () => {
+    const mood = createMood()
+    feel(mood, { type: 'cutaway' })
+    expect(said({ type: 'cutaway' }, at(300), mood)).toBe('cutaway')
+    expect(mood.embarrassment).toBeGreaterThan(0)
+    expect(said({ type: 'tooClose' })).toBe('tooClose')
+    expect(said({ type: 'dizzy' })).toBe('dizzy')
+  })
+
+  it('notices a zoom right in once, until the view backs off again', () => {
+    const watch = createCameraWatch()
+    const seen = [1, 0.6, 0.35, 0.3, 0.5, 0.35, 0.7, 0.3].map((zoom, i) => watchCamera(watch, zoom, 0, i))
+    expect(seen).toEqual([null, null, 'tooClose', null, null, null, null, 'tooClose'])
+  })
+
+  it('gets dizzy from two quick turns of orbit, either way, but not from slow looking about', () => {
+    const spin = (turnsPerSecond, seconds) => {
+      const watch = createCameraWatch()
+      const seen = []
+      for (let t = 0; t <= seconds; t += 1 / 30) {
+        const azimuth = ((turnsPerSecond * t * Math.PI * 2 + Math.PI) % (Math.PI * 2)) - Math.PI // as OrbitControls reports it
+        seen.push(watchCamera(watch, 1, azimuth, t))
+      }
+      return seen.filter(Boolean)
+    }
+    expect(spin(1, 3)).toEqual(['dizzy'])
+    expect(spin(-1, 3)).toEqual(['dizzy'])
+    expect(spin(0.1, 30)).toEqual([])
+  })
+})
+
+describe('held full for minutes (A6)', () => {
+  const full = () => at(620)
+  const heldFor = (seconds, sim = full()) => {
+    const mood = createMood()
+    for (let t = 0; t < seconds; t += 1) stepMood(mood, 1, sim)
+    return mood
+  }
+
+  it('pleads after a minute and a half, then sulks', () => {
+    expect(chatterLine(full(), heldFor(PLEAD_AFTER - 2))).toBe('full')
+    expect(chatterLine(full(), heldFor(PLEAD_AFTER))).toBe('pleading')
+    expect(chatterLine(full(), heldFor(SULK_AFTER))).toBe('sulking')
+  })
+
+  it('still says so when it is an emergency', () => {
+    const strained = at(620, { sphincterToneStrain: 0.8 })
+    expect(chatterLine(strained, heldFor(SULK_AFTER, strained))).toBe('critical')
+  })
+
+  it('forgets the wait once it is let go', () => {
+    const mood = heldFor(SULK_AFTER)
+    stepMood(mood, 1 / 60, at(620, { isActivelyVoiding: true }))
+    expect(mood.heldFull).toBe(0)
+    expect(chatterLine(full(), mood)).toBe('full')
   })
 })
