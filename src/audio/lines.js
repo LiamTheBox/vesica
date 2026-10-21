@@ -52,7 +52,7 @@ export const LINES = {
 
   // Emptying.
   voiding: ["Aaahhh... relief!", "Yes! Let it all out!", "Oh, that's so much better.", "Sweet, sweet relief.", "Ahh, heaven.", "Finally!", "Let it flow...", "Best. Feeling. Ever.", "Mmm, emptying...", "I could cry. Happy tears."],
-  deflated: ["Ahh. Empty. Thank you.", "Light as a feather.", "Empty and fabulous.", "That's better. So much better.", "Back to zero. Bliss.", "All clear down here.", "Fresh start. Let's keep it that way.", "Ahh, I can breathe again.", "Nothing left. Perfect.", "Ready for round two. Slowly, please."],
+  emptied: ["Ahh. Empty. Thank you.", "Light as a feather.", "Empty and fabulous.", "That's better. So much better.", "Back to zero. Bliss.", "All clear down here.", "Fresh start. Let's keep it that way.", "Ahh, I can breathe again.", "Nothing left. Perfect.", "Ready for round two. Slowly, please."],
 
   // The arcade.
   proud: ["Nailed it!", "Perfect timing!", "Ooh, smooth!", "That's my pelvic floor!", "Flawless!", "Textbook!"],
@@ -78,7 +78,7 @@ export const VOICE_STYLE = {
   critical: FRANTIC, involuntary: FRANTIC, leak: FRANTIC, slipping: FRANTIC, urgeIncoming: FRANTIC, sneezeIncoming: FRANTIC,
   shaken: EXCITED, squeezed: EXCITED, clench: EXCITED, cough: EXCITED, urge: EXCITED, saved: EXCITED, proud: EXCITED, levelUp: EXCITED,
   soothe: { pitch: 1.15, rate: 0.9 },
-  voiding: RELAXED, deflated: RELAXED, urgePassed: RELAXED, urgeFaded: RELAXED, leakOver: RELAXED,
+  voiding: RELAXED, emptied: RELAXED, urgePassed: RELAXED, urgeFaded: RELAXED, leakOver: RELAXED,
   exhausted: TIRED, aftermath: TIRED,
   pokeEmpty: PLAYFUL, squeezeEmpty: PLAYFUL, clenchIdle: PLAYFUL,
   pokeFull: EXCITED, slapped: EXCITED, slapFull: FRANTIC, drinkFull: FRANTIC, coughBraced: EXCITED,

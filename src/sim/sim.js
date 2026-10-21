@@ -190,11 +190,7 @@ export function agitate(sim, out, strength = 2.5, rng = Math.random) {
     amplitude: 0.5 * strength,
     decay: phys.rippleDecay,
   })
-  out.push({
-    type: 'agitation',
-    strength,
-    speakShaken: strength > 2.0 && sim.volume / sim.maxCapacity > 0.4,
-  })
+  out.push({ type: 'agitation', strength })
 }
 
 // `served`: handed out by the arcade rather than chosen by the player.
@@ -238,8 +234,6 @@ export function stopVoidAttempt(sim, out) {
       out.push({ type: 'challengeResult', challenge: 'precision', success: Math.abs(voided - 200) <= 10, voided })
       sim.activeChallenge = null
     }
-
-    if (sim.volume < 150) out.push({ type: 'voice', category: 'deflated' })
   }
 }
 
@@ -257,12 +251,10 @@ export function cough(sim, out, rng = Math.random) {
   sim.coughImpulseIntensity = 1.0
   out.push({ type: 'cough' })
   agitate(sim, out, 2.2, rng)
-  out.push({ type: 'voice', category: 'cough' })
 }
 
-// `silent` skips the "deflated" line, for challenge starts that refill the bladder at once.
 // A reset also ends an arcade run and goes back to the sandbox rules.
-export function resetOrgan(sim, out, rng = Math.random, { silent = false } = {}) {
+export function resetOrgan(sim, out, rng = Math.random) {
   sim.volume = 40
   sim.activeBeverages = []
   sim.isAttemptingVoid = false
@@ -293,7 +285,6 @@ export function resetOrgan(sim, out, rng = Math.random, { silent = false } = {})
   sim.urgeWarned = false
   out.push({ type: 'reset' })
   agitate(sim, out, 2.0, rng)
-  if (!silent) out.push({ type: 'voice', category: 'deflated' })
 }
 
 // Back to the sandbox's rules when a run (arcade or microgames) ends. Ended overfilled, it
@@ -308,7 +299,7 @@ export function restoreSandboxRules(sim) {
 }
 
 export function startCommuteChallenge(sim, out, rng = Math.random) {
-  resetOrgan(sim, out, rng, { silent: true })
+  resetOrgan(sim, out, rng)
   sim.volume = 580
   sim.totalLeakedVolume = 0
   sim.activeChallenge = 'commute'
@@ -319,7 +310,7 @@ export function startCommuteChallenge(sim, out, rng = Math.random) {
 }
 
 export function startPrecisionChallenge(sim, out, rng = Math.random) {
-  resetOrgan(sim, out, rng, { silent: true })
+  resetOrgan(sim, out, rng)
   sim.volume = 520
   sim.activeChallenge = 'precision'
   sim.precisionStartVolume = 520
@@ -584,15 +575,4 @@ export function stepSim(sim, dt, out, rng = Math.random) {
   if (sim.creakCooldown > 0) sim.creakCooldown -= dt
   sim.touchPressure *= Math.exp(-TOUCH_FADE * dt)
   if (sim.sootheCooldown > 0) sim.sootheCooldown = Math.max(0, sim.sootheCooldown - dt)
-}
-
-// Original voice evaluator: which ambient line the bladder would say right now.
-export function ambientVoiceCategory(sim) {
-  if (sim.isActivelyVoiding || sim.involuntaryVoiding || sim.isStressLeaking) return null
-  const fillRatio = fillRatioOf(sim)
-  if (fillRatio > 0.88 || sim.sphincterToneStrain > 0.75) return 'critical'
-  if (fillRatio > 0.72) return 'full'
-  if (fillRatio > 0.45) return 'distended'
-  if (fillRatio > 0.18) return 'nominal'
-  return null
 }

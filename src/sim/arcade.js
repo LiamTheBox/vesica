@@ -62,7 +62,7 @@ function applyLevel(sim, level) {
 }
 
 export function startArcadeRun(sim, out, rng = Math.random) {
-  resetOrgan(sim, out, rng, { silent: true })
+  resetOrgan(sim, out, rng)
   Object.assign(sim, ARCADE_RULES)
   sim.volume = START_ML
   sim.urgeWaveTimer = 8

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ambientVoiceCategory, cough, createSimState, FAILURE_PRESSURE, ingestBeverage, LEAK_FLOW, PEAK_FLOW, resetOrgan,
+  cough, createSimState, FAILURE_PRESSURE, ingestBeverage, LEAK_FLOW, PEAK_FLOW, resetOrgan,
   RESEAL_STRAIN, SANDBOX_RULES, soothe, startClench, startCommuteChallenge, startPrecisionChallenge, startVoidAttempt,
   stepSim, stopClench, stopVoidAttempt, voidFlow,
 } from './sim'
@@ -149,13 +149,12 @@ describe('voiding', () => {
     expect(sim.isAttemptingVoid).toBe(false)
   })
 
-  it('stops by itself at 10 ml and says a deflated line', () => {
+  it('stops by itself at 10 ml', () => {
     const sim = quietSim(300)
     startVoidAttempt(sim, [])
     const events = run(sim, 30, { until: (s) => !s.isAttemptingVoid })
     expect(sim.volume).toBeLessThanOrEqual(10)
     expect(types(events)).toContain('voidStop')
-    expect(events).toContainEqual({ type: 'voice', category: 'deflated' })
   })
 
   it('peaks at 20 ml/s and slows over the last ~150 ml (requested)', () => {
@@ -397,7 +396,7 @@ describe('soothe', () => {
 })
 
 describe('reset', () => {
-  it('empties to 40 ml, clears everything and says a deflated line', () => {
+  it('empties to 40 ml and clears everything', () => {
     const sim = quietSim(700)
     Object.assign(sim, {
       sphincterToneStrain: 0.8, totalLeakedVolume: 50, isUrgeWaveActive: true, activeChallenge: 'arcade',
@@ -409,18 +408,16 @@ describe('reset', () => {
       volume: 40, sphincterToneStrain: 0, totalLeakedVolume: 0, isUrgeWaveActive: false, activeChallenge: null,
       arcade: null, urgeWarned: false, ...SANDBOX_RULES,
     })
-    expect(types(out)).toEqual(['reset', 'agitation', 'voice'])
-    expect(out[2].category).toBe('deflated')
+    expect(types(out)).toEqual(['reset', 'agitation'])
   })
 })
 
 describe('challenge start', () => {
   it.each([['commute', startCommuteChallenge], ['precision', startPrecisionChallenge]])(
-    '%s resets without the "deflated" line (the bladder is refilled at once)',
+    '%s resets the organ first',
     (_, start) => {
       const out = []
       start(createSimState(), out, fixed(0.5))
-      expect(out.filter((e) => e.type === 'voice')).toEqual([])
       expect(types(out)).toContain('reset')
     },
   )
@@ -471,26 +468,5 @@ describe('precision challenge', () => {
     startPrecisionChallenge(sim, [], fixed(0.5))
     sim.baseDrip = 0
     expect(voidUntil(sim, 100)).toMatchObject({ challenge: 'precision', success: false })
-  })
-})
-
-describe('ambient voice', () => {
-  it.each([
-    [100, 0, null],
-    [200, 0, 'nominal'],
-    [400, 0, 'distended'],
-    [600, 0, 'full'],
-    [700, 0, 'critical'],
-    [200, 0.8, 'critical'],
-  ])('volume %s ml, strain %s → %s', (volume, strain, category) => {
-    const sim = quietSim(volume)
-    sim.sphincterToneStrain = strain
-    expect(ambientVoiceCategory(sim)).toBe(category)
-  })
-
-  it('stays quiet while voiding or leaking', () => {
-    const sim = quietSim(700)
-    sim.isStressLeaking = true
-    expect(ambientVoiceCategory(sim)).toBe(null)
   })
 })

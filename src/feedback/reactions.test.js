@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { CHATTER, LINES } from '../audio/lines'
 import { DRINKS } from '../sim/drinks'
-import { createSimState } from '../sim/sim'
+import { createSimState, startCommuteChallenge, startPrecisionChallenge } from '../sim/sim'
+import { startArcadeRun } from '../sim/arcade'
+import { startMicroRun } from '../sim/micro/runner'
 import { createMood, feel, SLEEPY_AFTER, stepMood } from './mood'
-import { chatterLine, reactionLine } from './reactions'
+import { chatterLine, fullnessLine, reactionLine } from './reactions'
 
 // Every event the simulation and the arcade emit that the bladder might talk about.
 const EVENTS = [
@@ -13,10 +15,10 @@ const EVENTS = [
   { type: 'urgeEnd', suppressed: true }, { type: 'urgeEnd', suppressed: false },
   { type: 'leakWarning' }, { type: 'leakSaved' }, { type: 'leakStart' }, { type: 'leakEnd' },
   { type: 'failureStart' }, { type: 'failureEnd' }, { type: 'voidStart' },
-  { type: 'agitation', speakShaken: true }, { type: 'soothe' },
+  { type: 'agitation', strength: 2.5 }, { type: 'soothe' },
   { type: 'poke', touch: true }, { type: 'slap' }, { type: 'squeezeStart' },
   { type: 'arcadePoints', reason: 'perfect' }, { type: 'arcadePoints', reason: 'braced' }, { type: 'arcadeLevel', level: 2 },
-  { type: 'voice', category: 'deflated' }, { type: 'voice', category: 'cough' },
+  { type: 'voidStop' }, { type: 'reset' }, { type: 'cough' },
 ]
 
 const at = (volume, state = {}) => Object.assign(createSimState(), { volume }, state)
@@ -65,8 +67,8 @@ describe('what it says depends on how full it is and how it feels (C)', () => {
     expect(said({ type: 'clenchStart' }, at(100))).toBe('clenchIdle')
     expect(said({ type: 'clenchStart' }, at(100, { isUrgeWaveActive: true }))).toBe('clench')
     expect(said({ type: 'clenchStart' }, at(400))).toBe('clench')
-    expect(said({ type: 'voice', category: 'cough' }, at(400, { isClenching: true }))).toBe('coughBraced')
-    expect(said({ type: 'voice', category: 'cough' }, at(400))).toBe('cough')
+    expect(said({ type: 'cough' }, at(400, { isClenching: true }))).toBe('coughBraced')
+    expect(said({ type: 'cough' }, at(400))).toBe('cough')
   })
 
   it('murmurs when sleepy, and keeps its fill chatter to itself while embarrassed', () => {
@@ -95,8 +97,8 @@ describe('what it says depends on how full it is and how it feels (C)', () => {
     const voiding = at(600, { isActivelyVoiding: true })
     const others = [
       { type: 'poke', touch: true }, { type: 'slap' }, { type: 'squeezeStart' }, { type: 'ingest', beverage: 'water' },
-      { type: 'urgeEnd', suppressed: false }, { type: 'clenchStart' }, { type: 'agitation', speakShaken: true },
-      { type: 'voice', category: 'cough' }, { type: 'soothe' }, { type: 'arcadePoints', reason: 'bank' },
+      { type: 'urgeEnd', suppressed: false }, { type: 'clenchStart' }, { type: 'agitation', strength: 2.5 },
+      { type: 'cough' }, { type: 'soothe' }, { type: 'arcadePoints', reason: 'bank' },
     ]
     for (const event of others) expect(said(event, voiding), event.type).toBe(null)
     expect(said({ type: 'voidStart' }, voiding)).toBe('voiding')
@@ -106,9 +108,47 @@ describe('what it says depends on how full it is and how it feels (C)', () => {
     expect(said({ type: 'poke', touch: true }, failing)).toBe(null)
 
     // Done: the line about it, then back to normal.
-    expect(said({ type: 'voice', category: 'deflated' }, at(10))).toBe('deflated')
+    expect(said({ type: 'voidStop' }, at(10))).toBe('emptied')
     expect(said({ type: 'failureEnd' }, at(70))).toBe('aftermath')
     expect(said({ type: 'poke', touch: true }, at(10))).toBe('pokeEmpty')
   })
 })
 
+describe('lines the simulation used to choose (C2)', () => {
+  it('says it is emptied after a void under 150 ml or a reset', () => {
+    expect(said({ type: 'voidStop' }, at(149))).toBe('emptied')
+    expect(said({ type: 'voidStop' }, at(300))).toBe(null)
+    expect(said({ type: 'reset' }, at(40))).toBe('emptied')
+  })
+
+  it.each([
+    ['commute', startCommuteChallenge], ['precision', startPrecisionChallenge], ['arcade', startArcadeRun], ['microgames', startMicroRun],
+  ])('says nothing as a %s start resets the organ (it is refilled at once)', (_, start) => {
+    const sim = createSimState()
+    const out = []
+    start(sim, out, () => 0.5)
+    expect(out.map((e) => said(e, sim)).filter(Boolean)).toEqual([])
+  })
+
+  it('is shaken by a good shake once it is getting full', () => {
+    expect(said({ type: 'agitation', strength: 2.5 }, at(400))).toBe('shaken')
+    expect(said({ type: 'agitation', strength: 2.0 }, at(400))).toBe(null)
+    expect(said({ type: 'agitation', strength: 2.5 }, at(250))).toBe(null)
+  })
+
+  it.each([
+    [100, 0, null],
+    [200, 0, 'nominal'],
+    [400, 0, 'distended'],
+    [600, 0, 'full'],
+    [700, 0, 'critical'],
+    [200, 0.8, 'critical'],
+  ])('chats about its fill: %s ml, strain %s → %s', (volume, strain, category) => {
+    expect(fullnessLine(at(volume, { sphincterToneStrain: strain }))).toBe(category)
+  })
+
+  it('keeps its fill to itself while voiding or leaking', () => {
+    expect(fullnessLine(at(700, { isStressLeaking: true }))).toBe(null)
+    expect(fullnessLine(at(700, { isActivelyVoiding: true }))).toBe(null)
+  })
+})

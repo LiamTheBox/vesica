@@ -29,7 +29,7 @@ export const speedAt = (level) => Math.min(MAX_SPEED, 1 + SPEED_STEP * (level - 
 
 // `games`: which microgames to deal from (tests pass their own).
 export function startMicroRun(sim, out, rng = Math.random, { games = GAMES } = {}) {
-  resetOrgan(sim, out, rng, { silent: true })
+  resetOrgan(sim, out, rng)
   Object.assign(sim, MICRO_RULES)
   sim.volume = START_ML
   sim.urgeWaveTimer = Infinity

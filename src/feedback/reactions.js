@@ -1,15 +1,17 @@
 import { drinkKind } from '../sim/drinks'
-import { ambientVoiceCategory, fillRatioOf } from '../sim/sim'
+import { fillRatioOf } from '../sim/sim'
 import { ANNOYED, HIGH_FILL, LOW_FILL, moodOf } from './mood'
 
 // Which kind of line the bladder says when something happens, if any, given how full it is
-// and its mood (the lines are in src/audio/lines.js; AudioManager.speak decides whether
-// it's their turn).
+// and its mood (the lines are in src/audio/lines.js; voice.speak decides whether it's their
+// turn). The simulation only reports what happened; every line is chosen here.
 
 const DRINK_LINES = { water: 'drinkWater', caffeine: 'drinkCaffeine', alcohol: 'drinkAlcohol', big: 'drinkBig', other: 'drinkOther' }
 const POINTS_LINES = { perfect: 'proud', braced: 'proud' }
 // Full enough that another drink is a problem.
 const TOO_FULL_TO_DRINK = 0.72
+// Emptied enough, after a void, to say so.
+const EMPTIED_ML = 150
 
 // The same touch reads differently empty (it tickles) and full (it hurts), and a run of
 // them wears thin.
@@ -39,7 +41,12 @@ const LINE_FOR = {
   failureStart: () => 'involuntary',
   failureEnd: () => 'aftermath',
   voidStart: () => 'voiding',
-  agitation: (e) => (e.speakShaken ? 'shaken' : null),
+  voidStop: (e, sim) => (sim.volume < EMPTIED_ML ? 'emptied' : null),
+  // Not when a challenge or a run starts: it's refilled at once.
+  reset: (e, sim) => (sim.activeChallenge ? null : 'emptied'),
+  cough: (e, sim) => (sim.isClenching ? 'coughBraced' : 'cough'),
+  // A good shake, once it's getting full.
+  agitation: (e, sim) => (e.strength > 2.0 && sim.volume / sim.maxCapacity > 0.4 ? 'shaken' : null),
   soothe: () => 'soothe',
   poke: (e, sim, mood) => touchLine(sim, mood, 'pokeEmpty', 'poked', 'pokeFull'),
   slap: (e, sim, mood) => touchLine(sim, mood, 'slapped', 'slapped', 'slapFull'),
@@ -48,7 +55,6 @@ const LINE_FOR = {
   arcadeLevel: () => 'levelUp',
   microLevel: () => 'levelUp',
   microBoss: (e) => (e.won ? 'proud' : null),
-  voice: (e, sim) => (e.category === 'cough' && sim.isClenching ? 'coughBraced' : e.category),
 }
 
 // While it empties, on purpose or not, it has one thing on its mind: it says the line that
@@ -63,6 +69,17 @@ export function reactionLine(event, sim, mood) {
   return voiding && !VOIDING_LINES.has(line) ? null : line
 }
 
+// How full it is, as the original said it now and then; nothing while it empties or leaks.
+export function fullnessLine(sim) {
+  if (sim.isActivelyVoiding || sim.involuntaryVoiding || sim.isStressLeaking) return null
+  const fillRatio = fillRatioOf(sim)
+  if (fillRatio > 0.88 || sim.sphincterToneStrain > 0.75) return 'critical'
+  if (fillRatio > 0.72) return 'full'
+  if (fillRatio > 0.45) return 'distended'
+  if (fillRatio > 0.18) return 'nominal'
+  return null
+}
+
 // What it says on its own, now and then: about how full it is, or a sleepy murmur. Not in
 // the middle of a feeling (an embarrassment, the relief, the pride) or a strop.
 const QUIET_MOODS = new Set(['embarrassed', 'relieved', 'proud', 'annoyed'])
@@ -70,5 +87,5 @@ export function chatterLine(sim, mood) {
   if (sim.micro) return null // microgames speak for themselves
   const now = moodOf(mood, sim)
   if (now === 'sleepy') return 'sleepy'
-  return QUIET_MOODS.has(now) ? null : ambientVoiceCategory(sim)
+  return QUIET_MOODS.has(now) ? null : fullnessLine(sim)
 }

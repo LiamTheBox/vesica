@@ -46,7 +46,6 @@ describe('starting a run', () => {
     expect(sim).toMatchObject({ volume: 300, sphincterToneStrain: 0, activeChallenge: 'arcade', ...ARCADE_RULES })
     expect(sim.arcade).toMatchObject({ score: 0, level: 1, combo: 0 })
     expect(out).toContainEqual({ type: 'challengeStart', challenge: 'arcade' })
-    expect(out.filter((e) => e.type === 'voice')).toEqual([])
   })
 
   it('ends without a result on a reset or when the player quits', () => {
