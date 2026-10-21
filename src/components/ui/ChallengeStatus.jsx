@@ -49,17 +49,21 @@ function ArcadeBanner() {
   )
 }
 
-// A microgames run: its speed, how full the bladder is, the lives left and the games
-// cleared. It takes the telemetry bar's place, so the games get the whole stage.
+// A microgames run: its speed, how full the bladder is, the sphincter's strain (each lost
+// game adds a quarter), the lives left and the games cleared. It takes the telemetry bar's
+// place, so the games get the whole stage.
 export function MicroBanner() {
   const lives = useHud((h) => h.microLives)
   const score = useHud((h) => h.microScore)
   const level = useHud((h) => h.microLevel)
   const volume = useHud((h) => h.volume)
+  const strain = useHud((h) => h.tonePct)
+  const strainTone = strain >= 75 ? 'font-bold text-rose-400' : strain >= 40 ? 'text-amber-300' : 'text-slate-300'
   return (
     <div data-testid="challenge-banner" className="glass-hud w-full px-3 py-1.5 rounded-2xl pointer-events-auto font-mono text-[11px] flex justify-between items-center gap-2">
       <span className="font-bold text-fuchsia-300 whitespace-nowrap">⚡ SPEED {level}</span>
       <span className="text-amber-300 whitespace-nowrap">{volume} ml</span>
+      <span data-testid="micro-strain" className={`whitespace-nowrap ${strainTone}`}>STRAIN {strain}%</span>
       <span role="img" aria-label={`${lives} of ${MAX_LIVES} lives`} className="text-sm tracking-widest whitespace-nowrap">
         <span className="text-rose-400">{'♥'.repeat(lives)}</span>
         <span className="text-slate-600">{'♥'.repeat(MAX_LIVES - lives)}</span>
