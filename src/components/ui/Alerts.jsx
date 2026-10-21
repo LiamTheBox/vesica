@@ -76,17 +76,17 @@ export function StageAlerts() {
       )}
       {isUrgeWaveActive && (
         <div className={`${BANNER} bg-amber-500/90 text-slate-950 animate-pulse flex items-center gap-2`}>
-          <span>⚡</span><span>DETRUSOR CONTRACTION WAVE INCOMING!</span>
+          <span>⚡</span><span>URGE WAVE! CLENCH TO CALM IT</span>
         </div>
       )}
       {isStressLeaking && (
         <div className={`${BANNER} bg-rose-600/95 text-white shadow-rose-600/50 animate-bounce`}>
-          💦 STRESS LEAK OCCURRED! PRESSURE EQUALIZING...
+          💦 LEAKING! CLENCH TO STOP IT
         </div>
       )}
       {involuntaryVoiding && (
         <div className={`${BANNER} bg-red-600/95 text-white tracking-widest shadow-red-600/60 animate-bounce`}>
-          ⚠️ SPHINCTER FAILURE: TOTAL RETENTION COLLAPSE!
+          ⚠️ IT GAVE WAY: EMPTYING!
         </div>
       )}
     </>

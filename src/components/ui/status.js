@@ -1,16 +1,17 @@
 // HUD status derived from the simulation snapshot, ported from the original's
 // updateUI(): the sphincter readout, the header badge, pressure colour and the red
-// screen-edge vignette.
+// screen-edge vignette. The words are plain ones (the original read like an instrument);
+// the thresholds and colours are the original's.
 
 const PULSE = ' animate-pulse'
 
 export function sphincterReadout(hud) {
-  if (hud.involuntaryVoiding) return { text: 'COLLAPSE (100%)', tone: 'text-red-500' + PULSE }
-  if (hud.isStressLeaking) return { text: `LEAKING (${hud.tonePct}% Strain)`, tone: 'text-rose-500' + PULSE }
+  if (hud.involuntaryVoiding) return { text: 'GAVE WAY (100%)', tone: 'text-red-500' + PULSE }
+  if (hud.isStressLeaking) return { text: `LEAKING (${hud.tonePct}%)`, tone: 'text-rose-500' + PULSE }
   if (hud.leakGrace) return { text: 'SLIPPING (100%)', tone: 'text-red-500' + PULSE }
   // Shows the strain easing off while the Kegel is held.
   if (hud.isClenching) return { text: `CLENCHED (${hud.tonePct}%)`, tone: 'text-cyan-400' }
-  if (hud.isActivelyVoiding) return { text: `DILATING (${hud.dilationPct}%)`, tone: 'text-amber-400' }
+  if (hud.isActivelyVoiding) return { text: `OPEN (${hud.dilationPct}%)`, tone: 'text-amber-400' }
   // Leaks start at 100 %, so the readout turns red on the way there.
   if (hud.tonePct >= 80) return { text: `STRAINED (${hud.tonePct}%)`, tone: 'text-red-500' + PULSE }
   if (hud.tonePct > 40) return { text: `STRAINED (${hud.tonePct}%)`, tone: 'text-amber-400' + PULSE }
@@ -28,23 +29,23 @@ const BADGE = {
 // re-renders) when the state itself changes.
 const STATUSES = {
   failure: {
-    badge: 'INVOLUNTARY VOID', badgeTone: BADGE.red + PULSE, sub: 'Total sphincter failure!',
+    badge: 'GIVING WAY', badgeTone: BADGE.red + PULSE, sub: "It couldn't hold it in!",
     pressureTone: 'text-red-500' + PULSE, vignette: 0.95, vignettePulse: true, iconScale: 1.2,
   },
   leak: {
-    badge: 'STRESS LEAK', badgeTone: BADGE.rose + PULSE, sub: 'Equilibrating peak overpressure...',
+    badge: 'LEAKING', badgeTone: BADGE.rose + PULSE, sub: 'A little got out',
     pressureTone: 'text-rose-400', vignette: 0.7, vignettePulse: false, iconScale: 1.1,
   },
   overpressure: {
-    badge: 'OVERPRESSURE', badgeTone: BADGE.red + PULSE, sub: 'High retention wall stress',
+    badge: 'BURSTING', badgeTone: BADGE.red + PULSE, sub: 'Very full: hold on',
     pressureTone: 'text-red-500', vignette: 0.35, vignettePulse: false, iconScale: 1,
   },
   distended: {
-    badge: 'DISTENDED', badgeTone: BADGE.amber, sub: 'Active elastic stretch',
+    badge: 'FILLING UP', badgeTone: BADGE.amber, sub: 'Stretching to hold more',
     pressureTone: 'text-amber-400', vignette: 0, vignettePulse: false, iconScale: 1,
   },
   nominal: {
-    badge: 'NOMINAL', badgeTone: BADGE.emerald, sub: 'App Runtime • Hydro-Acoustics',
+    badge: 'RELAXED', badgeTone: BADGE.emerald, sub: 'Comfortable for now',
     pressureTone: 'text-emerald-400', vignette: 0, vignettePulse: false, iconScale: 1,
   },
 }

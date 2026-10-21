@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useHud, useUiStore } from '../../../store/useUiStore'
 import { sim } from '../../../sim/engine'
+import { WALL_FEELS } from '../../../settings/settings'
 import Sheet from '../Sheet'
 
 export default function TelemetryTab() {
@@ -10,6 +11,7 @@ export default function TelemetryTab() {
 
   const maxPressure = useHud((h) => h.maxPressure)
   const totalLeaked = useHud((h) => h.totalLeaked)
+  const wallFeel = useUiStore((s) => WALL_FEELS.find((feel) => feel.key === s.settings.wallFeel) ?? WALL_FEELS[0])
 
   // Custom hook or direct ref to avoid re-rendering entire tab on every frame
   useEffect(() => {
@@ -82,22 +84,22 @@ export default function TelemetryTab() {
   if (currentTab !== 'telemetry') return null
 
   return (
-    <Sheet title="Live Cystometry Strip Chart" subtitle="Intravesical Pressure (cmH₂O) & Volume (ml) Real-time Telemetry" titleTone="text-amber-400" onClose={() => setTab('sim')}>
+    <Sheet title="Pressure Chart" subtitle="Pressure (cmH₂O) and volume (ml), live" titleTone="text-amber-400" onClose={() => setTab('sim')}>
       <div className="relative w-full h-56 bg-slate-950/90 rounded-2xl border border-slate-800 p-2 overflow-hidden flex flex-col justify-between">
         <canvas ref={canvasRef} className="w-full h-full block"></canvas>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center font-mono">
         <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-          <div className="text-[9px] text-slate-400 uppercase">Compliance</div>
-          <div className="text-xs font-bold text-cyan-400">High (Elastic)</div>
+          <div className="text-[9px] text-slate-400 uppercase">Wall Feel</div>
+          <div className="text-xs font-bold text-cyan-400">{wallFeel.label}</div>
         </div>
         <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
           <div className="text-[9px] text-slate-400 uppercase">Total Leaked</div>
           <div className="text-xs font-bold text-rose-400">{totalLeaked} ml</div>
         </div>
         <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-          <div className="text-[9px] text-slate-400 uppercase">Max Recorded</div>
+          <div className="text-[9px] text-slate-400 uppercase">Peak Pressure</div>
           <div className="text-xs font-bold text-amber-400">{maxPressure.toFixed(1)} cmH₂O</div>
         </div>
       </div>

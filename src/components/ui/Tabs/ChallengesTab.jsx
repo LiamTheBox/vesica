@@ -36,7 +36,7 @@ export default function ChallengesTab() {
   const inMicro = activeChallenge === 'micro'
 
   return (
-    <Sheet title="Continence Challenges" subtitle="Arcade is the default mode; the sandbox and its challenges are below" titleTone="text-cyan-400" onClose={() => setTab('sim')}>
+    <Sheet title="Challenges" subtitle="Arcade is the default mode; the sandbox and its challenges are below" titleTone="text-cyan-400" onClose={() => setTab('sim')}>
       <div className="p-3.5 bg-slate-900/70 border border-fuchsia-800/60 rounded-2xl flex flex-col gap-2">
         <div className="flex justify-between items-center gap-2">
           <div className="font-extrabold text-xs text-slate-200">🕹️ Arcade (Endless Hold)</div>

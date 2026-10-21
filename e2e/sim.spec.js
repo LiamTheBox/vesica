@@ -63,11 +63,11 @@ test.describe('same scenario in the original and the port', () => {
     await pause(page)
     await vesica(page, () => window.__vesica.setState({ volume: 400, urgeWaveTimer: 0 }))
     await step(page, 1)
-    await expect(page.getByText('DETRUSOR CONTRACTION WAVE INCOMING!')).toBeVisible()
+    await expect(page.getByText('URGE WAVE! CLENCH TO CALM IT')).toBeVisible()
     await step(page, 30)
     expect((await portState(page)).detrusorSpasmIntensity).toBeCloseTo(1, 1)
     await step(page, 3 * 60 + 5)
-    await expect(page.getByText('DETRUSOR CONTRACTION WAVE INCOMING!')).toBeHidden()
+    await expect(page.getByText('URGE WAVE! CLENCH TO CALM IT')).toBeHidden()
   })
 })
 
@@ -118,10 +118,10 @@ test.describe('controls drive the simulation', () => {
     await pause(page)
     await vesica(page, () => window.__vesica.setState({ volume: 400 }))
     // The label changes while held, so find the button by all three of its labels.
-    const button = page.getByRole('button', { name: /EMPTY \(HOLD\)|RELAXING VALVE|VOIDING/ })
+    const button = page.getByRole('button', { name: /EMPTY \(HOLD\)|RELAXING|VOIDING/ })
     await hold(page, button)
     await step(page, 57) // 0.95 s
-    await expect(button).toContainText('RELAXING VALVE…')
+    await expect(button).toContainText('RELAXING…')
     expect((await portState(page)).isActivelyVoiding).toBe(false)
     await step(page, 6) // 1.05 s
     await expect(button).toContainText('VOIDING…')

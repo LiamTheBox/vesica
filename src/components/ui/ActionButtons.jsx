@@ -61,10 +61,10 @@ export default function ActionButtons() {
   const setTab = useUiStore((s) => s.setTab)
 
   const clenchLabel = isClenching ? 'CLENCHING!' : clenchExhausted ? 'CLENCH EXHAUSTED!' : 'CLENCH (HOLD)'
-  const voidLabel = isActivelyVoiding ? 'VOIDING…' : isAttemptingVoid ? 'RELAXING VALVE…' : 'EMPTY (HOLD)'
+  const voidLabel = isActivelyVoiding ? 'VOIDING…' : isAttemptingVoid ? 'RELAXING…' : 'EMPTY (HOLD)'
   const voidSub = isActivelyVoiding
-    ? 'Draining at optimal flow'
-    : isAttemptingVoid ? `Relaxing... ${voidSecondsLeft.toFixed(1)}s` : 'Latency: 1.0s to initiate'
+    ? 'Letting it all out'
+    : isAttemptingVoid ? `Starting in ${voidSecondsLeft.toFixed(1)}s` : 'Hold 1 s to start'
 
   return (
     <div className="w-full flex flex-col gap-2 max-w-xl mx-auto pointer-events-auto">
@@ -96,7 +96,7 @@ export default function ActionButtons() {
             <span className="text-sm">🛡️</span>
             <span>{clenchLabel}</span>
           </div>
-          <span className="hold-hint text-[9px] text-cyan-100 font-mono font-normal">Reinforce Sphincter</span>
+          <span className="hold-hint text-[9px] text-cyan-100 font-mono font-normal">Hold it in</span>
         </button>
 
         <div className="flex-1 basis-0 min-w-0 relative rounded-2xl overflow-hidden">
@@ -121,7 +121,7 @@ export default function ActionButtons() {
           disabled={sootheSeconds > 0}
           aria-label="Soothe"
           className="min-w-12 px-2.5 py-3 rounded-2xl glass-hud hover:border-emerald-400/80 text-emerald-300 font-bold text-xs uppercase active:scale-95 transition flex flex-col items-center justify-center flex-shrink-0 disabled:opacity-45 disabled:active:scale-100"
-          title="Soothe Detrusor"
+          title="Soothe: calms the bladder down"
         >
           <span className="text-sm">🧘</span>
           <span className="text-[9px] font-mono mt-0.5">{sootheSeconds > 0 ? `${sootheSeconds}s` : 'Soothe'}</span>

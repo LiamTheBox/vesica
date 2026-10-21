@@ -28,7 +28,7 @@ export default function ActionRail() {
           onClick={a.onClick}
           aria-label={a.label}
           aria-pressed={a.pressed}
-          title={a.label === 'Cutaway' ? 'Toggle Sagittal Internal Cutaway' : a.label}
+          title={a.label === 'Cutaway' ? 'Cut away the near half to see inside' : a.label}
           className={`${RAIL_BUTTON} ${a.pressed ? 'bg-sky-500/25 text-sky-300 ring-1 ring-sky-400' : 'text-slate-300 hover:bg-slate-800/70'}`}
         >
           <span className="text-base leading-none">{a.icon}</span>

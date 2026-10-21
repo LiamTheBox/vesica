@@ -50,7 +50,7 @@ test('precision: hold to void, result card, retry', async ({ page }) => {
     window.__vesica.pause()
     window.__vesica.setState({ baseDrip: 0 })
   })
-  const empty = page.getByRole('button', { name: /EMPTY \(HOLD\)|RELAXING VALVE|VOIDING/ })
+  const empty = page.getByRole('button', { name: /EMPTY \(HOLD\)|RELAXING|VOIDING/ })
   const box = await empty.boundingBox()
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.down()

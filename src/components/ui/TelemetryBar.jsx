@@ -53,9 +53,9 @@ export default function TelemetryBar() {
 
       <div className="grid grid-cols-[auto_auto_minmax(0,1fr)] gap-3">
         <Reading label="Pressure" testId="pressure" className={pressureTone}>{pressure.toFixed(1)} cmH₂O</Reading>
-        <Reading label="Jet Velocity" className="text-amber-300">{flowRate.toFixed(1)} ml/s</Reading>
+        <Reading label="Flow" className="text-amber-300">{flowRate.toFixed(1)} ml/s</Reading>
         <div className="text-right min-w-0">
-          <Reading label="Sphincter Tone" testId="sphincter-readout" className={sphincterTone}>{sphincterText}</Reading>
+          <Reading label="Sphincter" testId="sphincter-readout" className={sphincterTone}>{sphincterText}</Reading>
         </div>
       </div>
     </div>

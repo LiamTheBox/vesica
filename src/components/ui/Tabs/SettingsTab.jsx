@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useUiStore } from '../../../store/useUiStore'
-import { setGraphics, updateSettings } from '../../../settings/settings'
+import { setGraphics, updateSettings, WALL_FEELS } from '../../../settings/settings'
 import { voice } from '../../../audio/voice'
 import { QUALITY_TIERS, TIER_ORDER } from '../../../settings/quality'
 import Sheet from '../Sheet'
@@ -62,14 +62,6 @@ function VoicePicker() {
 
 const GRAPHICS_OPTIONS = [{ key: 'auto', label: 'Auto' }, ...TIER_ORDER.map((key) => ({ key, label: QUALITY_TIERS[key].label }))]
 
-// The original's four soft-body presets. How full it is still changes how it feels.
-const WALL_FEELS = [
-  { key: 'jello', label: 'Jelly', hint: 'Soft and wobbly, as in the original' },
-  { key: 'balloon', label: 'Balloon', hint: 'Springier: dents bounce back fast' },
-  { key: 'anatomical', label: 'Firm', hint: 'Dents less and settles quickly' },
-  { key: 'highTension', label: 'Tense', hint: 'Stiff, with quick, short quivers' },
-]
-
 function WallFeelPicker() {
   const wallFeel = useUiStore((s) => s.settings.wallFeel)
   const chosen = WALL_FEELS.find((feel) => feel.key === wallFeel) ?? WALL_FEELS[0]
@@ -130,19 +122,19 @@ export default function SettingsTab() {
   if (currentTab !== 'settings') return null
 
   return (
-    <Sheet title="App Preferences" subtitle="Acoustic, Haptic & Simulation Configuration" titleTone="text-slate-200" width="max-w-lg" onClose={() => setTab('sim')}>
+    <Sheet title="Settings" subtitle="Sound, voice, touch and graphics" titleTone="text-slate-200" width="max-w-lg" onClose={() => setTab('sim')}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-300">Master Sound</span>
+        <span className="text-xs font-bold text-slate-300">All Sound</span>
         <button
           onClick={() => updateSettings({ masterMuted: !settings.masterMuted })}
           className="text-xs font-bold px-3 min-h-11 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700"
         >
-          {settings.masterMuted ? 'Muted (Unmute All)' : 'Enabled (Mute All)'}
+          {settings.masterMuted ? 'Muted (unmute)' : 'On (mute all)'}
         </button>
       </div>
 
       <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
-        <Toggle label="🗣️ Spoken Voice Engine" checked={settings.voiceEnabled} onChange={(v) => updateSettings({ voiceEnabled: v })} />
+        <Toggle label="🗣️ Voice" checked={settings.voiceEnabled} onChange={(v) => updateSettings({ voiceEnabled: v })} />
         <VoicePicker />
         <Slider label="Voice volume" value={settings.voiceVolume} display={percent(settings.voiceVolume)} min={0} max={1} step={0.05} onChange={(v) => updateSettings({ voiceVolume: v })} />
         <Slider
@@ -158,13 +150,13 @@ export default function SettingsTab() {
       </div>
 
       <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
-        <Toggle label="🔊 Procedural Hydro-Acoustics" checked={settings.sfxEnabled} onChange={(v) => updateSettings({ sfxEnabled: v })} />
+        <Toggle label="🔊 Sound Effects" checked={settings.sfxEnabled} onChange={(v) => updateSettings({ sfxEnabled: v })} />
         <Slider label="Effects volume" value={settings.sfxVolume} display={percent(settings.sfxVolume)} min={0} max={1} step={0.05} onChange={(v) => updateSettings({ sfxVolume: v })} />
       </div>
 
       <div className="p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
         <Toggle
-          label="📳 Mobile Haptic Vibration"
+          label="📳 Vibration"
           hint="Tactile pulse on spikes, clenches and voiding"
           checked={settings.haptics}
           onChange={(v) => updateSettings({ haptics: v })}
