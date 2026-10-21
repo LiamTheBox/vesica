@@ -44,4 +44,4 @@ export const PHYSICS_CONFIGS = {
     squishForce: 0.9,
     waveSpeed: 12.0
   }
-};
+}
