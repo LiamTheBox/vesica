@@ -8,6 +8,7 @@ export default function BottomNav() {
     { id: 'sim', icon: '🫁', label: 'Sim' },
     { id: 'telemetry', icon: '📈', label: 'Telemetry' },
     { id: 'challenges', icon: '🏆', label: 'Challenges' },
+    { id: 'stories', icon: '📖', label: 'Stories' },
     { id: 'settings', icon: '⚙️', label: 'Settings' }
   ]
 

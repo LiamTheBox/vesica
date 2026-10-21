@@ -65,14 +65,16 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
   the gauge leap. The sandbox still stops at 125 %.
 - **Live:** https://liamthebox.github.io/vesica/ (deployed by GitHub Actions on every push to `main`). Check that
   Settings → Pages → Source is "GitHub Actions", or the old branch publish can overwrite the app.
-- **Tests:** `npm run check` green (202 unit tests). The browser suite is not a requirement for now (the user's
+- **Tests:** `npm run check` green (205 unit tests). The browser suite is not a requirement for now (the user's
   choice: it loads the CPU): the specs were updated for the 2026-10-21 rules and `e2e/arcade.spec.js` was added,
   but none of it has been run (last full run, before these changes: 85 passed). One flaky pinch-zoom test is open
   (KNOWN_ISSUES).
 - **Microgames (M8, requested 2026-10-21):** a WarioWare-style mode of eleven abstract one-pointer games about
   controlling the sphincter, each a spike the bladder survives or leaks under (see M8). Every mode plays with one
   pointer, touch or mouse; Space presses on a keyboard.
-- **Next:** M9 (stories); phone checks (on the live site) still open.
+- **Stories (M9, requested 2026-10-21):** six short chapters to read if you want, in their own sheet (📖), never
+  narrated in play (see M9).
+- **Next:** phone checks (on the live site) for M0–M9.
 
 ---
 
@@ -463,17 +465,20 @@ timing, lives, speed-up and boss; its effects on the sim (strain, leak, fill, fa
 
 ---
 
-## M9 — Stories (optional reading) ◐
+## M9 — Stories (optional reading) ◐ (automated gate passed; phone check pending)
 
 Requested (2026-10-21): the story stays outside the games, for the player to read if they want. Nothing in play
 narrates it.
 
-- ☐ A Stories sheet (📖 in the bottom bar): the chapters, and a reader that remembers the chapter and the place
-  in it, with a text size control.
-- ☐ Chapters are Markdown files in `src/stories/`, bundled with the app so they read offline; editing or adding a
-  file edits or adds a chapter.
-- ☐ Six chapters: morning coffee → the commute → the long meeting → date night → the concert queue → the road
-  trip. Safe for work: adult characters, no nudity or sexual content.
+- ☑ A Stories sheet (📖 in the bottom bar, `StoriesTab.jsx`): the chapters, and a reader that remembers the
+  chapter and the place in it, with a text size control. Every sheet's header (with ✕) now stays pinned while it
+  scrolls, so it can be closed from anywhere in a chapter.
+- ☑ Chapters are Markdown files in `src/stories/`, bundled with the app so they read offline; editing or adding a
+  file edits or adds a chapter (`stories.js` reads a small subset: a `#` title, paragraphs, `---`, `##`,
+  *italic* and **bold**).
+- ☑ Six chapters (about 3,000 words in all), following Mara, a 28-year-old junior architect, through one week:
+  morning coffee → the commute → the long meeting → date night → the concert queue → the road trip. Safe for
+  work: adult characters, no nudity or sexual content.
 - Dropped (2026-10-21): a chapter engine scripting play, and the bladder narrating chapters.
 
 **Automated (unit):** every chapter parses into a title and paragraphs, in order; the reading place is saved and

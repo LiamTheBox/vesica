@@ -16,6 +16,7 @@ import MicroStage from '../micro/MicroStage'
 const TelemetryTab = lazy(() => import('./Tabs/TelemetryTab'))
 const ChallengesTab = lazy(() => import('./Tabs/ChallengesTab'))
 const SettingsTab = lazy(() => import('./Tabs/SettingsTab'))
+const StoriesTab = lazy(() => import('./Tabs/StoriesTab'))
 // Opened from the drinks shelf rather than the nav, the same way.
 const DrinksMenu = lazy(() => import('./DrinksMenu'))
 
@@ -182,6 +183,7 @@ export default function HUD() {
       <ChallengeResultCard />
       <LazyTab id="telemetry"><TelemetryTab /></LazyTab>
       <LazyTab id="challenges"><ChallengesTab /></LazyTab>
+      <LazyTab id="stories"><StoriesTab /></LazyTab>
       <LazyTab id="settings"><SettingsTab /></LazyTab>
       <LazyTab id="drinks"><DrinksMenu /></LazyTab>
     </>
