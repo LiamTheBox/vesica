@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
-import { computeNormals, createOrganRig, FLUID_INSET, ORGAN_CENTER, orientCutaway, RESIDUAL_ML, urineScale } from './organRig'
+import {
+  BLADDER_VERTICES, computeNormals, createOrganRig, FLUID_INSET, NECK_ROW, ORGAN_CENTER, orientCutaway, RESIDUAL_ML, RING_VERTICES, urineScale,
+} from './organRig'
 import { createSimState } from '../../sim/sim'
 
 // Three.js clips points whose signed distance to a clipping plane is negative.
@@ -13,6 +15,7 @@ describe('cutaway faces the player', () => {
     back: new THREE.Vector3(0, 1.7, -12),
     side: new THREE.Vector3(12, 0.2, 0),
     'above at an angle': new THREE.Vector3(-6, 9, 6),
+    'below at an angle': new THREE.Vector3(3, -9, 5),
   }
 
   for (const [name, camera] of Object.entries(cases)) {
@@ -24,8 +27,17 @@ describe('cutaway faces the player', () => {
       expect(isClipped(plane, nearWall)).toBe(true)
       expect(isClipped(plane, farWall)).toBe(false)
       expect(plane.distanceToPoint(ORGAN_CENTER)).toBeCloseTo(0, 9)
+      // An upright section: looking up from below doesn't slice the bottom off.
+      expect(plane.normal.y).toBe(0)
     })
   }
+
+  it('keeps its last direction when seen from straight above', () => {
+    orientCutaway(plane, new THREE.Vector3(12, 0.2, 0))
+    const normal = plane.normal.clone()
+    orientCutaway(plane, new THREE.Vector3(0, 14, 0))
+    expect(plane.normal).toEqual(normal)
+  })
 })
 
 describe('per-frame geometry work (M7)', () => {
@@ -81,11 +93,17 @@ describe('per-frame geometry work (M7)', () => {
       rig.update(sim, 1 / 60, u / 0.8, { leftDrop: drop, rightDrop: other })
       return drop.position.clone()
     }
-    rig.update(sim, 1 / 60, 0, {}) // settle the ureters on the wall first
-    // Short steps, so the straight gap between drops is close to the distance along the bends.
-    const steps = Array.from({ length: 19 }, (_, i) => at(0.05 + i * 0.05))
-    const gaps = steps.slice(1).map((p, i) => p.distanceTo(steps[i]))
-    for (const gap of gaps) expect(gap / gaps[0]).toBeCloseTo(1, 1)
+    play(rig, sim, 3) // settle the wall, and the ureters on it
+    // Distance along the tube between drops a twentieth of the way apart, summed in short
+    // steps so the bends count.
+    const path = Array.from({ length: 181 }, (_, i) => at(0.05 + i * 0.005))
+    const legs = []
+    for (let i = 0; i < 180; i += 10) {
+      let leg = 0
+      for (let j = i; j < i + 10; j++) leg += path[j].distanceTo(path[j + 1])
+      legs.push(leg)
+    }
+    for (const leg of legs) expect(leg / legs[0]).toBeCloseTo(1, 1)
   })
 })
 
@@ -123,7 +141,7 @@ describe('ureters', () => {
       const { rig, urine } = settled(ml)
       const wall = rig.bladderGeo.attributes.position
       let bottom = Infinity, back = Infinity
-      for (let i = 0; i < wall.count; i++) {
+      for (let i = 0; i < BLADDER_VERTICES; i++) {
         bottom = Math.min(bottom, wall.getY(i))
         back = Math.min(back, wall.getZ(i))
       }
@@ -164,23 +182,55 @@ describe('urine inside the wall', () => {
   })
 })
 
+// The organ is one surface: the bladder's rows, then the sphincter's down to the opening.
+const rowCount = (rig) => rig.bladderGeo.attributes.position.count / RING_VERTICES
+const rowCentre = (rig, row) => {
+  const pos = rig.bladderGeo.attributes.position
+  const centre = new THREE.Vector3()
+  for (let ix = 0; ix < RING_VERTICES - 1; ix++) centre.add(new THREE.Vector3().fromBufferAttribute(pos, row * RING_VERTICES + ix))
+  return centre.divideScalar(RING_VERTICES - 1)
+}
+// Mean radius of a row around its own centre.
+const rowRadius = (rig, row) => {
+  const pos = rig.bladderGeo.attributes.position
+  const centre = rowCentre(rig, row)
+  let sum = 0
+  for (let ix = 0; ix < RING_VERTICES - 1; ix++) {
+    const i = row * RING_VERTICES + ix
+    sum += Math.hypot(pos.getX(i) - centre.x, pos.getZ(i) - centre.z)
+  }
+  return sum / (RING_VERTICES - 1)
+}
+const play = (rig, sim, seconds, from = 0) => {
+  for (let f = 0; f < seconds * 60; f++) rig.update(sim, 1 / 60, from + f / 60, {})
+}
+
 describe('sphincter', () => {
-  const widest = (rig, inBand) => {
-    const pos = rig.sphincterGeo.attributes.position
-    let max = 0
-    for (let i = 0; i < pos.count; i++) if (inBand(pos.getY(i))) max = Math.max(max, Math.hypot(pos.getX(i), pos.getZ(i)))
-    return max
-  }
-  const ring = (rig) => widest(rig, (y) => Math.abs(y - 0.01) < 0.06)
-  const outlet = (rig) => widest(rig, (y) => y < -0.55)
-  const play = (rig, sim, seconds, from = 0) => {
-    for (let f = 0; f < seconds * 60; f++) rig.update(sim, 1 / 60, from + f / 60, {})
-  }
+  const ring = (rig) => Math.max(...Array.from({ length: rowCount(rig) - NECK_ROW }, (_, r) => rowRadius(rig, NECK_ROW + r)))
+  const outlet = (rig) => rowRadius(rig, rowCount(rig) - 1)
 
   it('is a muscular ring above a narrower urethra', () => {
     const rig = createOrganRig()
     play(rig, createSimState(), 0.5)
     expect(ring(rig)).toBeGreaterThan(outlet(rig) * 2.5)
+  })
+
+  it('hangs from the bladder neck, which sits forward of the middle, at any fill', () => {
+    for (const ml of [20, 300, 750]) {
+      const rig = createOrganRig()
+      const sim = createSimState()
+      sim.volume = ml
+      play(rig, sim, 3)
+      const neck = rowCentre(rig, NECK_ROW - 1)
+      const top = rowCentre(rig, NECK_ROW)
+      expect(Math.hypot(top.x - neck.x, top.z - neck.z)).toBeLessThan(1e-3)
+      expect(neck.y - top.y).toBeCloseTo(0.12, 3)
+      expect(neck.z).toBeGreaterThan(0.2)
+      // The opening is the lowest point, under the neck.
+      const bottom = rowCentre(rig, rowCount(rig) - 1)
+      const pos = rig.bladderGeo.attributes.position
+      for (let i = 0; i < pos.count; i++) expect(pos.getY(i)).toBeGreaterThanOrEqual(bottom.y - 1e-6)
+    }
   })
 
   it('clamps on a clench and opens to void', () => {
@@ -202,16 +252,59 @@ describe('sphincter', () => {
   it('shakes under strain and holds still without', () => {
     const rig = createOrganRig()
     const sim = createSimState()
+    // The sphincter's shape around the neck, so the wall settling doesn't count.
     const shape = (t) => {
       rig.update(sim, 1 / 60, t, {})
-      return Array.from(rig.sphincterGeo.attributes.position.array)
+      const pos = rig.bladderGeo.attributes.position
+      const neck = rowCentre(rig, NECK_ROW - 1)
+      const out = []
+      for (let i = NECK_ROW * RING_VERTICES; i < pos.count; i++) out.push(pos.getX(i) - neck.x, pos.getY(i) - neck.y, pos.getZ(i) - neck.z)
+      return out
     }
+    const change = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])))
     play(rig, sim, 0.5)
-    const still = shape(1.0)
-    expect(shape(1.05)).toEqual(still)
+    expect(change(shape(1.0), shape(1.05))).toBeLessThan(1e-6)
     sim.sphincterToneStrain = 0.85
-    const a = shape(2.0)
-    const b = shape(2.05)
-    expect(Math.max(...a.map((v, i) => Math.abs(v - b[i])))).toBeGreaterThan(0.01)
+    expect(change(shape(2.0), shape(2.05))).toBeGreaterThan(0.01)
+  })
+})
+
+describe('bladder wall', () => {
+  const meanRadius = (rig) => {
+    const pos = rig.bladderGeo.attributes.position
+    let sum = 0
+    for (let i = 0; i < BLADDER_VERTICES; i++) sum += Math.hypot(pos.getX(i), pos.getY(i), pos.getZ(i))
+    return sum / BLADDER_VERTICES
+  }
+
+  it('contracts in an urge wave and while voiding, then relaxes', () => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    sim.volume = 400
+    play(rig, sim, 3)
+    const rest = meanRadius(rig)
+    sim.detrusorSpasmIntensity = 1
+    play(rig, sim, 1, 3)
+    expect(meanRadius(rig)).toBeLessThan(rest * 0.98)
+    sim.detrusorSpasmIntensity = 0
+    play(rig, sim, 3, 4)
+    expect(meanRadius(rig)).toBeCloseTo(rest, 2)
+    sim.isActivelyVoiding = true
+    play(rig, sim, 1, 7)
+    expect(meanRadius(rig)).toBeLessThan(rest * 0.98)
+  })
+
+  it('is a see-through membrane that thins as it fills, over a solid sphincter', () => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    const alpha = (i) => rig.bladderGeo.attributes.color.getW(i)
+    sim.volume = 100
+    play(rig, sim, 0.1)
+    const empty = alpha(0)
+    sim.volume = 750
+    play(rig, sim, 0.1, 0.1)
+    expect(alpha(0)).toBeLessThan(empty)
+    expect(alpha(BLADDER_VERTICES - 1)).toBeLessThan(1)
+    expect(alpha(BLADDER_VERTICES)).toBe(1)
   })
 })

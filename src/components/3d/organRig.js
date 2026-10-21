@@ -72,12 +72,15 @@ export function createOrganTextures() {
 // Bladder centre in world space (the organ group sits 0.2 above the origin).
 export const ORGAN_CENTER = new THREE.Vector3(0, 0.2, 0)
 
-// Points the cutaway plane away from the camera through the organ's centre, so the
-// half nearest the player is always the one removed, from any orbit angle.
+// Points the cutaway plane away from the camera, so the half nearest the player is always
+// the one removed, from any orbit angle. The cut is upright, a section like an anatomy
+// book's, so looking up from below doesn't slice the bottom off; seen from straight above
+// or below it keeps its last direction.
 export function orientCutaway(plane, cameraPosition, center = ORGAN_CENTER) {
-  plane.normal.subVectors(center, cameraPosition)
-  if (plane.normal.lengthSq() < 1e-8) plane.normal.set(0, 0, -1)
-  plane.normal.normalize()
+  const nx = center.x - cameraPosition.x
+  const nz = center.z - cameraPosition.z
+  const length = Math.hypot(nx, nz)
+  if (length > 1e-4) plane.normal.set(nx / length, 0, nz / length)
   plane.constant = -plane.normal.dot(center)
   return plane
 }
@@ -244,65 +247,162 @@ function ureterPoint(ureter, u, target) {
   return ureter.curve.getPoint(curveT(ureter.arc, u), target)
 }
 
-// The sphincter as a surface of revolution, (radius, height) from the bottom up: a lip
-// around the single small opening, the urethra up from it, the thick muscular ring at
-// the bladder neck, then the neck rising into the bladder (hidden inside the wall). It
-// spans the same height as the original's tube, so it sits and attaches where that did.
+// The organ is one surface: the bladder from its dome down to the neck, then the
+// sphincter ring and the urethra down to the opening, so there's no seam between them,
+// they move together and the cutaway sections them together. Rings of RADIAL segments
+// (plus a seam vertex for the UVs) from the top down, like a SphereGeometry: the bladder's
+// rows are the first BLADDER_ROWS + 1 rings of a 48-row sphere, the rest follow the
+// sphincter's profile, hanging from the centre of the bladder's last ring.
+const RADIAL = 64
+export const RING_VERTICES = RADIAL + 1
+const SPHERE_ROWS = 48
+const BLADDER_ROWS = 41 // the neck opens 26° up from the bottom of the sphere
+export const BLADDER_VERTICES = (BLADDER_ROWS + 1) * RING_VERTICES
+export const NECK_ROW = BLADDER_ROWS + 1 // the first row of the sphincter
+const NECK_ROWS = 18
+// The neck sits forward (anterior, +z) with the bladder's base bulging behind it, as in
+// the body, rather than hanging from the middle.
+const NECK_FORWARD = 0.5
+const NECK_GAP = 0.12 // from the bladder's last ring down to the top of the profile
+// The neck doesn't stretch with the dome (the pelvic floor holds it): the lowest rows keep
+// about their resting width, so the bladder funnels into the sphincter at any fill.
+const NECK_WIDTH = 0.9
+const forwardOf = (sy) => NECK_FORWARD * THREE.MathUtils.smoothstep(-sy, 0.1, 1)
+
+// The sphincter's profile, (radius, height) from the bottom up: a lip around the single
+// small opening, the urethra up from it, then the thick muscular ring at the bladder neck.
 export const OUTLET_Y = -0.62
+const NECK_TOP_Y = 0.19
 const SPHINCTER_PROFILE = [
   [0.075, OUTLET_Y], [0.1, -0.6], [0.11, -0.48], [0.125, -0.34], [0.15, -0.25],
-  [0.26, -0.17], [0.38, -0.09], [0.43, 0.01], [0.42, 0.1], [0.35, 0.19],
-  [0.28, 0.3], [0.29, 0.45], [0.32, 0.6],
+  [0.26, -0.17], [0.38, -0.09], [0.43, 0.01], [0.42, 0.1], [0.35, NECK_TOP_Y],
 ]
 // Puckered folds around the ring, like a drawstring.
 const SPHINCTER_FOLDS = 14
+const WALL_COLOR = 0xf43f5e
 const SPHINCTER_COLORS = { neck: 0xe11d48, ring: 0xa30f33, urethra: 0xfb7185 }
 
 // How much a height on the profile belongs to the muscle ring, or to the urethra (0..1).
-export const ringWeight = (y) => THREE.MathUtils.smoothstep(y, -0.27, -0.15) * (1 - THREE.MathUtils.smoothstep(y, 0.16, 0.28))
-export const urethraWeight = (y) => 1 - THREE.MathUtils.smoothstep(y, -0.3, -0.18)
+const ringWeight = (y) => THREE.MathUtils.smoothstep(y, -0.27, -0.15) * (1 - THREE.MathUtils.smoothstep(y, 0.16, 0.28))
+const urethraWeight = (y) => 1 - THREE.MathUtils.smoothstep(y, -0.3, -0.18)
 
-export function createSphincterGeometry() {
+// Detrusor contraction, in urge waves and while voiding: the wall tightens and rounds out,
+// a squeeze runs from the dome down to the neck, and the muscle bundles stand out.
+const CONTRACT_TIGHTEN = 0.04
+const CONTRACT_SQUEEZE = 0.07
+const CONTRACT_BUNDLES = 0.03
+const SQUEEZE_SECONDS = 1.6
+
+// Each ring's first and last vertex are the same point (two for the UVs), and so are all
+// of the dome's top row. Each copy gets its normal from its own triangles only, which
+// shows as a crease down the side and a star on top; they share the average instead.
+function weldSeam(geometry) {
+  const nrm = geometry.attributes.normal.array
+  let x = 0, y = 0, z = 0
+  for (let o = 0; o < RADIAL * 3; o += 3) { x += nrm[o]; y += nrm[o + 1]; z += nrm[o + 2] }
+  const top = 1 / (Math.hypot(x, y, z) || 1)
+  for (let o = 0; o < RING_VERTICES * 3; o += 3) { nrm[o] = x * top; nrm[o + 1] = y * top; nrm[o + 2] = z * top }
+  for (let a = RING_VERTICES * 3; a < nrm.length; a += RING_VERTICES * 3) {
+    const b = a + RADIAL * 3
+    const x = nrm[a] + nrm[b], y = nrm[a + 1] + nrm[b + 1], z = nrm[a + 2] + nrm[b + 2]
+    const inv = 1 / (Math.hypot(x, y, z) || 1)
+    nrm[a] = nrm[b] = x * inv
+    nrm[a + 1] = nrm[b + 1] = y * inv
+    nrm[a + 2] = nrm[b + 2] = z * inv
+  }
+}
+
+// Vertex colours carry the wall's opacity (alpha), so the membrane can be see-through
+// while the sphincter stays solid.
+function createOrganGeometry() {
   const curve = new THREE.SplineCurve(SPHINCTER_PROFILE.map(([r, y]) => new THREE.Vector2(r, y)))
-  const geo = new THREE.LatheGeometry(curve.getPoints(40), 48)
-  // Colour by part: deep red muscle ring, pinker urethra.
-  const pos = geo.attributes.position
-  const colors = new Float32Array(pos.count * 3)
+  const profile = curve.getSpacedPoints(NECK_ROWS - 1).reverse() // top down
+  const rows = NECK_ROW + NECK_ROWS
+  const count = rows * RING_VERTICES
+  const position = new Float32Array(count * 3)
+  const uv = new Float32Array(count * 2)
+  const color = new Float32Array(count * 4)
+  const wallColor = new THREE.Color(WALL_COLOR)
   const neck = new THREE.Color(SPHINCTER_COLORS.neck)
   const ring = new THREE.Color(SPHINCTER_COLORS.ring)
   const urethra = new THREE.Color(SPHINCTER_COLORS.urethra)
   const c = new THREE.Color()
-  for (let i = 0; i < pos.count; i++) {
-    const y = pos.getY(i)
-    c.copy(neck).lerp(ring, ringWeight(y)).lerp(urethra, urethraWeight(y)).toArray(colors, i * 3)
+  const neckTheta = (BLADDER_ROWS / SPHERE_ROWS) * Math.PI
+  const neckTop = 2.35 * Math.cos(neckTheta) * 1.12 - NECK_GAP
+  const neckZ = forwardOf(Math.cos(neckTheta))
+
+  for (let iy = 0; iy < rows; iy++) {
+    for (let ix = 0; ix <= RADIAL; ix++) {
+      const i = iy * RING_VERTICES + ix
+      const phi = (ix / RADIAL) * Math.PI * 2
+      const dx = -Math.cos(phi)
+      const dz = Math.sin(phi)
+      if (iy < NECK_ROW) {
+        const theta = (iy / SPHERE_ROWS) * Math.PI
+        const sy = Math.cos(theta)
+        const r = 2.35 * Math.sin(theta)
+        // Narrows toward the neck, easing in gently below the equator so the outline has
+        // no crease or shoulder there.
+        const neckFactor = sy < 0 ? 1.0 - THREE.MathUtils.smootherstep(-sy, 0, 1) * 0.6 : 1.0
+        position[i * 3] = dx * r * neckFactor
+        position[i * 3 + 1] = 2.35 * sy * 1.12
+        position[i * 3 + 2] = dz * r * neckFactor * 0.94 + forwardOf(sy)
+        c.copy(wallColor)
+      } else {
+        const { x: r, y } = profile[iy - NECK_ROW]
+        position[i * 3] = dx * r
+        position[i * 3 + 1] = neckTop + y - NECK_TOP_Y
+        position[i * 3 + 2] = neckZ + dz * r
+        // Colour by part: deep red muscle ring, pinker urethra.
+        c.copy(neck).lerp(ring, ringWeight(y)).lerp(urethra, urethraWeight(y))
+      }
+      color.set([c.r, c.g, c.b, iy < NECK_ROW ? 0.6 : 1], i * 4)
+      uv.set([ix / RADIAL, 1 - iy / (rows - 1)], i * 2)
+    }
   }
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-  return geo
+
+  const index = []
+  for (let iy = 0; iy < rows - 1; iy++) {
+    for (let ix = 0; ix < RADIAL; ix++) {
+      const a = iy * RING_VERTICES + ix + 1
+      const b = iy * RING_VERTICES + ix
+      const c = (iy + 1) * RING_VERTICES + ix
+      const d = (iy + 1) * RING_VERTICES + ix + 1
+      if (iy !== 0) index.push(a, b, d) // the dome's top row is a single point
+      index.push(b, c, d)
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry()
+  geometry.setIndex(index)
+  geometry.setAttribute('position', new THREE.BufferAttribute(position, 3))
+  geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(count * 3), 3))
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+  geometry.setAttribute('color', new THREE.BufferAttribute(color, 4))
+  computeNormals(geometry)
+  weldSeam(geometry)
+  // The wall inflates up to ~1.3x, so give raycasting/culling a sphere that always fits,
+  // down to the opening.
+  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, -0.5, 0.3), 5)
+  return { geometry, profile, neckZ }
 }
 
 export function createOrganRig() {
-  const bladderGeo = new THREE.SphereGeometry(2.35, 64, 48)
+  const { geometry: bladderGeo, profile, neckZ } = createOrganGeometry()
   const bPos = bladderGeo.attributes.position
-  for (let i = 0; i < bPos.count; i++) {
-    let x = bPos.getX(i), y = bPos.getY(i), z = bPos.getZ(i)
-    // Narrows toward the neck, easing in below the equator so the outline has no crease there.
-    const neckFactor = y < 0 ? 1.0 - THREE.MathUtils.smoothstep(-y / 2.35, 0, 1) * 0.6 : 1.0
-    x *= neckFactor; z *= neckFactor * 0.94; y *= 1.12
-    bPos.setXYZ(i, x, y, z)
-  }
-  bladderGeo.computeVertexNormals()
-  // The wall inflates up to ~1.3x, so give raycasting/culling a sphere that always fits.
-  bladderGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 4.5)
+  const bColor = bladderGeo.attributes.color
 
-  const count = bPos.count
+  // The soft-body wall is the bladder's rows; the sphincter's rows below follow its neck.
+  const count = BLADDER_VERTICES
   const wall = bPos.array
   const baseVertices = []
   for (let i = 0; i < count; i++) baseVertices.push(new THREE.Vector3(bPos.getX(i), bPos.getY(i), bPos.getZ(i)))
-  const base = new Float32Array(wall) // rest shape
+  const base = new Float32Array(wall.subarray(0, count * 3)) // rest shape
   const velocity = new Float64Array(count * 3)
   const dentMemory = new Float32Array(count)
 
-  // The lining: the wall's shape with the rugae folded into it. The urine is drawn with it.
+  // The lining: the wall's shape with the rugae folded into it, closed off at the neck.
+  // The urine is drawn with it.
   const liningGeo = bladderGeo.clone()
   liningGeo.boundingSphere = bladderGeo.boundingSphere.clone()
   const lining = liningGeo.attributes.position.array
@@ -310,6 +410,9 @@ export function createOrganRig() {
   // Per-vertex constants of the deformation below, so a frame only does multiply-adds.
   const wrinkle = new Float64Array(count) // rugae fold pattern, scaled by rugae
   const slump = new Float64Array(count) // how much of the flaccid spread this vertex takes
+  const pin = new Float64Array(count) // how much this vertex keeps the neck's width
+  const forward = new Float64Array(count) // the neck's forward offset at this height
+  const bundle = new Float64Array(count) // detrusor bundles, -0.5..0.5
   const jiggleS3 = new Float64Array(count) // sin 3θ · sin 2φ
   const jiggleC3 = new Float64Array(count) // cos 3θ · sin 2φ
   const jiggleC2 = new Float64Array(count) // cos 2θ
@@ -320,9 +423,18 @@ export function createOrganRig() {
   for (let i = 0; i < count; i++) {
     const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2]
     wrinkle[i] = Math.sin(x * 3.5 + y * 4.5) * Math.cos(z * 4.0 + y * 2.5)
-    // The lower half spreads, easing in from the equator rather than stepping out there.
-    slump[i] = THREE.MathUtils.smoothstep(-y / 2.35, 0, 0.5)
-    const theta = Math.atan2(z, x)
+    const sy = y / (2.35 * 1.12)
+    // A slack bladder spreads around its middle as the dome sags onto it, fading out
+    // smoothly toward the dome and the neck.
+    slump[i] = 1.0 - THREE.MathUtils.smootherstep(Math.abs(sy), 0.15, 0.95)
+    pin[i] = THREE.MathUtils.smoothstep(-sy, 0.72, 0.9)
+    forward[i] = forwardOf(sy)
+    const theta = ((i % RING_VERTICES) / RADIAL) * Math.PI * 2
+    const yNorm = y / (2.35 * 1.12)
+    // Two families of oblique bands that cross in a meshwork, like the detrusor's bundles.
+    const b1 = Math.sin(theta * 5.0 + yNorm * 4.0)
+    const b2 = Math.sin(theta * 5.0 - yNorm * 4.0)
+    bundle[i] = (b1 * b1 + b2 * b2) / 2 - 0.5
     const sin2phi = Math.sin(Math.acos(Math.max(-1, Math.min(1, y / 2.35))) * 2.0)
     jiggleS3[i] = Math.sin(theta * 3.0) * sin2phi
     jiggleC3[i] = Math.cos(theta * 3.0) * sin2phi
@@ -332,23 +444,27 @@ export function createOrganRig() {
     tremor.set([Math.cos(tp), Math.sin(tp), Math.cos(tp * 1.3), Math.sin(tp * 1.3), Math.cos(tp * 0.7), Math.sin(tp * 0.7)], i * 6)
   }
 
-  const sphincterGeo = createSphincterGeometry()
-  const sPos = sphincterGeo.attributes.position
-  const sCount = sPos.count
-  // r, y, cos θ, sin θ, fold pattern, sin 4θ, cos 4θ, ring weight, urethra weight per vertex
+  // The sphincter's rows: r, y, x and z of the direction out, fold pattern, sin 4θ, cos 4θ,
+  // ring weight, urethra weight per vertex.
+  const sCount = NECK_ROWS * RING_VERTICES
   const sphincterBase = new Float64Array(sCount * 9)
-  for (let i = 0; i < sCount; i++) {
-    const x = sPos.getX(i), y = sPos.getY(i), z = sPos.getZ(i)
-    const theta = Math.atan2(z, x)
+  for (let j = 0; j < sCount; j++) {
+    const { x: r, y } = profile[Math.floor(j / RING_VERTICES)]
+    const theta = ((j % RING_VERTICES) / RADIAL) * Math.PI * 2
     sphincterBase.set([
-      Math.hypot(x, z), y, Math.cos(theta), Math.sin(theta), Math.sin(theta * SPHINCTER_FOLDS),
+      r, y, -Math.cos(theta), Math.sin(theta), Math.sin(theta * SPHINCTER_FOLDS),
       Math.sin(theta * 4.0), Math.cos(theta * 4.0), ringWeight(y), urethraWeight(y),
-    ], i * 9)
+    ], j * 9)
   }
   let clenchLevel = 0 // eases in and out rather than snapping
+  let contraction = 0 // detrusor, 0..1
+  let squeezePhase = 0
+  let wallAlpha = -1
 
   const stream = createStream()
   const outlet = new THREE.Vector3()
+  const neck = new THREE.Vector3()
+  const cutCenter = new THREE.Vector3()
 
   const ureters = [createUreter(-1, baseVertices), createUreter(1, baseVertices)]
 
@@ -379,7 +495,7 @@ export function createOrganRig() {
 
   // `objects`: live meshes/materials from Organ.jsx refs, plus the camera.
   function update(sim, dt, timeSec, objects) {
-    const { wallMat, urine, sphincter, leftDrop, rightDrop, camera, cutaway } = objects
+    const { wallMat, urine, leftDrop, rightDrop, camera, cutaway } = objects
     const phys = physicsOf(sim)
 
     const fillRatio = Math.max(0.01, sim.volume / sim.maxCapacity)
@@ -387,16 +503,28 @@ export function createOrganRig() {
     const scaleY = 1.0 - compY
     const inflationScale = inflationOf(fillRatio)
 
-    if (cutaway && camera) orientCutaway(cutawayPlane, camera.position)
+    // The cut runs down through the neck, so it halves the sphincter and the urethra too.
+    if (cutaway && camera) orientCutaway(cutawayPlane, camera.position, cutCenter.set(0, ORGAN_CENTER.y, neckZ * inflationScale))
 
-    // A stretched wall is thinner, so more of the liquid shows through.
+    // The detrusor contracts in an urge wave (involuntarily) and while voiding.
+    const voiding = sim.isActivelyVoiding || sim.involuntaryVoiding
+    contraction += ((voiding ? 1 : Math.min(1, sim.detrusorSpasmIntensity)) - contraction) * Math.min(1, dt * 4)
+    squeezePhase = contraction > 0.01 ? (squeezePhase + dt / SQUEEZE_SECONDS) % 1 : 0
+
+    // A stretched wall is thinner, so more of the liquid shows through; a contracting
+    // one thickens and flushes.
+    const stretch = Math.min(1.0, fillRatio)
     if (wallMat) {
-      const stretch = Math.min(1.0, fillRatio)
-      wallMat.opacity = THREE.MathUtils.lerp(0.66, 0.36, stretch)
       // Strained muscle throbs, as in the original.
       const strainPulse = sim.sphincterToneStrain > 0.3 ? Math.sin(timeSec * 15.0) * 0.35 + 0.35 : 0
-      wallMat.emissiveIntensity = 0.18 + stretch * 0.3 + strainPulse
+      wallMat.emissiveIntensity = 0.18 + stretch * 0.3 + strainPulse + contraction * 0.3
       wallMat.roughness = THREE.MathUtils.lerp(0.38, 0.12, stretch)
+    }
+    const alpha = THREE.MathUtils.lerp(0.66, 0.36, stretch) + contraction * 0.18
+    if (Math.abs(alpha - wallAlpha) > 0.004) {
+      wallAlpha = alpha
+      for (let i = 0; i < count; i++) bColor.array[i * 4 + 3] = alpha
+      bColor.needsUpdate = true
     }
     // Urine colour follows hydration, in the bladder and in the stream.
     const h = sim.hydration
@@ -414,7 +542,9 @@ export function createOrganRig() {
     const jD = Math.sin(phase * 1.2) * jiggle2
     const bulgeXZ = Math.sqrt(1.0 / Math.max(0.2, (1.0 - compY * (0.45 + fillRatio * 0.45))))
     const rugae = Math.pow(1.0 - Math.min(1.0, fillRatio), 1.6) * RUGAE_DEPTH
-    const sagFactor = Math.max(0, (1.0 - fillRatio * 2.2)) * 0.45
+    // A contracting bladder is taut: it stops sagging and slumping.
+    const relaxed = 1.0 - contraction
+    const sagFactor = Math.max(0, (1.0 - fillRatio * 2.2)) * 0.45 * relaxed
     const tremorAmp = (sim.sphincterToneStrain > 0.3) ? (sim.sphincterToneStrain * 0.045) : 0.0
     const tremorHalf = tremorAmp * 0.5
     const s41 = Math.sin(timeSec * 41.0), c41 = Math.cos(timeSec * 41.0)
@@ -424,10 +554,14 @@ export function createOrganRig() {
     const sloshZ = Math.sin(sim.sloshAngleZ) * 0.22
     const coreX = sim.fluidCoreOffset.x * 0.35
     const coreZ = sim.fluidCoreOffset.z * 0.35
-    const lowerSpread = (1.0 - fillRatio) * 0.2
+    const slackSpread = (1.0 - fillRatio) * 0.2 * relaxed
     const ripples = sim.ripples
     const springDt = phys.springK * dt
     const damping = phys.damping
+    const tighten = 1.0 - CONTRACT_TIGHTEN * contraction
+    const squeezeAt = 1.3 - 2.6 * squeezePhase // the squeeze's height, dome to neck
+    const squeezeDepth = CONTRACT_SQUEEZE * contraction
+    const bundles = CONTRACT_BUNDLES * contraction
 
     // Water balloon: liquid can't compress, so whatever a dent pushes in bulges out
     // everywhere else. A mean radial dent m loses ~3m of volume; scaling by (1 + m)
@@ -464,13 +598,22 @@ export function createOrganRig() {
         tremorZ = (s43 * tremor[t6 + 4] + c43 * tremor[t6 + 5]) * tremorHalf
       }
 
-      const sagY = by > 0 ? -sagFactor * yNorm : 0
-      const flaccidSpread = 1.0 + lowerSpread * slump[i]
-      const totalRadMod = Math.max(0.2, (1.0 + jiggleWobble + rippleDisp - dentMemory[i])) * balloonBulge
+      let contract = 1.0
+      if (contraction > 0.001) {
+        const band = (yNorm / 1.12 - squeezeAt) / 0.35
+        contract = tighten - squeezeDepth * Math.exp(-band * band) + bundles * bundle[i]
+      }
 
-      const tx = (bx * flaccidSpread * bulgeXZ * inflationScale + sloshPushX + tremorX) * totalRadMod
+      const sagY = by > 0 ? -sagFactor * yNorm : 0
+      const flaccidSpread = 1.0 + slackSpread * slump[i]
+      const totalRadMod = Math.max(0.2, (1.0 + jiggleWobble + rippleDisp - dentMemory[i])) * balloonBulge * contract
+
+      // Width around the neck's axis, which leans forward with the inflating bladder.
+      const width = THREE.MathUtils.lerp(flaccidSpread * bulgeXZ * inflationScale, NECK_WIDTH, pin[i])
+      const ahead = forward[i]
+      const tx = (bx * width + sloshPushX + tremorX) * totalRadMod
       const ty = ((by * scaleY + sagY) * inflationScale + tremorY) * totalRadMod
-      const tz = (bz * flaccidSpread * bulgeXZ * inflationScale + sloshPushZ + tremorZ) * totalRadMod
+      const tz = ((bz - ahead) * width + ahead * inflationScale + sloshPushZ + tremorZ) * totalRadMod
 
       const cx = wall[o], cy = wall[o + 1], cz = wall[o + 2]
       const vx = (velocity[o] + (tx - cx) * springDt) * damping
@@ -486,10 +629,43 @@ export function createOrganRig() {
       lining[o + 1] = wall[o + 1] * fold
       lining[o + 2] = wall[o + 2] * fold
     }
+
+    // The neck: the centre of the bladder's last ring, wherever the wall has carried it.
+    neck.set(0, 0, 0)
+    for (let i = count - RING_VERTICES; i < count - 1; i++) neck.add(scratch.fromArray(wall, i * 3))
+    neck.divideScalar(RADIAL)
+    const neckTop = neck.y - NECK_GAP
+
+    // Sphincter: a clench clamps the ring and deepens its folds, voiding opens it all
+    // up, and strain makes it twitch (the rippling shake of the original's tube).
+    const dil = sim.isStressLeaking ? 0.35 : sim.sphincterDilation
+    const twitchOsc = Math.sin(timeSec * 38.0) * Math.cos(timeSec * 23.0)
+    const twitch = sim.sphincterToneStrain * 0.08 * twitchOsc
+    const s30 = Math.sin(timeSec * 30.0), c30 = Math.cos(timeSec * 30.0)
+    clenchLevel += ((sim.isClenching ? 1 : 0) - clenchLevel) * Math.min(1, dt * 14)
+    const foldDepth = (0.02 + 0.03 * clenchLevel) * (1.0 - dil)
+    for (let j = 0; j < sCount; j++) {
+      const k = j * 9
+      const r = sphincterBase[k], y = sphincterBase[k + 1]
+      const ring = sphincterBase[k + 7], urethra = sphincterBase[k + 8]
+      const ripple = sphincterBase[k + 5] * c30 + sphincterBase[k + 6] * s30 // sin(4θ + 30t)
+      const squeeze = 1.0 - clenchLevel * (0.1 + 0.12 * ring + 0.3 * urethra)
+      const closed = (r + sphincterBase[k + 4] * foldDepth * ring + ripple * twitch) * squeeze
+      const open = r * (1.0 + 0.25 * ring + 0.45 * urethra) // a narrow opening, not a nozzle
+      const radius = THREE.MathUtils.lerp(closed, open, dil)
+      const o = (count + j) * 3
+      wall[o] = neck.x + sphincterBase[k + 2] * radius
+      wall[o + 1] = neckTop + y - NECK_TOP_Y
+      wall[o + 2] = neck.z + sphincterBase[k + 3] * radius
+      // The urine stops at the neck.
+      lining[o] = neck.x; lining[o + 1] = neck.y; lining[o + 2] = neck.z
+    }
     bPos.needsUpdate = true
     computeNormals(bladderGeo)
+    weldSeam(bladderGeo)
     liningGeo.attributes.position.needsUpdate = true
     computeNormals(liningGeo)
+    weldSeam(liningGeo)
 
     // Urine: the lining's shape scaled about a point low in the sac, free to slosh within
     // whatever wall thickness there is around it.
@@ -508,36 +684,8 @@ export function createOrganRig() {
       updateUreter(ureter, wallPoint, wallNormal)
     }
 
-    // Sphincter: a clench clamps the ring and deepens its folds, voiding opens it all
-    // up, and strain makes it twitch (the rippling shake of the original's tube).
-    const dil = sim.isStressLeaking ? 0.35 : sim.sphincterDilation
-    const twitchOsc = Math.sin(timeSec * 38.0) * Math.cos(timeSec * 23.0)
-    const twitch = sim.sphincterToneStrain * 0.08 * twitchOsc
-    const s30 = Math.sin(timeSec * 30.0), c30 = Math.cos(timeSec * 30.0)
-    clenchLevel += ((sim.isClenching ? 1 : 0) - clenchLevel) * Math.min(1, dt * 14)
-    const foldDepth = (0.02 + 0.03 * clenchLevel) * (1.0 - dil)
-    const sArr = sPos.array
-    for (let i = 0; i < sCount; i++) {
-      const k = i * 9
-      const r = sphincterBase[k], y = sphincterBase[k + 1]
-      const ring = sphincterBase[k + 7], urethra = sphincterBase[k + 8]
-      const ripple = sphincterBase[k + 5] * c30 + sphincterBase[k + 6] * s30 // sin(4θ + 30t)
-      const squeeze = 1.0 - clenchLevel * (0.1 + 0.12 * ring + 0.3 * urethra)
-      const closed = (r + sphincterBase[k + 4] * foldDepth * ring + ripple * twitch) * squeeze
-      const open = r * (1.0 + 0.25 * ring + 0.45 * urethra) // a narrow opening, not a nozzle
-      const radius = THREE.MathUtils.lerp(closed, open, dil)
-      sArr[i * 3] = sphincterBase[k + 2] * radius
-      sArr[i * 3 + 1] = y
-      sArr[i * 3 + 2] = sphincterBase[k + 3] * radius
-    }
-    sPos.needsUpdate = true
-    computeNormals(sphincterGeo)
-
-    const sphincterY = -2.35 * inflationScale * scaleY - 0.45
-    if (sphincter) sphincter.position.y = sphincterY
-
-    // Stream from the opening at the bottom of the urethra (the sphincter sits 0.2 back).
-    stream.update(sim, dt, timeSec, outlet.set(0, sphincterY + OUTLET_Y, -0.2), objects.stream, objects.drops)
+    // Stream from the opening at the bottom of the urethra.
+    stream.update(sim, dt, timeSec, outlet.set(neck.x, neckTop + OUTLET_Y - NECK_TOP_Y, neck.z), objects.stream, objects.drops)
 
     // Drops travelling down the ureters while drinks are being filtered
     const hasBeverage = sim.activeBeverages.length > 0
@@ -556,7 +704,7 @@ export function createOrganRig() {
   }
 
   return {
-    bladderGeo, liningGeo, sphincterGeo, stream,
+    bladderGeo, liningGeo, stream,
     ureterGeoLeft: ureters[0].geo, ureterGeoRight: ureters[1].geo,
     cutawayPlane, poke, slap, clearDents, update,
   }

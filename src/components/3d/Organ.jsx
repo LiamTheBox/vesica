@@ -26,7 +26,6 @@ export default function Organ() {
   const get = useThree((state) => state.get)
 
   const bladderRef = useRef()
-  const sphincterRef = useRef()
   const streamRef = useRef()
   const dropsRef = useRef()
   const leftDropRef = useRef()
@@ -160,7 +159,6 @@ export default function Organ() {
       wallMat: wallMatRef.current,
       urine: urineRef.current,
       fluidMat: fluidMatRef.current,
-      sphincter: sphincterRef.current,
       stream: streamRef.current,
       drops: dropsRef.current,
       leftDrop: leftDropRef.current,
@@ -203,14 +201,17 @@ export default function Organ() {
         <mesh name="urineCut" geometry={rig.liningGeo} material={cut.urine} renderOrder={1} visible={isCutawayActive} />
       </group>
 
-      {/* Wall: a translucent membrane that thins out as it stretches. */}
+      {/* Wall: one surface from the dome down through the sphincter ring and the urethra
+          to the opening. The bladder is a translucent membrane that thins out as it
+          stretches; the sphincter is solid muscle. Colour and opacity come per vertex. */}
       <mesh ref={bladderRef} name="wall" geometry={rig.bladderGeo} renderOrder={10}>
         <meshPhysicalMaterial
           ref={wallMatRef}
           map={textures.diffTex}
           normalMap={textures.normTex}
           normalScale={[0.8, 0.8]}
-          color={0xf43f5e}
+          vertexColors
+          color={0xffffff}
           emissive={0x881337}
           emissiveIntensity={0.28}
           roughness={0.22}
@@ -218,16 +219,10 @@ export default function Organ() {
           clearcoat={0.9}
           clearcoatRoughness={0.12}
           transparent
-          opacity={0.6}
           depthWrite={false}
           side={THREE.FrontSide}
           clippingPlanes={clip}
         />
-      </mesh>
-
-      {/* Sphincter: the muscle ring at the bladder neck and the urethra below it. */}
-      <mesh ref={sphincterRef} geometry={rig.sphincterGeo} renderOrder={4} position={[0, -2.15, -0.2]}>
-        <meshPhysicalMaterial vertexColors color={0xffffff} emissive={0x4c0519} emissiveIntensity={0.35} roughness={0.28} clearcoat={0.8} clearcoatRoughness={0.15} side={THREE.DoubleSide} />
       </mesh>
 
       {/* Stream: the jet and the drops it breaks into (stream.js). No transmission: on a jet
