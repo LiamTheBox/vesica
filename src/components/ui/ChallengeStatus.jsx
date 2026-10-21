@@ -49,14 +49,17 @@ function ArcadeBanner() {
   )
 }
 
-// A microgames run: its speed, the lives left and the games cleared.
-function MicroBanner() {
+// A microgames run: its speed, how full the bladder is, the lives left and the games
+// cleared. It takes the telemetry bar's place, so the games get the whole stage.
+export function MicroBanner() {
   const lives = useHud((h) => h.microLives)
   const score = useHud((h) => h.microScore)
   const level = useHud((h) => h.microLevel)
+  const volume = useHud((h) => h.volume)
   return (
-    <div data-testid="challenge-banner" className="glass-hud w-full max-w-xl mx-auto px-3 py-1.5 rounded-2xl pointer-events-auto font-mono text-[11px] flex justify-between items-center gap-2">
+    <div data-testid="challenge-banner" className="glass-hud w-full px-3 py-1.5 rounded-2xl pointer-events-auto font-mono text-[11px] flex justify-between items-center gap-2">
       <span className="font-bold text-fuchsia-300 whitespace-nowrap">⚡ SPEED {level}</span>
+      <span className="text-amber-300 whitespace-nowrap">{volume} ml</span>
       <span role="img" aria-label={`${lives} of ${MAX_LIVES} lives`} className="text-sm tracking-widest whitespace-nowrap">
         <span className="text-rose-400">{'♥'.repeat(lives)}</span>
         <span className="text-slate-600">{'♥'.repeat(MAX_LIVES - lives)}</span>
@@ -73,7 +76,6 @@ export function ChallengeBanner() {
   const leaked = useHud((h) => h.totalLeaked)
 
   if (activeChallenge === 'arcade') return <ArcadeBanner />
-  if (activeChallenge === 'micro') return <MicroBanner />
 
   if (activeChallenge === 'commute') {
     const over = leaked > COMMUTE_LIMIT_ML

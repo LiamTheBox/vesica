@@ -97,7 +97,7 @@ export default function MicroStage() {
       ref={ref}
       data-testid="micro-stage"
       aria-label="Microgame: tap, hold or drag; Space presses"
-      className="absolute inset-x-0 bottom-0 top-16 w-full h-[calc(100%-4rem)] pointer-events-auto touch-none select-none"
+      className="absolute inset-0 w-full h-full pointer-events-auto touch-none select-none"
     />
   )
 }

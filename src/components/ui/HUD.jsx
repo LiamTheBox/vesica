@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import TelemetryBar from './TelemetryBar'
 import ActionButtons from './ActionButtons'
 import { StageAlerts, Subtitles, Vignette } from './Alerts'
-import { ChallengeBanner, ChallengeResultCard } from './ChallengeStatus'
+import { ChallengeBanner, ChallengeResultCard, MicroBanner } from './ChallengeStatus'
 import BottomNav from './Tabs/BottomNav'
 import { useHud, useUiStore } from '../../store/useUiStore'
 import { organStatus } from './status'
@@ -143,17 +143,19 @@ export default function HUD() {
         </header>
 
         <div className="hud-telemetry w-full max-w-4xl mx-auto">
-          <TelemetryBar />
+          {micro ? <MicroBanner /> : <TelemetryBar />}
         </div>
 
         {/* The stage: the bladder is framed here. Touches pass through to the 3D canvas. */}
         <section ref={stageRef} data-testid="stage" className="hud-stage">
           {micro && <MicroStage />}
-          <div className={`absolute inset-x-0 top-0 flex flex-col items-center gap-1.5 ${micro ? 'px-1' : 'px-14'}`}>
-            <ChallengeBanner />
-            {!micro && <StageAlerts />}
-            {!micro && <Subtitles />}
-          </div>
+          {!micro && (
+            <div className="absolute inset-x-0 top-0 flex flex-col items-center gap-1.5 px-14">
+              <ChallengeBanner />
+              <StageAlerts />
+              <Subtitles />
+            </div>
+          )}
           {!micro && (
             <>
               <div className="absolute left-0 inset-y-0 flex items-center">
