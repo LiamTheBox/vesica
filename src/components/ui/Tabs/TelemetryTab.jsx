@@ -2,7 +2,49 @@ import { useEffect, useRef } from 'react'
 import { useHud, useUiStore } from '../../../store/useUiStore'
 import { sim } from '../../../sim/engine'
 import { WALL_FEELS } from '../../../settings/settings'
+import { MOOD_FACES } from '../../../feedback/mood'
 import Sheet from '../Sheet'
+
+const PANEL = 'bg-slate-900/60 p-2 rounded-xl border border-slate-800'
+
+// The bladder's face every 10 s for the last 3 minutes, newest on the right (A7).
+function MoodStrip() {
+  const moods = useUiStore((s) => s.moodLog)
+  return (
+    <div className={PANEL}>
+      <div className="text-[9px] text-slate-400 uppercase font-mono mb-1">Mood, last 3 minutes</div>
+      {moods.length === 0
+        ? <p className="text-[11px] text-slate-500">Nothing yet: it's noted every 10 s.</p>
+        : (
+          <div role="img" aria-label={`Moods, oldest first: ${moods.join(', ')}`} className="flex justify-end gap-0.5 text-sm leading-none">
+            {moods.map((mood, i) => <span key={i} title={mood}>{MOOD_FACES[mood]}</span>)}
+          </div>
+        )}
+    </div>
+  )
+}
+
+// What it said lately, newest first.
+function LineLog() {
+  const lines = useUiStore((s) => s.lineLog)
+  return (
+    <div className={PANEL}>
+      <div className="text-[9px] text-slate-400 uppercase font-mono mb-1">Said lately</div>
+      {lines.length === 0
+        ? <p className="text-[11px] text-slate-500">Nothing yet.</p>
+        : (
+          <ol className="max-h-40 overflow-y-auto flex flex-col gap-1">
+            {lines.map((line) => (
+              <li key={line.id} className="flex gap-2 text-xs text-slate-200">
+                <span aria-hidden="true">{MOOD_FACES[line.mood] ?? '🗣️'}</span>
+                <span>"{line.text}"</span>
+              </li>
+            ))}
+          </ol>
+        )}
+    </div>
+  )
+}
 
 export default function TelemetryTab() {
   const currentTab = useUiStore((s) => s.currentTab)
@@ -103,6 +145,9 @@ export default function TelemetryTab() {
           <div className="text-xs font-bold text-amber-400">{maxPressure.toFixed(1)} cmH₂O</div>
         </div>
       </div>
+
+      <MoodStrip />
+      <LineLog />
     </Sheet>
   )
 }

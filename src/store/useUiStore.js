@@ -66,6 +66,10 @@ export const useUiStore = create((set) => ({
   currentSubtitle: null,
   // How the bladder feels (feedback/mood.js), shown as its face.
   mood: 'calm',
+  // Its mood every 10 s for the last 3 minutes, oldest first, and the last 20 lines it
+  // said ({ text, category, mood, id }), newest first: the Pressure Chart sheet shows them.
+  moodLog: [],
+  lineLog: [],
   // Last result per challenge: { success, text }
   challengeResults: { commute: null, precision: null, arcade: null, micro: null },
   // Most recent result, shown as a card on the Sim screen: { challenge, success, text, detail, newBest, id }

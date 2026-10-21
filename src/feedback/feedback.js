@@ -227,8 +227,13 @@ const EMOTE_SOUNDS = {
   },
 }
 
-// How the bladder feels (mood.js); the HUD shows it as `mood` in the store.
+// How the bladder feels (mood.js); the HUD shows it as `mood` in the store, and the
+// Pressure Chart sheet a strip of the last few minutes' (moodLog) and what it said (lineLog).
 const mood = createMood()
+const MOOD_EVERY = 10 // s
+const MOOD_LOG = 18
+const LINE_LOG = 20
+let sinceMoodLogged = MOOD_EVERY
 
 // Each event's sound and haptics; then the bladder feels it, moves, and says something
 // about it.
@@ -259,6 +264,11 @@ function onTick(sim, dt) {
   stepMood(mood, dt, sim)
   const now = moodOf(mood, sim)
   if (now !== useUiStore.getState().mood) useUiStore.setState({ mood: now })
+  sinceMoodLogged += dt
+  if (sinceMoodLogged >= MOOD_EVERY) {
+    sinceMoodLogged = 0
+    useUiStore.setState((state) => ({ moodLog: [...state.moodLog.slice(1 - MOOD_LOG), now] }))
+  }
   const category = chatterLine(sim, mood)
   if (category) voice.speak(category)
 }
@@ -280,7 +290,8 @@ function onVisibilityChange() {
 
 export function installFeedback() {
   voice.onSubtitle = (text, category, seconds) => {
-    useUiStore.setState({ currentSubtitle: { text, category, seconds, mood: moodOf(mood, sim), id: Date.now() } })
+    const line = { text, category, seconds, mood: moodOf(mood, sim), id: Date.now() }
+    useUiStore.setState((state) => ({ currentSubtitle: line, lineLog: [line, ...state.lineLog.slice(0, LINE_LOG - 1)] }))
   }
   const offEvent = onSimEvent(onEvent)
   const offTick = onSimTick(onTick)
