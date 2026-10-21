@@ -5,12 +5,6 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 
 ## Open
 
-### Browser tests not run since the 2026-10-21 changes
-- **Seen:** 2026-10-21. The browser suite was paused at the user's request. The specs were updated for the new rules
-  (start helper picks the sandbox, 5 % strain from pokes/slaps, tone-gated leaks) and `e2e/arcade.spec.js` was added,
-  but none of it has run. Expect to fix small things on the first run.
-- **Next:** `npm run test:e2e` (5–7 min), or just `npx playwright test --project="Pixel 7"` for the logic specs.
-
 ### The empty bladder still looks crumpled; ureters attach high (from the 2026-10-21 analysis)
 - **Seen:** 2026-10-21 screenshots. Below ~150 ml (including the start) the wall's outline is jagged, like crumpled
   cellophane: the rugae folds displace the outer surface, where a real bladder keeps a smooth outside and folds only its
