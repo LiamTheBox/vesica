@@ -78,14 +78,14 @@ export function createUreter(side, wallVertices) {
   })
 
   // From behind and above, past a bend behind the bladder and a short lead-in, to the wall.
-  const curve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(3.0 * side, 4.4, -2.0), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(),
-  ])
+  const start = new THREE.Vector3(3.0 * side, 4.4, -2.0)
+  const curve = new THREE.CatmullRomCurve3([start.clone(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()])
   const rings = SEGMENTS + 1
   // Only the topology (index, uvs) is kept; the vertices are written by shape().
   const geo = new THREE.TubeGeometry(curve, SEGMENTS, RADIUS, RADIAL, false)
   geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(rings * URETER_RING * 3), 3))
-  geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 1, -1), 6.5)
+  const bounds = new THREE.Sphere(new THREE.Vector3(0, 1, -1), 6.5)
+  geo.boundingSphere = bounds.clone()
 
   const arc = new Float64Array(ARC_SAMPLES + 1)
   const along = new Float64Array(rings) // each ring's arc-length fraction
@@ -93,18 +93,24 @@ export function createUreter(side, wallVertices) {
   const wallPoint = new THREE.Vector3()
   const wallNormal = new THREE.Vector3()
   const lastEnd = new THREE.Vector3(Infinity, 0, 0)
+  let lastReach = 1
   const boluses = [] // arc-length fractions, 0 at the kidney end
   let timer = side < 0 ? 2 : 6.5 // the two sides take turns
   let dirty = true
 
   // The bend and the end of the tube for a wall point and its normal; then each ring's
-  // place and frame along it.
-  function route(point, normal) {
-    if (lastEnd.distanceToSquared(point) < 0.0004) return
+  // place and frame along it. `reach` moves the start out with an overfilled bladder (the
+  // arcade's grows without limit), so it never swallows the tube; the tube keeps its width.
+  function route(point, normal, reach = 1) {
+    if (lastEnd.distanceToSquared(point) < 0.0004 && reach === lastReach) return
     lastEnd.copy(point)
+    lastReach = reach
     wallPoint.copy(point)
     wallNormal.copy(normal)
-    const [, bend, leadIn, end] = curve.points
+    const [first, bend, leadIn, end] = curve.points
+    first.copy(start).multiplyScalar(reach)
+    geo.boundingSphere.center.copy(bounds.center).multiplyScalar(reach)
+    geo.boundingSphere.radius = bounds.radius * reach
     end.copy(point).addScaledVector(normal, -URETER_SINK)
     entry.copy(UP).addScaledVector(normal, -normal.y).normalize() // up, along the wall
     entry.multiplyScalar(Math.cos(ENTRY)).addScaledVector(normal, Math.sin(ENTRY))

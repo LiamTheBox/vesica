@@ -115,11 +115,12 @@ const URINE_PIVOT_Y = -0.35 * 2.35 * 1.12
 
 const inflationOf = (fillRatio) => 0.55 + Math.pow(fillRatio, 0.45) * 0.75
 
-// Past what the sandbox can hold (125 %), an overfilling bladder (the arcade's has no limit)
-// keeps swelling, ever more slowly, toward a size that still fits the camera's frame.
-const SWELL_FROM = 1.25
-const SWELL_ROOM = 0.3
-export const shownFill = (fill) => (fill <= SWELL_FROM ? fill : SWELL_FROM + SWELL_ROOM * (1 - Math.exp(-(fill - SWELL_FROM) / SWELL_ROOM)))
+// The arcade's bladder has no limit, and neither has its size. Past the most the sandbox's
+// holds (125 %) it outgrows the camera's frame, so the camera backs off by this much
+// (StageFit), while the sphincter, the urethra and the ureter tubes keep their size beside it.
+const SANDBOX_MOST = 1.25
+const INFLATION_SANDBOX_MOST = inflationOf(SANDBOX_MOST)
+export const overfillGrowth = (fillRatio) => Math.max(1, inflationOf(fillRatio) / INFLATION_SANDBOX_MOST)
 
 // Linear size of the urine relative to the wall. The urine's volume is the simulation's;
 // the wall's size is a visual function of fill that never drops below about half, so
@@ -128,7 +129,8 @@ export const shownFill = (fill) => (fill <= SWELL_FROM ? fill : SWELL_FROM + SWE
 export function urineScale(volume, maxCapacity) {
   const urine = Math.max(0, (volume - RESIDUAL_ML) / (maxCapacity - RESIDUAL_ML))
   if (urine === 0) return 0
-  const wallGrowth = inflationOf(1) / inflationOf(shownFill(Math.max(0.01, volume / maxCapacity)))
+  if (volume >= maxCapacity) return FLUID_INSET // full or more: it fills the sac
+  const wallGrowth = inflationOf(1) / inflationOf(Math.max(0.01, volume / maxCapacity))
   return Math.min(FLUID_INSET, FLUID_INSET * wallGrowth * Math.cbrt(urine))
 }
 
@@ -225,6 +227,8 @@ export function emoteFor(event, mood) {
   return EMOTE_FOR[event.type] ?? null
 }
 
+const BOUNDS_RADIUS = 5
+
 // Each ring's first and last vertex are the same point (two for the UVs), and so are all
 // of the dome's top row. Each copy gets its normal from its own triangles only, which
 // shows as a crease down the side and a star on top; they share the average instead.
@@ -313,9 +317,9 @@ function createOrganGeometry() {
   geometry.setAttribute('color', new THREE.BufferAttribute(color, 4))
   computeNormals(geometry)
   weldSeam(geometry)
-  // The wall inflates up to ~1.3x, so give raycasting/culling a sphere that always fits,
-  // down to the opening.
-  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, -0.5, 0.3), 5)
+  // The wall inflates up to ~1.4x in the sandbox, so give raycasting/culling a sphere that
+  // always fits, down to the opening; it grows with an overfilled bladder (update).
+  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, -0.5, 0.3), BOUNDS_RADIUS)
   return { geometry, profile, neckZ }
 }
 
@@ -483,11 +487,15 @@ export function createOrganRig() {
     const { wallMat, urine, camera, cutaway } = objects
     const phys = physicsOf(sim)
 
-    const fillRatio = shownFill(Math.max(0.01, sim.volume / sim.maxCapacity))
+    const fillRatio = Math.max(0.01, sim.volume / sim.maxCapacity)
     lastFill = fillRatio
     const compY = sim.squeezeAmountY || 0
     const scaleY = 1.0 - compY
     const inflationScale = inflationOf(fillRatio)
+    // Overfilled past the sandbox's most (the arcade), the shape stays the same and grows.
+    const shapeFill = Math.min(fillRatio, SANDBOX_MOST)
+    const growth = Math.max(1, inflationScale / INFLATION_SANDBOX_MOST)
+    bladderGeo.boundingSphere.radius = liningGeo.boundingSphere.radius = BOUNDS_RADIUS * growth
 
     // The cut runs down through the neck, so it halves the sphincter and the urethra too.
     if (cutaway && camera) orientCutaway(cutawayPlane, camera.position, cutCenter.set(0, ORGAN_CENTER.y, neckZ * inflationScale))
@@ -545,7 +553,7 @@ export function createOrganRig() {
     const jB = Math.sin(phase) * jiggle1
     const jC = Math.cos(phase * 1.2) * jiggle2
     const jD = Math.sin(phase * 1.2) * jiggle2
-    const bulgeXZ = Math.sqrt(1.0 / Math.max(0.2, (1.0 - compY * (0.45 + fillRatio * 0.45))))
+    const bulgeXZ = Math.sqrt(1.0 / Math.max(0.2, (1.0 - compY * (0.45 + shapeFill * 0.45))))
     const rugae = Math.pow(1.0 - Math.min(1.0, fillRatio), 1.6) * RUGAE_DEPTH
     // A contracting bladder is taut: it stops sagging and slumping.
     const relaxed = 1.0 - contraction
@@ -559,7 +567,7 @@ export function createOrganRig() {
     const sloshZ = Math.sin(sim.sloshAngleZ) * 0.22
     const coreX = sim.fluidCoreOffset.x * 0.35
     const coreZ = sim.fluidCoreOffset.z * 0.35
-    const slackSpread = (1.0 - fillRatio) * 0.2 * relaxed
+    const slackSpread = (1.0 - shapeFill) * 0.2 * relaxed
     const ripples = sim.ripples
     const springDt = phys.springK * feel('spring', fillRatio) * dt
     const rippleGain = feel('ripple', fillRatio)
@@ -725,7 +733,7 @@ export function createOrganRig() {
     ureters.forEach((ureter, k) => {
       wallPoint.fromBufferAttribute(bPos, ureter.endIndex)
       wallNormal.fromBufferAttribute(bladderGeo.attributes.normal, ureter.endIndex)
-      ureter.route(wallPoint, wallNormal)
+      ureter.route(wallPoint, wallNormal, growth)
       if (ureter.step(dt, filtration) > 0) {
         inflowAge[k] = 0
         squirt(k)

@@ -335,7 +335,10 @@ export function stepSim(sim, dt, out, rng = Math.random) {
   const most = sim.maxCapacity * sim.volumeCap
   if (sim.volume < most) sim.volume = Math.min(most, sim.volume + totalDrip * dt)
 
-  // How full it feels: pressure and urgency follow the fill up to `fullAt`, then hold.
+  // How full it feels: pressure and urgency follow the fill up to `fullAt`, then hold. An
+  // arcade run that ended overfilled leaves it at full until the bladder is back down to
+  // full, where both rules feel the same.
+  if (!sim.arcade && sim.fullAt < SANDBOX_RULES.fullAt && sim.volume <= sim.maxCapacity) sim.fullAt = SANDBOX_RULES.fullAt
   const fillRatio = Math.min(fillRatioOf(sim), sim.fullAt)
 
   sim.squeezeAmountY = lerp(sim.squeezeAmountY, sim.targetSqueezeY, dt * 10.0)

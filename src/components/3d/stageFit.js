@@ -6,8 +6,8 @@
 // image centre from the screen centre to the stage centre.
 
 // Half-extent of the scene worth framing, in world units: the bladder at full
-// inflation (~1.3x its 2.35 radius, up to ~1.46x overfilled in the arcade) plus the
-// sphincter below it.
+// inflation (~1.3x its 2.35 radius) plus the sphincter below it. An overfilled arcade
+// bladder grows past this; StageFit backs the camera off by as much (overfillGrowth).
 export const ORGAN_HALF_HEIGHT = 4.1
 export const ORGAN_HALF_WIDTH = 3.4
 // Side rails sit over the stage's left and right edges.

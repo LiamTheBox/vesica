@@ -84,6 +84,24 @@ describe('no limit to what it holds (requested)', () => {
     expect(fillMultiplier(sim.volume / sim.maxCapacity)).toBe(5)
   })
 
+  it('still feels no fuller than full after a run ends overfilled, until it is back down to full', () => {
+    const sim = quietRun(3000)
+    run(sim, DT)
+    const full = sim.pressure
+    startVoidAttempt(sim, [])
+    const events = run(sim, 2, { until: (s) => s.arcade === null })
+    expect(types(events)).toContain('challengeResult') // banked
+    run(sim, 1)
+    expect(sim.isActivelyVoiding).toBe(true)
+    expect(sim.pressure).toBeLessThanOrEqual(full + 1e-9)
+
+    // Emptied to below full, it's the sandbox's bladder again, with no jump on the way.
+    let highest = 0
+    run(sim, 200, { until: (s) => { highest = Math.max(highest, s.pressure); return s.volume < 700 } })
+    expect(highest).toBeLessThanOrEqual(full + 1e-9)
+    expect(sim.fullAt).toBe(SANDBOX_RULES.fullAt)
+  })
+
   it("keeps what it holds when the run ends, but the sandbox's bladder fills no further than 125 %", () => {
     const sim = quietRun(3000)
     quitArcadeRun(sim, [])

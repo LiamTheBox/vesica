@@ -86,6 +86,9 @@ function endRules(sim) {
   sim.activeChallenge = null
   sim.coughWarned = false
   Object.assign(sim, SANDBOX_RULES)
+  // Ended overfilled, it still feels no fuller than full until it's back down to full
+  // (stepSim then restores the sandbox's rule), so the gauge doesn't leap as a bank empties it.
+  if (sim.volume > sim.maxCapacity) sim.fullAt = ARCADE_RULES.fullAt
 }
 
 function endRun(sim, out, banked) {
