@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { BALANCE, CLENCH, GAMES, PUSH, SEAL } from './games'
+import {
+  BALANCE, CLENCH, GAMES, heightFor, HOLD, HOLD_BAND, HOLD_SQUEEZE, MATCH, MATCH_OPEN, MATCH_SHUT, PUSH, RELEASE, SEAL, STOP, STOP_CLOSE,
+} from './games'
 import { DT, play } from '../../test/micro'
 
 const SPEEDS = [1, 1.6, 2.2]
@@ -66,6 +68,47 @@ describe('the microgames (M8)', () => {
       expect(play(BALANCE, { speed, seed })).toBe('lose')
       // Dragging is only felt while pressed.
       expect(play(BALANCE, { speed, seed, control: (g) => ({ ...steady(g), down: false }) })).toBe('lose')
+    })
+  })
+
+  it('HOLD!: squeezing just enough keeps the needle in the band; none, or all the way, loses', () => {
+    // Squeeze for the steady rise, plus more the higher the needle is.
+    const steady = (g) => {
+      const squeeze = Math.max(0, Math.min(1, g.rise / HOLD_SQUEEZE + 6 * (g.needle - (HOLD_BAND - g.half / 3))))
+      return { down: true, y: heightFor(squeeze) }
+    }
+    everyRound((speed, seed) => {
+      expect(play(HOLD, { speed, seed, control: steady })).toBe('win')
+      expect(play(HOLD, { speed, seed })).toBe('lose')
+      expect(play(HOLD, { speed, seed, control: () => ({ down: true, y: 0 }) })).toBe('lose')
+    })
+  })
+
+  it('MATCH!: squeezing to the target ring as it changes wins; not squeezing loses', () => {
+    const follow = (g) => ({ down: true, y: heightFor((MATCH_OPEN - MATCH.target(g, g.t + DT)) / (MATCH_OPEN - MATCH_SHUT)) })
+    everyRound((speed, seed) => {
+      expect(play(MATCH, { speed, seed, control: follow })).toBe('win')
+      expect(play(MATCH, { speed, seed })).toBe('lose')
+    })
+  })
+
+  it('STOP!: shutting it in time for the run-on to land in the band wins; too soon or never loses', () => {
+    const timed = (g) => ({ down: g.level + (g.flow * STOP_CLOSE) / 2 >= g.low + g.width / 2 })
+    everyRound((speed, seed) => {
+      expect(play(STOP, { speed, seed, control: timed })).toBe('win')
+      expect(play(STOP, { speed, seed, control: (g) => ({ down: g.t > 0.1 }) })).toBe('lose')
+      expect(play(STOP, { speed, seed })).toBe('lose')
+    })
+  })
+
+  it('RELEASE!: holding through the spike and letting go just after wins; anything else loses', () => {
+    const through = (g) => ({ down: g.t + DT < g.end + g.window / 2 })
+    everyRound((speed, seed) => {
+      expect(play(RELEASE, { speed, seed, control: through })).toBe('win')
+      expect(play(RELEASE, { speed, seed })).toBe('lose') // never held
+      expect(play(RELEASE, { speed, seed, control: () => ({ down: true }) })).toBe('lose') // never let go
+      // Let go while it's on.
+      expect(play(RELEASE, { speed, seed, control: (g) => ({ down: g.t + DT < g.begin + g.rise + g.stay / 2 }) })).toBe('lose')
     })
   })
 })

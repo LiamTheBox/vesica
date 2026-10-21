@@ -2,6 +2,8 @@ import { act, advance, onSimEvent, publishHud, setPaused, sim } from '../sim/eng
 import * as simActions from '../sim/sim'
 import * as interactions from '../sim/interactions'
 import * as arcade from '../sim/arcade'
+import * as micro from '../sim/micro/runner'
+import { GAMES } from '../sim/micro/games'
 import { useUiStore } from '../store/useUiStore'
 
 // Dev-only test hook exposed as `window.__vesica`. Every call site is guarded by
@@ -50,8 +52,11 @@ export function installDevHook() {
       Object.assign(sim, partial)
       publishHud()
     },
-    // Run a named action from src/sim/sim.js, interactions.js or arcade.js, e.g. act('ingestBeverage', 'water').
-    act: (name, ...args) => act(simActions[name] ?? interactions[name] ?? arcade[name], ...args),
+    // Run a named action from src/sim/sim.js, interactions.js, arcade.js or micro/runner.js,
+    // e.g. act('ingestBeverage', 'water').
+    act: (name, ...args) => act(simActions[name] ?? interactions[name] ?? arcade[name] ?? micro[name], ...args),
+    // A microgames run dealing only these games, by id, e.g. microRun(['hold']).
+    microRun: (ids) => act(micro.startMicroRun, Math.random, { games: GAMES.filter((g) => ids.includes(g.id)) }),
     // Pause the per-frame loop so tests can step the simulation deterministically.
     pause: () => setPaused(true),
     resume: () => setPaused(false),

@@ -140,4 +140,140 @@ export const BALANCE = {
   timeout: 'win',
 }
 
-export const GAMES = [CLENCH, PUSH, SEAL, BALANCE]
+// How hard the pointer squeezes (0..1) in the games that take a squeeze: while pressed, the
+// higher it is in the play area the harder; let go, and it's none.
+export const SQUEEZE_BOTTOM = 0.92
+export const SQUEEZE_TOP = 0.08
+export const squeezeOf = (input) => (input.down ? clamp((SQUEEZE_BOTTOM - input.y) / (SQUEEZE_BOTTOM - SQUEEZE_TOP), 0, 1) : 0)
+// Where to hold the pointer for a squeeze (the tests use it).
+export const heightFor = (squeeze) => SQUEEZE_BOTTOM - squeeze * (SQUEEZE_BOTTOM - SQUEEZE_TOP)
+
+// Pressure spikes as short surges on a steady rise: [start, end, extra rise per second].
+// They come faster as the game speeds up, but never too fast to answer.
+function surges(rng, speed, duration, size) {
+  const list = []
+  for (let t = (0.5 + 0.4 * rng()) / speed; t < duration - 0.3; t += (0.8 + 0.5 * rng()) / Math.sqrt(speed)) {
+    list.push([t, t + 0.25, size * (0.8 + 0.4 * rng())])
+  }
+  return list
+}
+const surgeAt = (list, t) => list.reduce((sum, [from, to, rise]) => sum + (t >= from && t < to ? rise : 0), 0)
+
+// HOLD!: the pressure needle creeps up and surges; squeeze to keep it in the green band.
+// Out of the band (too loose or too tight) for long in all, and it's lost.
+export const HOLD_BAND = 0.5 // the band's middle
+export const HOLD_SQUEEZE = 1.4 // how fast a full squeeze lowers the needle, per second
+const OUT_ALLOWANCE = 0.6 // seconds out of the band, in all
+export const HOLD = {
+  id: 'hold',
+  verb: 'HOLD!',
+  seconds: 5,
+  start(rng, speed) {
+    const lift = Math.pow(speed, 0.4)
+    return {
+      t: 0, needle: HOLD_BAND, out: 0,
+      half: Math.max(0.09, 0.15 / Math.sqrt(speed)),
+      rise: 0.35 * lift,
+      surges: surges(rng, speed, this.seconds / speed, 0.8 * lift),
+      squeeze: 0,
+    }
+  },
+  step(g, input, dt) {
+    g.t += dt
+    g.squeeze = squeezeOf(input)
+    g.needle = clamp(g.needle + (g.rise + surgeAt(g.surges, g.t) - HOLD_SQUEEZE * g.squeeze) * dt, 0, 1)
+    if (Math.abs(g.needle - HOLD_BAND) > g.half) g.out += dt
+    return g.out > OUT_ALLOWANCE ? 'lose' : null
+  },
+  timeout: 'win',
+}
+
+// MATCH!: the target ring swells and shrinks; squeeze so yours matches it.
+export const MATCH_OPEN = 0.42 // your ring with no squeeze
+export const MATCH_SHUT = 0.06 // and fully squeezed
+export const ringFor = (squeeze) => MATCH_OPEN - (MATCH_OPEN - MATCH_SHUT) * squeeze
+export const MATCH = {
+  id: 'match',
+  verb: 'MATCH!',
+  seconds: 5,
+  start(rng, speed) {
+    return {
+      t: 0, off: 0, ring: MATCH_OPEN,
+      tolerance: 0.05 / Math.pow(speed, 0.3),
+      allowance: 0.9 / Math.sqrt(speed),
+      waves: [
+        [0.1, 1.6 * speed, rng() * Math.PI * 2],
+        [0.05, 3.1 * speed, rng() * Math.PI * 2],
+      ],
+    }
+  },
+  target(g, t = g.t) {
+    return 0.24 + g.waves.reduce((sum, [size, rate, phase]) => sum + size * Math.sin(rate * t + phase), 0)
+  },
+  step(g, input, dt) {
+    g.t += dt
+    g.ring = ringFor(squeezeOf(input))
+    // A moment to get a finger on it.
+    if (g.t > 0.4 && Math.abs(g.ring - this.target(g)) > g.tolerance) g.off += dt
+    return g.off > g.allowance ? 'lose' : null
+  },
+  timeout: 'win',
+}
+
+// STOP!: it's flowing; press to shut it so the level stops in the band. It takes a moment
+// to close, so the level runs on a little after the press.
+export const STOP_CLOSE = 0.2 // seconds to close
+export const STOP = {
+  id: 'stop',
+  verb: 'STOP!',
+  seconds: 4.5,
+  start(rng, speed) {
+    const width = 0.13 / Math.pow(speed, 0.35)
+    return { t: 0, level: 0, flow: 0.3 * speed, open: 1, closing: false, low: 0.5 + 0.25 * rng(), width }
+  },
+  step(g, input, dt) {
+    g.t += dt
+    if (input.presses.length > 0) g.closing = true
+    if (g.closing) g.open = Math.max(0, g.open - dt / STOP_CLOSE)
+    g.level += g.flow * g.open * dt
+    if (g.level > g.low + g.width) return 'lose'
+    if (g.open === 0) return g.level >= g.low ? 'win' : 'lose'
+    return null
+  },
+  timeout: 'lose',
+}
+
+// RELEASE!: a spike swells, stays and passes. Hold through it, then let go in the moment
+// after it passes: letting go while it's on, not holding when it comes, or holding on too
+// long all lose.
+export const RELEASE_ON = 0.12 // the spike counts as on above this
+export const RELEASE = {
+  id: 'release',
+  verb: 'RELEASE!',
+  seconds: 5,
+  start(rng, speed) {
+    const begin = (0.5 + 0.6 * rng()) / speed
+    const rise = 0.5 / speed
+    const stay = (0.4 + 0.5 * rng()) / speed
+    const fall = 0.4 / speed
+    return { t: 0, begin, rise, stay, fall, end: begin + rise + stay + fall, window: 0.55 / Math.sqrt(speed), held: false }
+  },
+  // The spike's size, 0..1, at time t.
+  spike(g, t = g.t) {
+    const s = t - g.begin
+    if (s <= 0 || t >= g.end) return 0
+    if (s < g.rise) return s / g.rise
+    if (s < g.rise + g.stay) return 1
+    return (g.end - t) / g.fall
+  },
+  step(g, input, dt) {
+    g.t += dt
+    g.held = input.down
+    if (g.t < g.end) return this.spike(g) > RELEASE_ON && !input.down ? 'lose' : null
+    if (!input.down) return 'win'
+    return g.t > g.end + g.window ? 'lose' : null
+  },
+  timeout: 'lose',
+}
+
+export const GAMES = [CLENCH, PUSH, SEAL, BALANCE, HOLD, MATCH, STOP, RELEASE]

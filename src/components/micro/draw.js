@@ -1,4 +1,6 @@
-import { BALANCE_FALLEN, CLENCH_RING_Y, SEAL_RADIUS } from '../../sim/micro/games'
+import {
+  BALANCE_FALLEN, CLENCH_RING_Y, HOLD_BAND, MATCH, RELEASE, RELEASE_ON, SEAL_RADIUS, SQUEEZE_BOTTOM, SQUEEZE_TOP,
+} from '../../sim/micro/games'
 
 // Draws a microgames run (M8) on a 2D canvas: the game's scene in a square play area, its
 // verb, the fuse and the result. Abstract shapes only: the ring is the sphincter, amber is
@@ -225,7 +227,138 @@ function drawBalance(ctx, g, V) {
   }
 }
 
-const SCENES = { clench: drawClench, push: drawPush, seal: drawSeal, balance: drawBalance }
+// The squeeze, for the games that take one: a track up the right side, its knob at the
+// pointer's height while pressed (higher squeezes harder).
+function drawSqueeze(ctx, V, input) {
+  const x = 0.95
+  ctx.strokeStyle = C.faint
+  ctx.lineWidth = V.S(0.02)
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(V.X(x), V.Y(SQUEEZE_BOTTOM))
+  ctx.lineTo(V.X(x), V.Y(SQUEEZE_TOP))
+  ctx.stroke()
+  ctx.lineCap = 'butt'
+  if (!input.down) return
+  const y = Math.min(SQUEEZE_BOTTOM, Math.max(SQUEEZE_TOP, input.y))
+  ctx.strokeStyle = C.cyan
+  ctx.lineWidth = V.S(0.02)
+  ctx.beginPath()
+  ctx.moveTo(V.X(x), V.Y(SQUEEZE_BOTTOM))
+  ctx.lineTo(V.X(x), V.Y(y))
+  ctx.stroke()
+  ctx.fillStyle = C.cyan
+  circle(ctx, V.X(x), V.Y(y), V.S(0.03))
+  ctx.fill()
+}
+
+function drawHold(ctx, g, V, run) {
+  const x0 = 0.4, x1 = 0.6, y0 = 0.08, y1 = 0.92
+  const at = (n) => y1 - (y1 - y0) * n
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.9)'
+  ctx.fillRect(V.X(x0), V.Y(y0), V.S(x1 - x0), V.S(y1 - y0))
+  // The band to keep it in.
+  ctx.fillStyle = 'rgba(52, 211, 153, 0.28)'
+  ctx.fillRect(V.X(x0), V.Y(at(HOLD_BAND + g.half)), V.S(x1 - x0), V.S((y1 - y0) * 2 * g.half))
+  const out = Math.abs(g.needle - HOLD_BAND) > g.half
+  ctx.strokeStyle = out ? C.bad : C.ring
+  ctx.lineWidth = V.S(0.014)
+  ctx.strokeRect(V.X(x0), V.Y(y0), V.S(x1 - x0), V.S(y1 - y0))
+  // The needle.
+  const y = at(g.needle)
+  ctx.fillStyle = out ? C.bad : C.amber
+  ctx.fillRect(V.X(x0 - 0.04), V.Y(y) - V.S(0.012), V.S(x1 - x0 + 0.08), V.S(0.024))
+  ctx.beginPath()
+  ctx.moveTo(V.X(x0 - 0.04), V.Y(y) - V.S(0.03))
+  ctx.lineTo(V.X(x0 - 0.04), V.Y(y) + V.S(0.03))
+  ctx.lineTo(V.X(x0 + 0.01), V.Y(y))
+  ctx.fill()
+  // A surge: red pressing up from below.
+  const surging = g.surges.some(([from, to]) => g.t >= from && g.t < to)
+  if (surging) {
+    ctx.fillStyle = 'rgba(244, 63, 94, 0.5)'
+    ctx.fillRect(V.X(x0), V.Y(y), V.S(x1 - x0), V.Y(y1) - V.Y(y))
+  }
+  drawSqueeze(ctx, V, run.input)
+}
+
+function drawMatch(ctx, g, V, run) {
+  const target = MATCH.target(g)
+  const on = Math.abs(g.ring - target) <= g.tolerance
+  ctx.setLineDash([V.S(0.025), V.S(0.02)])
+  ctx.strokeStyle = C.amber
+  ctx.lineWidth = V.S(0.014)
+  circle(ctx, V.X(0.5), V.Y(0.5), V.S(target))
+  ctx.stroke()
+  ctx.setLineDash([])
+  ctx.strokeStyle = on ? C.good : C.ring
+  ctx.lineWidth = V.S(0.04)
+  circle(ctx, V.X(0.5), V.Y(0.5), V.S(g.ring))
+  ctx.stroke()
+  drawSqueeze(ctx, V, run.input)
+}
+
+function drawStop(ctx, g, V) {
+  const ring = { x: 0.5, y: 0.14 }
+  const cup = { x0: 0.32, x1: 0.68, y0: 0.32, y1: 0.92 }
+  const at = (level) => cup.y1 - (cup.y1 - cup.y0) * level
+  // The ring closes on a press; the stream thins and stops.
+  ctx.strokeStyle = C.ring
+  ctx.lineWidth = V.S(0.04)
+  circle(ctx, V.X(ring.x), V.Y(ring.y), V.S(0.03 + 0.05 * g.open))
+  ctx.stroke()
+  if (g.open > 0) {
+    ctx.strokeStyle = C.amber
+    ctx.lineWidth = V.S(0.035 * g.open)
+    ctx.beginPath()
+    ctx.moveTo(V.X(ring.x), V.Y(ring.y + 0.05))
+    ctx.lineTo(V.X(ring.x), V.Y(at(g.level)))
+    ctx.stroke()
+  }
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.9)'
+  ctx.fillRect(V.X(cup.x0), V.Y(cup.y0), V.S(cup.x1 - cup.x0), V.S(cup.y1 - cup.y0))
+  ctx.fillStyle = 'rgba(52, 211, 153, 0.3)'
+  ctx.fillRect(V.X(cup.x0), V.Y(at(g.low + g.width)), V.S(cup.x1 - cup.x0), V.Y(at(g.low)) - V.Y(at(g.low + g.width)))
+  ctx.fillStyle = C.amber
+  ctx.fillRect(V.X(cup.x0), V.Y(at(g.level)), V.S(cup.x1 - cup.x0), V.Y(cup.y1) - V.Y(at(g.level)))
+  ctx.strokeStyle = C.faint
+  ctx.lineWidth = V.S(0.012)
+  ctx.strokeRect(V.X(cup.x0), V.Y(cup.y0), V.S(cup.x1 - cup.x0), V.S(cup.y1 - cup.y0))
+}
+
+function drawRelease(ctx, g, V) {
+  const spike = RELEASE.spike(g)
+  const now = g.t >= g.end && g.t <= g.end + g.window
+  // The ring: clenched while held, green the moment to let go.
+  const r = g.held ? 0.13 : 0.19
+  ctx.strokeStyle = now ? C.good : g.held ? C.cyan : C.ring
+  ctx.lineWidth = V.S(0.05)
+  if (now) {
+    ctx.shadowColor = C.good
+    ctx.shadowBlur = V.S(0.06)
+  }
+  circle(ctx, V.X(0.5), V.Y(0.42), V.S(r))
+  ctx.stroke()
+  ctx.shadowBlur = 0
+  // Before the spike, a halo calls for the hold.
+  if (!g.held && g.t < g.begin) {
+    ctx.strokeStyle = `rgba(241, 245, 249, ${0.25 + 0.2 * Math.sin(g.t * 10)})`
+    ctx.lineWidth = V.S(0.012)
+    circle(ctx, V.X(0.5), V.Y(0.42), V.S(0.25))
+    ctx.stroke()
+  }
+  // The spike's size.
+  const x0 = 0.2, x1 = 0.8, y = 0.8
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.9)'
+  ctx.fillRect(V.X(x0), V.Y(y), V.S(x1 - x0), V.S(0.06))
+  ctx.fillStyle = spike > RELEASE_ON ? C.bad : C.faint
+  ctx.fillRect(V.X(x0), V.Y(y), V.S((x1 - x0) * spike), V.S(0.06))
+}
+
+const SCENES = {
+  clench: drawClench, push: drawPush, seal: drawSeal, balance: drawBalance,
+  hold: drawHold, match: drawMatch, stop: drawStop, release: drawRelease,
+}
 
 // --- The frame around them -----------------------------------------------------
 
