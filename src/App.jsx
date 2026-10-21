@@ -86,10 +86,12 @@ function App() {
       </Suspense>
       <HUD />
 
+      {/* Starts on the click, not the press: gone on the press, the screen would let the
+          click that follows land on the control under it (a drink, say). */}
       {!started && (
         <div
           className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm"
-          onPointerDown={() => begin('arcade')}
+          onClick={() => begin('arcade')}
         >
           <div className="glass-hud px-6 py-4 rounded-2xl flex flex-col items-center gap-1 max-w-xs text-center">
             <span className="text-3xl mb-1">🕹️</span>
@@ -99,13 +101,13 @@ function App() {
             </span>
             <div className="mt-2 flex flex-wrap justify-center gap-2">
               <button
-                onPointerDown={(e) => { e.stopPropagation(); begin('micro') }}
+                onClick={(e) => { e.stopPropagation(); begin('micro') }}
                 className="min-h-11 px-4 rounded-xl bg-violet-900/70 hover:bg-violet-800/70 border border-violet-500/70 text-xs font-bold text-slate-100"
               >
                 ⚡ Microgames
               </button>
               <button
-                onPointerDown={(e) => { e.stopPropagation(); begin('sandbox') }}
+                onClick={(e) => { e.stopPropagation(); begin('sandbox') }}
                 className="min-h-11 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold text-slate-200"
               >
                 🧪 Sandbox (free play)
