@@ -90,6 +90,17 @@ export function orientCutaway(plane, cameraPosition, center = ORGAN_CENTER) {
 const POKE = { radius: 1.4, powerScale: 1.0, velScale: 1.6, dentGain: 0.35, dentCap: 0.6 }
 const SLAP = { radius: 1.8, powerScale: 2.2, velScale: 1.0, dentGain: 0.4, dentCap: 0.8 }
 
+// How the wall feels with fill, from slack to full: slack it's soft (deep dents, slow
+// springs, a floppy wobble, ripples that die out), full it's taut (shallow dents that
+// spring back fast, a tight wobble, ripples that carry).
+const FEEL = {
+  dent: [1.4, 0.55], // times the impact profiles' push and dent (never deeper than their cap)
+  spring: [0.7, 1.5], // times the physics preset's spring
+  wobble: [1.3, 0.7], // times the jiggle
+  ripple: [0.7, 1.35], // times the ripples' height
+}
+const feel = (key, fill) => THREE.MathUtils.lerp(FEEL[key][0], FEEL[key][1], Math.min(1, fill))
+
 // Urine: Organ.jsx draws the lining's geometry, scaled to the volume held (see
 // urineScale). Full, it fills the sac just inside the membrane.
 export const FLUID_INSET = 0.965
@@ -386,6 +397,7 @@ export function createOrganRig() {
   let hop = 0, hopV = 0
   let puff = 0, puffV = 0
   let shudder = 0, droop = 0, flash = 0, blush = 0, nervous = 0
+  let lastFill = 0.16 // for impacts, which come between frames
   const bodyScale = new THREE.Vector3(1, 1, 1)
   const bodyOffset = new THREE.Vector3()
 
@@ -407,17 +419,19 @@ export function createOrganRig() {
   const wallPoint = new THREE.Vector3()
   const wallNormal = new THREE.Vector3()
 
-  // Pushes vertices near `local` inward and leaves a slowly recovering dent.
+  // Pushes vertices near `local` inward and leaves a slowly recovering dent: deeper the
+  // slacker the wall.
   function impact(local, strength, profile) {
+    const give = feel('dent', lastFill)
     for (let i = 0; i < count; i++) {
       const vx = wall[i * 3], vy = wall[i * 3 + 1], vz = wall[i * 3 + 2]
       const d = scratch.set(vx, vy, vz).distanceTo(local)
       if (d < profile.radius) {
-        const power = (1.0 - d / profile.radius) * strength * profile.powerScale
+        const power = (1.0 - d / profile.radius) * strength * profile.powerScale * give
         velocity[i * 3] -= (vx / 2.35) * power * profile.velScale
         velocity[i * 3 + 1] -= (vy / 2.35) * power * profile.velScale
         velocity[i * 3 + 2] -= (vz / 2.35) * power * profile.velScale
-        dentMemory[i] = Math.min(profile.dentCap, dentMemory[i] + power * profile.dentGain)
+        dentMemory[i] = Math.min(profile.dentCap * Math.min(1, give), dentMemory[i] + power * profile.dentGain)
       }
     }
   }
@@ -464,6 +478,7 @@ export function createOrganRig() {
     const phys = physicsOf(sim)
 
     const fillRatio = Math.max(0.01, sim.volume / sim.maxCapacity)
+    lastFill = fillRatio
     const compY = sim.squeezeAmountY || 0
     const scaleY = 1.0 - compY
     const inflationScale = inflationOf(fillRatio)
@@ -516,8 +531,9 @@ export function createOrganRig() {
 
     // Soft-body wall
     const phase = sim.globalJigglePhase
-    const jiggle1 = Math.sin(phase) * sim.jiggleIntensity * 0.18
-    const jiggle2 = Math.cos(phase * 1.5) * sim.jiggleIntensity * 0.12
+    const wobble = sim.jiggleIntensity * feel('wobble', fillRatio)
+    const jiggle1 = Math.sin(phase) * wobble * 0.18
+    const jiggle2 = Math.cos(phase * 1.5) * wobble * 0.12
     // sin(3θ + phase)·sin 2φ·j1 + cos(2θ − 1.2 phase)·j2, expanded with the angle-sum identities
     const jA = Math.cos(phase) * jiggle1
     const jB = Math.sin(phase) * jiggle1
@@ -539,7 +555,8 @@ export function createOrganRig() {
     const coreZ = sim.fluidCoreOffset.z * 0.35
     const slackSpread = (1.0 - fillRatio) * 0.2 * relaxed
     const ripples = sim.ripples
-    const springDt = phys.springK * dt
+    const springDt = phys.springK * feel('spring', fillRatio) * dt
+    const rippleGain = feel('ripple', fillRatio)
     const damping = phys.damping
     const tighten = 1.0 - CONTRACT_TIGHTEN * contraction
     const squeezeAt = 1.3 - 2.6 * squeezePhase // the squeeze's height, dome to neck
@@ -581,7 +598,7 @@ export function createOrganRig() {
         const rip = ripples[r]
         const dx = bx - rip.center.x, dy = by - rip.center.y, dz = bz - rip.center.z
         const waveDist = Math.abs(Math.sqrt(dx * dx + dy * dy + dz * dz) - rip.radius)
-        if (waveDist < 0.65) rippleDisp += Math.cos((waveDist / 0.65) * (Math.PI / 2)) * rip.amplitude
+        if (waveDist < 0.65) rippleDisp += Math.cos((waveDist / 0.65) * (Math.PI / 2)) * rip.amplitude * rippleGain
       }
 
       let tremorX = 0, tremorY = 0, tremorZ = 0

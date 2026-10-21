@@ -43,6 +43,13 @@ export const RESEAL_STRAIN = 0.85
 // much per unit of strain it holds back.
 export const OVERLOAD_STAMINA = 4.0
 
+// A poke or a slap jolts the pressure for a moment, more the fuller the bladder (taut, it
+// has no give): up to this many cmH2O when full, fading in a fraction of a second. It
+// doesn't strain the sphincter (pokes and slaps strain it 5 % each, flat; requested), and
+// doesn't count toward a total failure.
+export const TOUCH_PRESSURE = 12.0
+const TOUCH_FADE = 6.0 // per second
+
 // Voiding: a typical adult's peak flow, tapering over the last ~150 ml as the emptying
 // bladder's contraction weakens. Voiding eases the strain.
 export const PEAK_FLOW = 20.0
@@ -108,6 +115,7 @@ export function createSimState() {
 
     pressure: 7.2,
     maxRecordedPressure: 7.2,
+    touchPressure: 0, // cmH2O from the latest poke or slap (TOUCH_PRESSURE)
     hydration: 0.85,
     sloshAngleX: 0,
     sloshAngleZ: 0,
@@ -149,6 +157,12 @@ export function voidFlow(volume, dilation) {
 }
 
 // --- Actions ---------------------------------------------------------------
+
+// A poke or slap of `share` of a full one (0..1): its pressure jolt.
+export function touchJolt(sim, share) {
+  const fill = Math.min(1, fillRatioOf(sim))
+  sim.touchPressure = Math.max(sim.touchPressure, TOUCH_PRESSURE * fill * fill * Math.min(1, share))
+}
 
 export function impartSloshForce(sim, fx, fz) {
   const dot = sim.sloshVelX * fx + sim.sloshVelZ * fz
@@ -259,6 +273,7 @@ export function resetOrgan(sim, out, rng = Math.random, { silent = false } = {})
   sim.detrusorSpasmIntensity = 0
   sim.coughImpulseIntensity = 0
   sim.coughWarned = false
+  sim.touchPressure = 0
   sim.totalLeakedVolume = 0
   sim.activeChallenge = null
   sim.arcade = null
@@ -406,7 +421,8 @@ export function stepSim(sim, dt, out, rng = Math.random) {
   sim.pressure = basePressure +
     (sim.detrusorSpasmIntensity * URGE_PRESSURE) +
     (sim.coughImpulseIntensity * COUGH_PRESSURE) +
-    (sim.squeezeAmountY * 34.0 * incompressibilityBoost)
+    (sim.squeezeAmountY * 34.0 * incompressibilityBoost) +
+    sim.touchPressure
 
   if (sim.pressure > sim.maxRecordedPressure) sim.maxRecordedPressure = sim.pressure
 
@@ -437,7 +453,7 @@ export function stepSim(sim, dt, out, rng = Math.random) {
       sim.leakGrace += dt
     } else {
       sim.leakGrace = 0
-      if (sim.pressure > FAILURE_PRESSURE) {
+      if (sim.pressure - sim.touchPressure > FAILURE_PRESSURE) {
         sim.involuntaryVoiding = true
         out.push({ type: 'failureStart' })
       } else {
@@ -544,6 +560,7 @@ export function stepSim(sim, dt, out, rng = Math.random) {
   sim.jiggleIntensity = Math.max(0, sim.jiggleIntensity - dt * phys.jiggleDecay)
 
   if (sim.creakCooldown > 0) sim.creakCooldown -= dt
+  sim.touchPressure *= Math.exp(-TOUCH_FADE * dt)
   if (sim.sootheCooldown > 0) sim.sootheCooldown = Math.max(0, sim.sootheCooldown - dt)
 }
 

@@ -347,6 +347,53 @@ describe('bladder wall', () => {
   })
 })
 
+describe('feel (E)', () => {
+  // A settled bladder holding `ml`, and its wall vertex facing +z near the equator.
+  const settled = (ml) => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    sim.volume = ml
+    play(rig, sim, 3)
+    const i = 24 * RING_VERTICES + 48 // row 24, θ = 3π/2: the front
+    return { rig, sim, i }
+  }
+  const radius = (rig, i) => new THREE.Vector3().fromBufferAttribute(rig.bladderGeo.attributes.position, i).length()
+
+  it('dents deep when slack, and only a little when taut', () => {
+    const dent = (ml) => {
+      const { rig, sim, i } = settled(ml)
+      const rest = radius(rig, i)
+      rig.poke(new THREE.Vector3().fromBufferAttribute(rig.bladderGeo.attributes.position, i), 2.2)
+      let deepest = rest
+      for (let f = 0; f < 30; f++) {
+        rig.update(sim, 1 / 60, 3 + f / 60, {})
+        deepest = Math.min(deepest, radius(rig, i))
+      }
+      return (rest - deepest) / rest
+    }
+    const slack = dent(60)
+    const taut = dent(700)
+    expect(taut).toBeGreaterThan(0.02)
+    expect(slack).toBeGreaterThan(taut * 1.5)
+  })
+
+  it("carries a slap's ripple further when full", () => {
+    const wave = (ml) => {
+      const { rig, sim, i } = settled(ml)
+      const rest = radius(rig, i)
+      // A ripple from the back, reaching the front.
+      sim.ripples.push({ center: { x: 0, y: 0, z: -2.3 }, radius: 4.0, maxRadius: 6, speed: 0, amplitude: 0.5, decay: 0 })
+      let most = 0
+      for (let f = 0; f < 30; f++) {
+        rig.update(sim, 1 / 60, 3 + f / 60, {})
+        most = Math.max(most, radius(rig, i) / rest - 1)
+      }
+      return most
+    }
+    expect(wave(700)).toBeGreaterThan(wave(60) * 1.5)
+  })
+})
+
 describe('body language (D)', () => {
   const DOME = RING_VERTICES * 2
   const SIDE = BLADDER_VERTICES / 2

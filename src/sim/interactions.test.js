@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createSimState, stepSim } from './sim'
+import { createSimState, fillPressure, stepSim, TOUCH_PRESSURE } from './sim'
 import { orbitDrag, pokeAt, slapAt, slapRandom, squeezeCancel, squeezeDrag, squeezeRelease, squeezeStart } from './interactions'
 import { extractOriginalConst } from '../test/original'
 
@@ -102,3 +102,43 @@ describe('orbit', () => {
     expect(sim.sloshVelZ).toBeCloseTo(-10 * 0.15 * 0.85, 9)
   })
 })
+
+describe('a full bladder is taut (E)', () => {
+  const DT = 1 / 60
+  const settled = (volume) => {
+    const sim = createSimState()
+    sim.baseDrip = 0
+    sim.volume = volume
+    stepSim(sim, DT, [])
+    return sim
+  }
+
+  it('jolts the pressure for a moment when poked or slapped full, hardly at all empty, and strains it no more', () => {
+    const full = settled(700)
+    const base = full.pressure
+    pokeAt(full, [], { x: 0, y: 0, z: 2 }, 2.2, { touch: true })
+    stepSim(full, DT, [])
+    expect(full.pressure - base).toBeGreaterThan(TOUCH_PRESSURE * 0.75)
+    expect(full.sphincterToneStrain).toBeCloseTo(0.05, 9)
+    for (let i = 0; i < 60; i++) stepSim(full, DT, [])
+    expect(full.pressure - base).toBeLessThan(0.05)
+
+    const empty = settled(100)
+    slapAt(empty, [], { x: 0, y: 0, z: 2 }, 2.4)
+    stepSim(empty, DT, [])
+    expect(empty.pressure - fillPressure(100 / 750)).toBeLessThan(TOUCH_PRESSURE * 0.02)
+    expect(empty.sphincterToneStrain).toBeCloseTo(0.05, 9)
+  })
+
+  it("never turns a spurt into a total failure: the poke that tips the strain to 100 % leaks a spurt", () => {
+    const sim = settled(666) // 60 cmH2O: a poke's jolt takes it past the failure threshold (65)
+    sim.sphincterToneStrain = 0.97
+    pokeAt(sim, [], { x: 0, y: 0, z: 2 }, 2.2, { touch: true })
+    const events = []
+    stepSim(sim, DT, events)
+    expect(sim.pressure).toBeGreaterThan(65)
+    expect(events.map((e) => e.type)).toContain('leakStart')
+    expect(events.map((e) => e.type)).not.toContain('failureStart')
+  })
+})
+
