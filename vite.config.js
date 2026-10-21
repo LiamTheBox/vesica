@@ -4,8 +4,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vite'
 
-// Installable, offline-capable app: the service worker precaches the build and caches
-// the Google Fonts on first use.
+// Installable, offline-capable app: the service worker precaches the build, fonts included.
 const pwa = VitePWA({
   registerType: 'autoUpdate',
   includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'],
@@ -27,17 +26,6 @@ const pwa = VitePWA({
   workbox: {
     globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
     maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-    runtimeCaching: [
-      {
-        urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/,
-        handler: 'CacheFirst',
-        options: {
-          cacheName: 'google-fonts',
-          expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
-          cacheableResponse: { statuses: [0, 200] },
-        },
-      },
-    ],
   },
 })
 
