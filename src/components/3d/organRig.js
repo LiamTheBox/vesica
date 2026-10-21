@@ -175,6 +175,39 @@ const INFLOW_SECONDS = 1.6
 const INFLOW_RIPPLE = 0.04
 const RIPPLE_SPEED = 2.4
 
+// Body language. It breathes, by mood: breaths a second, and how deep as a share of its
+// size (slow and deep asleep, quick and shallow in a panic).
+const BREATH = {
+  sleepy: [0.16, 0.02], calm: [0.25, 0.012], uneasy: [0.35, 0.01], desperate: [0.55, 0.008], panic: [0.9, 0.006],
+  relieved: [0.2, 0.018], embarrassed: [0.4, 0.008], annoyed: [0.45, 0.012], proud: [0.3, 0.014],
+}
+const STILL = [0, 0]
+// And it moves when something happens (emote): a happy bounce stretches it up from the neck
+// and back (a spring: rad/s, damping ratio, kick); a sigh or a huff swells it all round and
+// lets it settle; a shudder shakes it; when the clench gives out it droops, and it slumps a
+// little when sleepy. A blush and a flash colour the wall's glow. These move the whole organ
+// (objects.body), about the neck: through the wall's springs, which lag ~0.7 s behind their
+// targets, anything quicker than a breath would be smoothed away.
+const HOP = { omega: 13, damping: 0.25, kick: 1.0 }
+const PUFF = { omega: 5, damping: 0.5, sigh: 0.22, huff: 0.35, creak: 0.12 }
+const SHUDDER = { amp: 0.06, seconds: 0.8 }
+const NERVOUS_SHAKE = 0.015 // while a warned urge or sneeze is on its way
+const DROOP = { height: 0.06, seconds: 2.5, sleepy: 0.35 }
+export const WALL_EMISSIVE = new THREE.Color(0x881337)
+const BLUSH_COLOR = new THREE.Color(0xff2d75)
+
+const EMOTE_FOR = {
+  leakStart: 'shudder', failureStart: 'shudder', clenchExhausted: 'droop', creak: 'creak',
+  leakSaved: 'hop', arcadeLevel: 'hop', leakEnd: 'sigh', voidStop: 'sigh', soothe: 'sigh',
+}
+// What the bladder does when `event` happens, feeling `mood` (feedback/mood.js), if anything.
+export function emoteFor(event, mood) {
+  if (event.type === 'urgeEnd') return event.suppressed ? 'sigh' : null
+  if (event.type === 'arcadePoints') return event.reason === 'perfect' || event.reason === 'braced' ? 'hop' : null
+  if ((event.type === 'poke' && event.touch) || event.type === 'slap') return mood === 'annoyed' ? 'huff' : null
+  return EMOTE_FOR[event.type] ?? null
+}
+
 // Each ring's first and last vertex are the same point (two for the UVs), and so are all
 // of the dome's top row. Each copy gets its normal from its own triangles only, which
 // shows as a crease down the side and a star on top; they share the average instead.
@@ -348,6 +381,13 @@ export function createOrganRig() {
   let contraction = 0 // detrusor, 0..1
   let squeezePhase = 0
   let wallAlpha = -1
+  // Body language: breathing, the bounce and swell springs, and fading effects.
+  let breathPhase = 0, breathRate = 0, breathDepth = 0
+  let hop = 0, hopV = 0
+  let puff = 0, puffV = 0
+  let shudder = 0, droop = 0, flash = 0, blush = 0, nervous = 0
+  const bodyScale = new THREE.Vector3(1, 1, 1)
+  const bodyOffset = new THREE.Vector3()
 
   const stream = createStream()
   const outlet = new THREE.Vector3()
@@ -398,8 +438,27 @@ export function createOrganRig() {
   const slap = (local, strength) => impact(local, strength, SLAP)
   const clearDents = () => dentMemory.fill(0)
 
-  // `objects`: live meshes/materials from Organ.jsx refs, the camera, and what to call when
-  // a ureter squirts (onSquirt(side), -1 left, 1 right).
+  // Starts one of emoteFor's moves.
+  function emote(kind) {
+    if (kind === 'hop') {
+      hopV += HOP.kick
+      flash = Math.max(flash, 0.8)
+    } else if (kind === 'sigh' || kind === 'huff') {
+      puffV += PUFF[kind]
+    } else if (kind === 'creak') {
+      puffV += PUFF.creak
+      flash = Math.max(flash, 0.6)
+    } else if (kind === 'shudder') {
+      shudder = 1
+    } else if (kind === 'droop') {
+      droop = 1
+    }
+  }
+
+  // `objects`: live meshes/materials from Organ.jsx refs (`body`: the group the organ's body
+  // language moves), the camera, how the bladder feels (`mood`, for its breathing, slump
+  // and blush; without one it holds still), and what to call when a ureter squirts
+  // (onSquirt(side), -1 left, 1 right).
   function update(sim, dt, timeSec, objects) {
     const { wallMat, urine, camera, cutaway } = objects
     const phys = physicsOf(sim)
@@ -417,13 +476,31 @@ export function createOrganRig() {
     contraction += ((voiding ? 1 : Math.min(1, sim.detrusorSpasmIntensity)) - contraction) * Math.min(1, dt * 4)
     squeezePhase = contraction > 0.01 ? (squeezePhase + dt / SQUEEZE_SECONDS) % 1 : 0
 
+    // Body language: the springs and fading effects move on, breathing follows the mood.
+    const mood = objects.mood
+    const [rate, depth] = mood ? BREATH[mood] ?? BREATH.calm : STILL
+    const ease = Math.min(1, dt * 1.5)
+    breathRate += (rate - breathRate) * ease
+    breathDepth += (depth - breathDepth) * ease
+    breathPhase = (breathPhase + Math.PI * 2 * breathRate * dt) % (Math.PI * 2)
+    hopV -= (HOP.omega * HOP.omega * hop + 2 * HOP.damping * HOP.omega * hopV) * dt
+    hop += hopV * dt
+    puffV -= (PUFF.omega * PUFF.omega * puff + 2 * PUFF.damping * PUFF.omega * puffV) * dt
+    puff += puffV * dt
+    shudder = Math.max(0, shudder - dt / SHUDDER.seconds)
+    droop = Math.max(0, droop - dt / DROOP.seconds)
+    flash = Math.max(0, flash - dt * 2.5)
+    blush += ((mood === 'embarrassed' ? 1 : 0) - blush) * Math.min(1, dt * 2)
+    nervous += ((sim.urgeWarned || sim.coughWarned ? 1 : 0) - nervous) * Math.min(1, dt * 8)
+
     // A stretched wall is thinner, so more of the liquid shows through; a contracting
     // one thickens and flushes.
     const stretch = Math.min(1.0, fillRatio)
     if (wallMat) {
       // Strained muscle throbs, as in the original.
       const strainPulse = sim.sphincterToneStrain > 0.3 ? Math.sin(timeSec * 15.0) * 0.35 + 0.35 : 0
-      wallMat.emissiveIntensity = 0.18 + stretch * 0.3 + strainPulse + contraction * 0.3
+      wallMat.emissiveIntensity = 0.18 + stretch * 0.3 + strainPulse + contraction * 0.3 + flash * 0.6 + blush * 0.35
+      wallMat.emissive.copy(WALL_EMISSIVE).lerp(BLUSH_COLOR, blush)
       wallMat.roughness = THREE.MathUtils.lerp(0.38, 0.12, stretch)
     }
     const alpha = THREE.MathUtils.lerp(0.66, 0.36, stretch) + contraction * 0.18
@@ -561,6 +638,22 @@ export function createOrganRig() {
     neck.divideScalar(RADIAL)
     const neckTop = neck.y - NECK_GAP
 
+    // Body language: breathing and swelling, a bounce up or a droop down, about the neck,
+    // which stays put; and a shake.
+    const swell = 1 + breathDepth * Math.sin(breathPhase) + puff
+    const sag = Math.max(droop, mood === 'sleepy' ? DROOP.sleepy : 0) * DROOP.height
+    bodyScale.set(swell * (1 - 0.5 * hop + 0.5 * sag), swell * (1 + hop - sag), swell * (1 - 0.5 * hop + 0.5 * sag))
+    const shake = SHUDDER.amp * shudder + NERVOUS_SHAKE * nervous
+    bodyOffset.set(
+      neck.x * (1 - bodyScale.x) + shake * Math.sin(timeSec * 47.0),
+      neck.y * (1 - bodyScale.y) + shake * 0.5 * Math.sin(timeSec * 53.0 + 1.0),
+      neck.z * (1 - bodyScale.z) + shake * Math.sin(timeSec * 41.0 + 2.0),
+    )
+    if (objects.body) {
+      objects.body.scale.copy(bodyScale)
+      objects.body.position.copy(bodyOffset)
+    }
+
     // Sphincter: a clench clamps the ring and deepens its folds, voiding opens it all
     // up, and strain makes it twitch (the rippling shake of the original's tube).
     const dil = sim.isStressLeaking ? 0.35 : sim.sphincterDilation
@@ -617,13 +710,14 @@ export function createOrganRig() {
       }
     })
 
-    // Stream from the opening at the bottom of the urethra.
-    stream.update(sim, dt, timeSec, outlet.set(neck.x, neckTop + OUTLET_Y - NECK_TOP_Y, neck.z), objects.stream, objects.drops)
+    // Stream from the opening at the bottom of the urethra, wherever the body has moved it.
+    outlet.set(neck.x, neckTop + OUTLET_Y - NECK_TOP_Y, neck.z).multiply(bodyScale).add(bodyOffset)
+    stream.update(sim, dt, timeSec, outlet, objects.stream, objects.drops)
   }
 
   return {
     bladderGeo, liningGeo, stream,
     ureterGeoLeft: ureters[0].geo, ureterGeoRight: ureters[1].geo,
-    cutawayPlane, poke, slap, clearDents, update,
+    cutawayPlane, poke, slap, clearDents, emote, update,
   }
 }

@@ -8,7 +8,7 @@ import { physicsOf } from '../../sim/sim'
 import {
   orbitDrag, POKE_STRAIN, pokeAt, SLAP_STRAIN, slapAt, squeezeCancel, squeezeDrag, squeezePinch, squeezeRelease, squeezeStart,
 } from '../../sim/interactions'
-import { createOrganRig, createOrganTextures } from './organRig'
+import { createOrganRig, createOrganTextures, emoteFor, WALL_EMISSIVE } from './organRig'
 import { createCutMaterials } from './cutMaterials'
 import { ureterSquirt } from '../../feedback/feedback'
 
@@ -29,6 +29,7 @@ export default function Organ() {
   const cut = useMemo(() => createCutMaterials(), [])
   const get = useThree((state) => state.get)
 
+  const bodyRef = useRef()
   const bladderRef = useRef()
   const streamRef = useRef()
   const dropsRef = useRef()
@@ -39,12 +40,15 @@ export default function Organ() {
   const isCutawayActive = useUiStore((s) => s.isCutawayActive)
   const refractive = QUALITY_TIERS[useUiStore(selectQualityTier)].transmission
 
-  // Dents follow the simulation's poke/slap events, whatever caused them.
+  // Dents follow the simulation's poke/slap events, whatever caused them, and the bladder
+  // reacts to what happens with its body too (a bounce, a sigh, a shudder...).
   useEffect(() => {
     return onSimEvent((event) => {
       if (event.type === 'poke') rig.poke(event.local, event.strength)
       else if (event.type === 'slap') rig.slap(event.local, event.strength)
       else if (event.type === 'reset') rig.clearDents()
+      const kind = emoteFor(event, useUiStore.getState().mood)
+      if (kind) rig.emote(kind)
     })
   }, [rig])
 
@@ -158,6 +162,7 @@ export default function Organ() {
   useFrame((state, delta) => {
     const dt = Math.min(0.08, delta)
     rig.update(sim, dt, state.clock.getElapsedTime(), {
+      body: bodyRef.current,
       wallMat: wallMatRef.current,
       urine: urineRef.current,
       fluidMat: fluidMatRef.current,
@@ -165,6 +170,7 @@ export default function Organ() {
       drops: dropsRef.current,
       camera: state.camera,
       cutaway: isCutawayActive,
+      mood: useUiStore.getState().mood,
       onSquirt: ureterSquirt,
     })
     cut.update(sim, dt, rig.cutawayPlane, isCutawayActive)
@@ -174,60 +180,76 @@ export default function Organ() {
 
   return (
     <group position={[0, 0.2, 0]}>
-      {/* Inside of the wall: muscle. Through the membrane it fills whatever the urine
-          doesn't (a bladder holds no air); in the cutaway it's the cut face of the wall. */}
-      <mesh name="wallTissue" geometry={rig.bladderGeo} material={cut.tissue} renderOrder={2} />
+      {/* The organ itself; its body language (breathing, a bounce, a shudder...) moves this
+          group about the neck (rig.update). */}
+      <group ref={bodyRef} name="body">
+        {/* Inside of the wall: muscle. Through the membrane it fills whatever the urine
+            doesn't (a bladder holds no air); in the cutaway it's the cut face of the wall. */}
+        <mesh name="wallTissue" geometry={rig.bladderGeo} material={cut.tissue} renderOrder={2} />
 
-      {/* Urine: the lining's shape (the wall with the rugae folded in), scaled to the
-          volume held (rig.update sets the transform), so an empty bladder holds none. Drawn first so the membrane blends
-          over it. High quality refracts what's behind it (transmission: a whole extra
-          render pass); lower tiers let it through with plain transparency, which looks
-          nearly the same. */}
-      <group ref={urineRef} name="urine">
-        <mesh geometry={rig.liningGeo} renderOrder={1}>
+        {/* Urine: the lining's shape (the wall with the rugae folded in), scaled to the
+            volume held (rig.update sets the transform), so an empty bladder holds none.
+            Drawn first so the membrane blends over it. High quality refracts what's
+            behind it (transmission: a whole extra render pass); lower tiers let it
+            through with plain transparency, which looks nearly the same. */}
+        <group ref={urineRef} name="urine">
+          <mesh geometry={rig.liningGeo} renderOrder={1}>
+            <meshPhysicalMaterial
+              key={refractive ? 'refractive' : 'blended'}
+              ref={fluidMatRef}
+              color={0xfacc15}
+              emissive={0xd97706}
+              emissiveIntensity={0.22}
+              roughness={0.12}
+              metalness={0.0}
+              {...(refractive ? REFRACTIVE_URINE : { transparent: true, opacity: FLUID_OPACITY })}
+              clippingPlanes={clip}
+              side={THREE.FrontSide}
+            />
+          </mesh>
+          {/* Cross-section of the urine, shown only where the cutaway opens it. */}
+          <mesh name="urineCut" geometry={rig.liningGeo} material={cut.urine} renderOrder={1} visible={isCutawayActive} />
+        </group>
+
+        {/* Wall: one surface from the dome down through the sphincter ring and the urethra
+            to the opening. The bladder is a translucent membrane that thins out as it
+            stretches; the sphincter is solid muscle. Colour and opacity come per vertex. */}
+        <mesh ref={bladderRef} name="wall" geometry={rig.bladderGeo} renderOrder={10}>
           <meshPhysicalMaterial
-            key={refractive ? 'refractive' : 'blended'}
-            ref={fluidMatRef}
-            color={0xfacc15}
-            emissive={0xd97706}
-            emissiveIntensity={0.22}
-            roughness={0.12}
-            metalness={0.0}
-            {...(refractive ? REFRACTIVE_URINE : { transparent: true, opacity: FLUID_OPACITY })}
-            clippingPlanes={clip}
+            ref={wallMatRef}
+            map={textures.diffTex}
+            normalMap={textures.normTex}
+            normalScale={[0.8, 0.8]}
+            vertexColors
+            color={0xffffff}
+            emissive={WALL_EMISSIVE}
+            emissiveIntensity={0.28}
+            roughness={0.22}
+            metalness={0.05}
+            clearcoat={0.9}
+            clearcoatRoughness={0.12}
+            transparent
+            depthWrite={false}
             side={THREE.FrontSide}
+            clippingPlanes={clip}
           />
         </mesh>
-        {/* Cross-section of the urine, shown only where the cutaway opens it. */}
-        <mesh name="urineCut" geometry={rig.liningGeo} material={cut.urine} renderOrder={1} visible={isCutawayActive} />
+
+        {/* Ureters (ureter.js): pale tan tubes, amber where urine is squeezed down them,
+            flaring into the wall. Cut with the wall so a tube never dangles in front of the
+            section. */}
+        <mesh geometry={rig.ureterGeoLeft} renderOrder={3}>
+          <meshPhysicalMaterial {...URETER_MATERIAL} clippingPlanes={clip} />
+        </mesh>
+        <mesh geometry={rig.ureterGeoRight} renderOrder={3}>
+          <meshPhysicalMaterial {...URETER_MATERIAL} clippingPlanes={clip} />
+        </mesh>
       </group>
 
-      {/* Wall: one surface from the dome down through the sphincter ring and the urethra
-          to the opening. The bladder is a translucent membrane that thins out as it
-          stretches; the sphincter is solid muscle. Colour and opacity come per vertex. */}
-      <mesh ref={bladderRef} name="wall" geometry={rig.bladderGeo} renderOrder={10}>
-        <meshPhysicalMaterial
-          ref={wallMatRef}
-          map={textures.diffTex}
-          normalMap={textures.normTex}
-          normalScale={[0.8, 0.8]}
-          vertexColors
-          color={0xffffff}
-          emissive={0x881337}
-          emissiveIntensity={0.28}
-          roughness={0.22}
-          metalness={0.05}
-          clearcoat={0.9}
-          clearcoatRoughness={0.12}
-          transparent
-          depthWrite={false}
-          side={THREE.FrontSide}
-          clippingPlanes={clip}
-        />
-      </mesh>
-
-      {/* Stream: the jet and the drops it breaks into (stream.js). No transmission: on a jet
-          this thin it's invisible, and it doubled the frame cost while voiding. */}
+      {/* Stream: the jet and the drops it breaks into (stream.js), outside the body so it
+          falls straight; it leaves from wherever the body has moved the opening. No
+          transmission: on a jet this thin it's invisible, and it doubled the frame cost
+          while voiding. */}
       <mesh ref={streamRef} geometry={rig.stream.jetGeo} material={rig.stream.material} renderOrder={5} visible={false} frustumCulled={false} />
       <instancedMesh
         ref={dropsRef}
@@ -236,16 +258,6 @@ export default function Organ() {
         visible={false}
         frustumCulled={false}
       />
-
-      {/* Ureters (ureter.js): pale tan tubes, amber where urine is squeezed down them,
-          flaring into the wall. Cut with the wall so a tube never dangles in front of the
-          section. */}
-      <mesh geometry={rig.ureterGeoLeft} renderOrder={3}>
-        <meshPhysicalMaterial {...URETER_MATERIAL} clippingPlanes={clip} />
-      </mesh>
-      <mesh geometry={rig.ureterGeoRight} renderOrder={3}>
-        <meshPhysicalMaterial {...URETER_MATERIAL} clippingPlanes={clip} />
-      </mesh>
     </group>
   )
 }

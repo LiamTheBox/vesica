@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import {
-  BLADDER_VERTICES, computeNormals, createOrganRig, FLUID_INSET, NECK_ROW, ORGAN_CENTER, orientCutaway, RESIDUAL_ML, RING_VERTICES, urineScale,
+  BLADDER_VERTICES, computeNormals, createOrganRig, emoteFor, FLUID_INSET, NECK_ROW, ORGAN_CENTER, orientCutaway, RESIDUAL_ML, RING_VERTICES,
+  urineScale, WALL_EMISSIVE,
 } from './organRig'
 import { FLARE_RINGS, URETER_RING } from './ureter'
 import { createSimState } from '../../sim/sim'
@@ -343,5 +344,148 @@ describe('bladder wall', () => {
     expect(alpha(0)).toBeLessThan(empty)
     expect(alpha(BLADDER_VERTICES - 1)).toBeLessThan(1)
     expect(alpha(BLADDER_VERTICES)).toBe(1)
+  })
+})
+
+describe('body language (D)', () => {
+  const DOME = RING_VERTICES * 2
+  const SIDE = BLADDER_VERTICES / 2
+  // Where a vertex of the wall ends up, with the body's transform.
+  const at = (rig, body, i) => new THREE.Vector3().fromBufferAttribute(rig.bladderGeo.attributes.position, i).multiply(body.scale).add(body.position)
+  // Runs `seconds` from `from` and records `measure` every frame.
+  const track = (rig, sim, seconds, from, objects, measure) => {
+    const out = []
+    for (let f = 0; f < seconds * 60; f++) {
+      rig.update(sim, 1 / 60, from + f / 60, objects)
+      out.push(measure())
+    }
+    return out
+  }
+  // A settled bladder, breathing (if it feels a mood) for 3 s.
+  const settled = (mood) => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    const body = new THREE.Object3D()
+    sim.volume = 300
+    play(rig, sim, 3)
+    track(rig, sim, 3, 3, { body, mood }, () => 0)
+    return { rig, sim, body }
+  }
+  const swing = (values) => Math.max(...values) - Math.min(...values)
+  // Breaths a second: how often it crosses its middle size on the way up.
+  const breathsPerSecond = (values, seconds) => {
+    const mid = (Math.max(...values) + Math.min(...values)) / 2
+    let ups = 0
+    for (let i = 1; i < values.length; i++) if (values[i - 1] < mid && values[i] >= mid) ups++
+    return ups / seconds
+  }
+
+  it('breathes, slow and deep when sleepy, quick and shallow in a panic, and holds still without a mood', () => {
+    const breathing = (mood) => {
+      const { rig, sim, body } = settled(mood)
+      return track(rig, sim, 12, 6, { body, mood }, () => at(rig, body, DOME).y)
+    }
+    const sleepy = breathing('sleepy')
+    const panic = breathing('panic')
+    expect(swing(sleepy)).toBeGreaterThan(swing(panic) * 2)
+    // Counted over 12 s, so to within 1/12 of a breath a second.
+    expect(Math.abs(breathsPerSecond(sleepy, 12) - 0.16)).toBeLessThan(0.1)
+    expect(Math.abs(breathsPerSecond(panic, 12) - 0.9)).toBeLessThan(0.1)
+    expect(swing(breathing(undefined))).toBeLessThan(1e-4)
+  })
+
+  it('bounces up from the neck when pleased, squashes back past rest, and settles', () => {
+    const { rig, sim, body } = settled()
+    const rest = at(rig, body, DOME).y
+    const neck = () => at(rig, body, BLADDER_VERTICES - 2).y
+    const neckRest = neck()
+    rig.emote('hop')
+    const heights = track(rig, sim, 2, 6, { body }, () => at(rig, body, DOME).y)
+    expect(Math.max(...heights) - rest).toBeGreaterThan(0.2)
+    expect(Math.min(...heights)).toBeLessThan(rest - 0.05)
+    expect(Math.abs(heights.at(-1) - rest)).toBeLessThan(0.01)
+    expect(neck()).toBeCloseTo(neckRest, 2)
+  })
+
+  it('sighs: swells all round, then lets it out', () => {
+    const { rig, sim, body } = settled()
+    const size = () => at(rig, body, SIDE).distanceTo(at(rig, body, DOME))
+    const rest = size()
+    rig.emote('sigh')
+    const sizes = track(rig, sim, 3, 6, { body }, size)
+    expect(Math.max(...sizes)).toBeGreaterThan(rest * 1.02)
+    expect(Math.abs(sizes.at(-1) / rest - 1)).toBeLessThan(0.002)
+  })
+
+  it('shudders on a leak, and droops when the clench gives out', () => {
+    const { rig, sim, body } = settled()
+    const frameToFrame = (seconds, from) => {
+      const places = track(rig, sim, seconds, from, { body }, () => at(rig, body, SIDE))
+      return Math.max(...places.slice(1).map((p, i) => p.distanceTo(places[i])))
+    }
+    expect(frameToFrame(0.3, 6)).toBeLessThan(1e-4)
+    rig.emote('shudder')
+    expect(frameToFrame(0.3, 6.3)).toBeGreaterThan(0.02)
+    play(rig, sim, 0.5, 6.6)
+    expect(frameToFrame(0.3, 7.1)).toBeLessThan(1e-4)
+
+    const rest = at(rig, body, DOME).y
+    rig.emote('droop')
+    const heights = track(rig, sim, 4, 8, { body }, () => at(rig, body, DOME).y)
+    expect(rest - Math.min(...heights)).toBeGreaterThan(0.2)
+    expect(Math.abs(heights.at(-1) - rest)).toBeLessThan(0.01)
+  })
+
+  it('shivers while a warned urge or sneeze is on its way', () => {
+    const { rig, sim, body } = settled()
+    const place = () => at(rig, body, SIDE)
+    const moved = (seconds, from) => swing(track(rig, sim, seconds, from, { body }, () => place().x))
+    expect(moved(0.5, 6)).toBeLessThan(1e-4)
+    sim.urgeWarned = true
+    expect(moved(0.5, 6.5)).toBeGreaterThan(0.01)
+  })
+
+  it('moves the stream with it, from the opening', () => {
+    const { rig, sim, body } = settled()
+    sim.isActivelyVoiding = true
+    sim.sphincterDilation = 1
+    sim.flowRate = 15
+    rig.emote('droop')
+    track(rig, sim, 0.15, 6, { body }, () => 0)
+    const outlet = rowCentre(rig, rowCount(rig) - 1).multiply(body.scale).add(body.position)
+    expect(outlet.distanceTo(rowCentre(rig, rowCount(rig) - 1))).toBeGreaterThan(0.03) // the droop moved it
+    const jet = rig.stream.jetGeo.attributes.position
+    let nearest = Infinity
+    for (let i = 0; i < jet.count; i++) nearest = Math.min(nearest, new THREE.Vector3().fromBufferAttribute(jet, i).distanceTo(outlet))
+    expect(nearest).toBeLessThan(0.1)
+  })
+
+  it('blushes while embarrassed, and flashes when it creaks', () => {
+    const { rig, sim, body } = settled()
+    const wallMat = { emissive: new THREE.Color(), emissiveIntensity: 0, roughness: 0 }
+    rig.update(sim, 1 / 60, 6, { body, wallMat, mood: 'calm' })
+    const calm = { color: wallMat.emissive.clone(), glow: wallMat.emissiveIntensity }
+    expect(calm.color.equals(WALL_EMISSIVE)).toBe(true)
+    track(rig, sim, 2, 6, { body, wallMat, mood: 'embarrassed' }, () => 0)
+    expect(wallMat.emissive.r).toBeGreaterThan(calm.color.r + 0.2)
+    expect(wallMat.emissiveIntensity).toBeGreaterThan(calm.glow + 0.25)
+    track(rig, sim, 3, 8, { body, wallMat, mood: 'calm' }, () => 0)
+    expect(wallMat.emissiveIntensity).toBeCloseTo(calm.glow, 2)
+    rig.emote('creak')
+    rig.update(sim, 1 / 60, 11, { body, wallMat, mood: 'calm' })
+    expect(wallMat.emissiveIntensity).toBeGreaterThan(calm.glow + 0.3)
+  })
+
+  it('knows what to do when things happen, and huffs at a poke only when annoyed', () => {
+    expect(emoteFor({ type: 'leakStart' })).toBe('shudder')
+    expect(emoteFor({ type: 'clenchExhausted' })).toBe('droop')
+    expect(emoteFor({ type: 'arcadePoints', reason: 'perfect' })).toBe('hop')
+    expect(emoteFor({ type: 'arcadePoints', reason: 'drink' })).toBe(null)
+    expect(emoteFor({ type: 'urgeEnd', suppressed: true })).toBe('sigh')
+    expect(emoteFor({ type: 'urgeEnd', suppressed: false })).toBe(null)
+    expect(emoteFor({ type: 'voidStop' })).toBe('sigh')
+    expect(emoteFor({ type: 'poke', touch: true }, 'calm')).toBe(null)
+    expect(emoteFor({ type: 'poke', touch: true }, 'annoyed')).toBe('huff')
+    expect(emoteFor({ type: 'creak' })).toBe('creak')
   })
 })
