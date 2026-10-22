@@ -3,19 +3,21 @@
 // screen-edge vignette. The words are plain ones (the original read like an instrument);
 // the thresholds and colours are the original's.
 
+import { t } from '../../i18n'
+
 const PULSE = ' animate-pulse'
 
 export function sphincterReadout(hud) {
-  if (hud.involuntaryVoiding) return { text: 'GAVE WAY (100%)', tone: 'text-red-500' + PULSE }
-  if (hud.isStressLeaking) return { text: `LEAKING (${hud.tonePct}%)`, tone: 'text-rose-500' + PULSE }
-  if (hud.leakGrace) return { text: 'SLIPPING (100%)', tone: 'text-red-500' + PULSE }
+  if (hud.involuntaryVoiding) return { text: t('readout.gaveWay'), tone: 'text-red-500' + PULSE }
+  if (hud.isStressLeaking) return { text: t('readout.leaking', { pct: hud.tonePct }), tone: 'text-rose-500' + PULSE }
+  if (hud.leakGrace) return { text: t('readout.slipping'), tone: 'text-red-500' + PULSE }
   // Shows the strain easing off while the Kegel is held.
-  if (hud.isClenching) return { text: `CLENCHED (${hud.tonePct}%)`, tone: 'text-cyan-400' }
-  if (hud.isActivelyVoiding) return { text: `OPEN (${hud.dilationPct}%)`, tone: 'text-amber-400' }
+  if (hud.isClenching) return { text: t('readout.clenched', { pct: hud.tonePct }), tone: 'text-cyan-400' }
+  if (hud.isActivelyVoiding) return { text: t('readout.open', { pct: hud.dilationPct }), tone: 'text-amber-400' }
   // Leaks start at 100 %, so the readout turns red on the way there.
-  if (hud.tonePct >= 80) return { text: `STRAINED (${hud.tonePct}%)`, tone: 'text-red-500' + PULSE }
-  if (hud.tonePct > 40) return { text: `STRAINED (${hud.tonePct}%)`, tone: 'text-amber-400' + PULSE }
-  return { text: `RESTING (${hud.tonePct}%)`, tone: 'text-rose-400' }
+  if (hud.tonePct >= 80) return { text: t('readout.strained', { pct: hud.tonePct }), tone: 'text-red-500' + PULSE }
+  if (hud.tonePct > 40) return { text: t('readout.strained', { pct: hud.tonePct }), tone: 'text-amber-400' + PULSE }
+  return { text: t('readout.resting', { pct: hud.tonePct }), tone: 'text-rose-400' }
 }
 
 const BADGE = {
@@ -29,23 +31,23 @@ const BADGE = {
 // re-renders) when the state itself changes.
 const STATUSES = {
   failure: {
-    badge: 'GIVING WAY', badgeTone: BADGE.red + PULSE, sub: "It couldn't hold it in!",
+    badge: t('status.failure'), badgeTone: BADGE.red + PULSE, sub: t('status.failure.sub'),
     pressureTone: 'text-red-500' + PULSE, vignette: 0.95, vignettePulse: true, iconScale: 1.2,
   },
   leak: {
-    badge: 'LEAKING', badgeTone: BADGE.rose + PULSE, sub: 'A little got out',
+    badge: t('status.leak'), badgeTone: BADGE.rose + PULSE, sub: t('status.leak.sub'),
     pressureTone: 'text-rose-400', vignette: 0.7, vignettePulse: false, iconScale: 1.1,
   },
   overpressure: {
-    badge: 'BURSTING', badgeTone: BADGE.red + PULSE, sub: 'Very full: hold on',
+    badge: t('status.bursting'), badgeTone: BADGE.red + PULSE, sub: t('status.bursting.sub'),
     pressureTone: 'text-red-500', vignette: 0.35, vignettePulse: false, iconScale: 1,
   },
   distended: {
-    badge: 'FILLING UP', badgeTone: BADGE.amber, sub: 'Stretching to hold more',
+    badge: t('status.filling'), badgeTone: BADGE.amber, sub: t('status.filling.sub'),
     pressureTone: 'text-amber-400', vignette: 0, vignettePulse: false, iconScale: 1,
   },
   nominal: {
-    badge: 'RELAXED', badgeTone: BADGE.emerald, sub: 'Comfortable for now',
+    badge: t('status.relaxed'), badgeTone: BADGE.emerald, sub: t('status.relaxed.sub'),
     pressureTone: 'text-emerald-400', vignette: 0, vignettePulse: false, iconScale: 1,
   },
 }

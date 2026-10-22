@@ -3,6 +3,7 @@ import { useHud, useUiStore } from '../../../store/useUiStore'
 import { sim } from '../../../sim/engine'
 import { WALL_FEELS } from '../../../settings/settings'
 import { MOOD_FACES } from '../../../feedback/mood'
+import { t } from '../../../i18n'
 import Sheet from '../Sheet'
 
 const PANEL = 'bg-slate-900/60 p-2 rounded-xl border border-slate-800'
@@ -12,12 +13,12 @@ function MoodStrip() {
   const moods = useUiStore((s) => s.moodLog)
   return (
     <div className={PANEL}>
-      <div className="text-[9px] text-slate-400 uppercase font-mono mb-1">Mood, last 3 minutes</div>
+      <div className="text-[9px] text-slate-400 uppercase font-mono mb-1">{t('chart.moods')}</div>
       {moods.length === 0
-        ? <p className="text-[11px] text-slate-500">Nothing yet: it's noted every 10 s.</p>
+        ? <p className="text-[11px] text-slate-500">{t('chart.moods.none')}</p>
         : (
-          <div role="img" aria-label={`Moods, oldest first: ${moods.join(', ')}`} className="flex justify-end gap-0.5 text-sm leading-none">
-            {moods.map((mood, i) => <span key={i} title={mood}>{MOOD_FACES[mood]}</span>)}
+          <div role="img" aria-label={t('chart.moods.label', { moods: moods.map((mood) => t(`mood.${mood}`)).join(', ') })} className="flex justify-end gap-0.5 text-sm leading-none">
+            {moods.map((mood, i) => <span key={i} title={t(`mood.${mood}`)}>{MOOD_FACES[mood]}</span>)}
           </div>
         )}
     </div>
@@ -29,9 +30,9 @@ function LineLog() {
   const lines = useUiStore((s) => s.lineLog)
   return (
     <div className={PANEL}>
-      <div className="text-[9px] text-slate-400 uppercase font-mono mb-1">Said lately</div>
+      <div className="text-[9px] text-slate-400 uppercase font-mono mb-1">{t('chart.lines')}</div>
       {lines.length === 0
-        ? <p className="text-[11px] text-slate-500">Nothing yet.</p>
+        ? <p className="text-[11px] text-slate-500">{t('chart.lines.none')}</p>
         : (
           <ol className="max-h-40 overflow-y-auto flex flex-col gap-1">
             {lines.map((line) => (
@@ -53,7 +54,7 @@ export default function TelemetryTab() {
 
   const maxPressure = useHud((h) => h.maxPressure)
   const totalLeaked = useHud((h) => h.totalLeaked)
-  const wallFeel = useUiStore((s) => WALL_FEELS.find((feel) => feel.key === s.settings.wallFeel) ?? WALL_FEELS[0])
+  const wallFeel = useUiStore((s) => (WALL_FEELS.includes(s.settings.wallFeel) ? s.settings.wallFeel : WALL_FEELS[0]))
 
   // Custom hook or direct ref to avoid re-rendering entire tab on every frame
   useEffect(() => {
@@ -126,23 +127,23 @@ export default function TelemetryTab() {
   if (currentTab !== 'telemetry') return null
 
   return (
-    <Sheet title="Pressure Chart" subtitle="Pressure (cmH₂O) and volume (ml), live" titleTone="text-amber-400" onClose={() => setTab('sim')}>
+    <Sheet title={t('chart.title')} subtitle={t('chart.subtitle')} titleTone="text-amber-400" onClose={() => setTab('sim')}>
       <div className="relative w-full h-56 bg-slate-950/90 rounded-2xl border border-slate-800 p-2 overflow-hidden flex flex-col justify-between">
         <canvas ref={canvasRef} className="w-full h-full block"></canvas>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center font-mono">
         <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-          <div className="text-[9px] text-slate-400 uppercase">Wall Feel</div>
-          <div className="text-xs font-bold text-cyan-400">{wallFeel.label}</div>
+          <div className="text-[9px] text-slate-400 uppercase">{t('chart.wallFeel')}</div>
+          <div className="text-xs font-bold text-cyan-400">{t(`wallFeel.${wallFeel}`)}</div>
         </div>
         <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-          <div className="text-[9px] text-slate-400 uppercase">Total Leaked</div>
-          <div className="text-xs font-bold text-rose-400">{totalLeaked} ml</div>
+          <div className="text-[9px] text-slate-400 uppercase">{t('chart.leaked')}</div>
+          <div className="text-xs font-bold text-rose-400">{t('unit.ml', { n: totalLeaked })}</div>
         </div>
         <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-          <div className="text-[9px] text-slate-400 uppercase">Peak Pressure</div>
-          <div className="text-xs font-bold text-amber-400">{maxPressure.toFixed(1)} cmH₂O</div>
+          <div className="text-[9px] text-slate-400 uppercase">{t('chart.peak')}</div>
+          <div className="text-xs font-bold text-amber-400">{t('unit.cmH2O', { n: maxPressure.toFixed(1) })}</div>
         </div>
       </div>
 

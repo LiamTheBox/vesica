@@ -2,10 +2,11 @@ import { act } from '../../sim/engine'
 import { ingestBeverage } from '../../sim/sim'
 import { DIURETIC_HYD, DRINK_COUNT, DRINK_GROUPS, hasAlcohol, hasCaffeine } from '../../sim/drinks'
 import { useUiStore } from '../../store/useUiStore'
+import { t } from '../../i18n'
 import Sheet from './Sheet'
 
 // What a drink does besides fill the bladder, if anything.
-const effectOf = (key, d) => (hasAlcohol(key) ? '🍺 tires the clench' : hasCaffeine(key) ? '☕ urges sooner' : d.hyd <= DIURETIC_HYD ? 'diuretic' : null)
+const effectOf = (key, d) => (hasAlcohol(key) ? t('drinks.alcohol') : hasCaffeine(key) ? t('drinks.caffeine') : d.hyd <= DIURETIC_HYD ? t('drinks.diuretic') : null)
 
 // Every drink, by group, opened from the drinks shelf. The sheet scrolls when they don't
 // all fit on the screen; choosing one drinks it and closes the menu.
@@ -18,10 +19,10 @@ export default function DrinksMenu() {
   }
 
   return (
-    <Sheet title="Drinks Menu" subtitle={`${DRINK_COUNT} drinks · tap one to drink it`} titleTone="text-fuchsia-300" onClose={close}>
+    <Sheet title={t('drinks.title')} subtitle={t('drinks.subtitle', { n: DRINK_COUNT })} titleTone="text-fuchsia-300" onClose={close}>
       {DRINK_GROUPS.map((group) => (
-        <section key={group.name} className="flex flex-col gap-2">
-          <h3 className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">{group.name}</h3>
+        <section key={group.id} className="flex flex-col gap-2">
+          <h3 className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">{t(`drinkGroup.${group.id}`)}</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {Object.entries(group.drinks).map(([key, d]) => (
               <button
@@ -31,9 +32,9 @@ export default function DrinksMenu() {
               >
                 <span className="text-xl flex-shrink-0" aria-hidden="true">{d.icon}</span>
                 <span className="min-w-0">
-                  <span className="block text-xs font-bold leading-tight text-slate-100">{d.name}</span>
+                  <span className="block text-xs font-bold leading-tight text-slate-100">{t(`drink.${key}`)}</span>
                   {/* How much reaches the bladder, and how long it takes to arrive. */}
-                  <span className="block text-[10px] font-mono text-cyan-400 whitespace-nowrap">+{d.vol} ml · {Math.round(d.vol / d.rate)} s</span>
+                  <span className="block text-[10px] font-mono text-cyan-400 whitespace-nowrap">{t('drinks.amount', { ml: d.vol, s: Math.round(d.vol / d.rate) })}</span>
                   {effectOf(key, d) && <span className="block text-[10px] font-mono text-amber-400 whitespace-nowrap">{effectOf(key, d)}</span>}
                 </span>
               </button>

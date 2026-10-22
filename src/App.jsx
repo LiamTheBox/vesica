@@ -9,6 +9,7 @@ import { agitate } from './sim/sim'
 import { startArcadeRun } from './sim/arcade'
 import { startMicroRun } from './sim/micro/runner'
 import { countRender } from './debug/devHook'
+import { t } from './i18n'
 
 // The 3D engine (Three.js + R3F, most of the download) loads in its own chunks, so the
 // HUD and start screen don't wait for it to parse.
@@ -95,22 +96,22 @@ function App() {
         >
           <div className="glass-hud px-6 py-4 rounded-2xl flex flex-col items-center gap-1 max-w-xs text-center">
             <span className="text-3xl mb-1">🕹️</span>
-            <span className="text-sm font-bold text-slate-200 tracking-wider animate-pulse">TAP ANYWHERE TO START</span>
+            <span className="text-sm font-bold text-slate-200 tracking-wider animate-pulse">{t('start.tap')}</span>
             <span className="text-[11px] text-slate-400 leading-snug">
-              Arcade: clench as each urge lands, brace for sneezes, and hold on. Empty to bank your score.
+              {t('start.about')}
             </span>
             <div className="mt-2 flex flex-wrap justify-center gap-2">
               <button
                 onClick={(e) => { e.stopPropagation(); begin('micro') }}
                 className="min-h-11 px-4 rounded-xl bg-violet-900/70 hover:bg-violet-800/70 border border-violet-500/70 text-xs font-bold text-slate-100"
               >
-                ⚡ Microgames
+                {t('start.micro')}
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); begin('sandbox') }}
                 className="min-h-11 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs font-bold text-slate-200"
               >
-                🧪 Sandbox (free play)
+                {t('start.sandbox')}
               </button>
             </div>
           </div>

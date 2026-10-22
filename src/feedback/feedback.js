@@ -8,6 +8,7 @@ import { useUiStore } from '../store/useUiStore'
 import { clock, recordResult } from '../challenges/bests'
 import { createStickerProgress, earn, stickersFromEvent, stickersFromTick } from '../challenges/stickers'
 import { saveJson } from '../store/persist'
+import { formatNumber, t, tCount } from '../i18n'
 
 // Turns simulation events into sound, voice, haptics and UI reactions, matching what
 // the original game did at the same moments.
@@ -66,19 +67,17 @@ function finishChallenge(event, text, detail = null) {
   })
 }
 
-const pts = (n) => n.toLocaleString('en-US')
-
 // Arcade score lines flashed under the score, with their sound.
 const ARCADE_LINES = {
-  perfect: (e) => [`PERFECT${e.combo > 1 ? ` ×${e.combo}` : ''} +${e.points}`, 'good', 'perfect'],
-  good: (e) => [`CALMED +${e.points}`, 'ok', 'good'],
-  missed: () => ['URGE MISSED', 'bad', 'miss'],
-  braced: (e) => [`BRACED${e.combo > 1 ? ` ×${e.combo}` : ''} +${e.points}`, 'good', 'perfect'],
-  unbraced: () => ['SNEEZE! NOT BRACED', 'bad', 'miss'],
-  saved: (e) => [`CLOSE CALL +${e.points}`, 'warn', 'good'],
-  leak: (e) => [`LEAK ${e.points}`, 'bad', 'miss'],
-  drink: (e) => [`DRINK BONUS +${e.points}`, 'ok', 'good'],
-  bank: (e) => [`BANKED +${pts(e.points)}`, 'warn', 'bank'],
+  perfect: (e) => [t(e.combo > 1 ? 'points.perfectCombo' : 'points.perfect', e), 'good', 'perfect'],
+  good: (e) => [t('points.good', e), 'ok', 'good'],
+  missed: () => [t('points.missed'), 'bad', 'miss'],
+  braced: (e) => [t(e.combo > 1 ? 'points.bracedCombo' : 'points.braced', e), 'good', 'perfect'],
+  unbraced: () => [t('points.unbraced'), 'bad', 'miss'],
+  saved: (e) => [t('points.saved', e), 'warn', 'good'],
+  leak: (e) => [t('points.leak', e), 'bad', 'miss'],
+  drink: (e) => [t('points.drink', e), 'ok', 'good'],
+  bank: (e) => [t('points.bank', { points: formatNumber(e.points) }), 'warn', 'bank'],
 }
 
 function arcadeLine(text, tone, cue) {
@@ -134,7 +133,7 @@ const handlers = {
     if (e.suppressed) haptic(20)
   },
   arcadePoints: (e) => arcadeLine(...ARCADE_LINES[e.reason](e)),
-  arcadeLevel: (e) => arcadeLine(`LEVEL ${e.level}`, 'level', 'level'),
+  arcadeLevel: (e) => arcadeLine(t('points.level', e), 'level', 'level'),
   arcadeQuit: () => keepScreenAwake(false),
   // Microgames: a cue for each verb, then the result's.
   microPrompt: () => audio.playCue('warning'),
@@ -202,17 +201,17 @@ const handlers = {
   challengeResult: (e) => {
     keepScreenAwake(false)
     if (e.challenge === 'arcade') {
-      const detail = `${clock(e.seconds)} held · best combo ×${e.bestCombo} · ${e.leaks} leak${e.leaks === 1 ? '' : 's'}`
-      finishChallenge(e, e.success ? `BANKED ${pts(e.score)} PTS` : `RUN OVER · ${pts(e.score)} PTS`, detail)
+      const detail = t('result.arcadeDetail', { clock: clock(e.seconds), combo: e.bestCombo, leaks: tCount('result.leaks', e.leaks) })
+      finishChallenge(e, t(e.success ? 'result.banked' : 'result.runOver', { score: formatNumber(e.score) }), detail)
       if (e.success) haptic([100, 50, 100])
     } else if (e.challenge === 'micro') {
-      finishChallenge(e, `${e.score} CLEARED`, `speed ${e.level} · ${clock(e.seconds)} played`)
+      finishChallenge(e, t('result.cleared', e), t('result.microDetail', { level: e.level, clock: clock(e.seconds) }))
       haptic([100, 50, 100])
     } else if (e.challenge === 'commute') {
-      finishChallenge(e, e.success ? `VICTORY! (${e.leaked}ml lost)` : `FAILED (${e.leaked}ml lost)`)
+      finishChallenge(e, t(e.success ? 'result.victory' : 'result.commuteFailed', e))
       if (e.success) haptic([100, 50, 100])
     } else {
-      finishChallenge(e, e.success ? `SUCCESS (${e.voided}ml)` : `FAILED (${e.voided}ml)`)
+      finishChallenge(e, t(e.success ? 'result.success' : 'result.precisionFailed', e))
       haptic(e.success ? [50, 50, 100] : 120)
     }
   },

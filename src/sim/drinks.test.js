@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { extractOriginalConst } from '../test/original'
+import { t } from '../i18n'
 import { DRINK_COUNT, DRINK_GROUPS, drinkKind, DRINKS, hasAlcohol, hasCaffeine, SERVED_TIERS, SHELF } from './drinks'
 import { createSimState, ingestBeverage } from './sim'
 
@@ -9,7 +10,7 @@ describe('drinks menu', () => {
     const keys = DRINK_GROUPS.flatMap((group) => Object.keys(group.drinks))
     expect(new Set(keys).size).toBe(keys.length)
     for (const group of DRINK_GROUPS) {
-      expect(group.name).toBeTruthy()
+      expect(t(`drinkGroup.${group.id}`)).not.toBe(`drinkGroup.${group.id}`)
       expect(Object.keys(group.drinks).length).toBeGreaterThan(0)
     }
   })
@@ -21,8 +22,8 @@ describe('drinks menu', () => {
   })
 
   it('gives every drink a name, an icon and numbers the bladder can take', () => {
-    for (const d of Object.values(DRINKS)) {
-      expect(d.name).toBeTruthy()
+    for (const [key, d] of Object.entries(DRINKS)) {
+      expect(t(`drink.${key}`), key).not.toBe(`drink.${key}`)
       expect(d.icon).toBeTruthy()
       expect(d.vol).toBeGreaterThan(0)
       expect(d.vol).toBeLessThanOrEqual(600)

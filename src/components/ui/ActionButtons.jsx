@@ -4,14 +4,10 @@ import { DRINK_COUNT, DRINKS, SHELF } from '../../sim/drinks'
 import { act } from '../../sim/engine'
 import { ingestBeverage, soothe, startClench, startVoidAttempt, stopClench, stopVoidAttempt } from '../../sim/sim'
 import { slapRandom } from '../../sim/interactions'
+import { t } from '../../i18n'
 
-// The shelf drinks' note under the name, and its colour.
-const SHELF_NOTES = {
-  water: { note: '+180ml', tone: 'text-cyan-400' },
-  coffee: { note: 'Diuretic', tone: 'text-amber-400' },
-  soda: { note: '+320ml', tone: 'text-rose-400' },
-  beer: { note: '+480ml', tone: 'text-yellow-400' },
-}
+// The colour of each shelf drink's note (i18n's shelf.<key>) under its name.
+const SHELF_TONES = { water: 'text-cyan-400', coffee: 'text-amber-400', soda: 'text-rose-400', beer: 'text-yellow-400' }
 
 // Hold buttons capture their finger, so a thumb drifting off the edge keeps holding,
 // and each finger holds independently (Clench with one thumb, poke with the other).
@@ -60,11 +56,11 @@ export default function ActionButtons() {
   const clenchCue = useHud((h) => h.urgeWarned || h.coughWarned || h.leakGrace)
   const setTab = useUiStore((s) => s.setTab)
 
-  const clenchLabel = isClenching ? 'CLENCHING!' : clenchExhausted ? 'CLENCH EXHAUSTED!' : 'CLENCH (HOLD)'
-  const voidLabel = isActivelyVoiding ? 'VOIDING…' : isAttemptingVoid ? 'RELAXING…' : 'EMPTY (HOLD)'
+  const clenchLabel = t(isClenching ? 'clench.holding' : clenchExhausted ? 'clench.exhausted' : 'clench.hold')
+  const voidLabel = t(isActivelyVoiding ? 'empty.voiding' : isAttemptingVoid ? 'empty.relaxing' : 'empty.hold')
   const voidSub = isActivelyVoiding
-    ? 'Letting it all out'
-    : isAttemptingVoid ? `Starting in ${voidSecondsLeft.toFixed(1)}s` : 'Hold 1 s to start'
+    ? t('empty.flowing')
+    : isAttemptingVoid ? t('empty.startingIn', { s: voidSecondsLeft.toFixed(1) }) : t('empty.hint')
 
   return (
     <div className="w-full flex flex-col gap-2 max-w-xl mx-auto pointer-events-auto">
@@ -73,15 +69,15 @@ export default function ActionButtons() {
         {SHELF.map((key) => (
           <button key={key} onClick={() => act(ingestBeverage, key)} className="flex-1 py-1.5 px-1 bg-slate-800/70 hover:bg-cyan-950/70 active:scale-95 border border-slate-700 hover:border-cyan-500/80 rounded-xl flex flex-col items-center transition">
             <span className="text-sm sm:text-base">{DRINKS[key].icon}</span>
-            <span className="text-[10px] sm:text-[11px] font-bold text-slate-200">{DRINKS[key].name}</span>
-            <span className={`text-[8px] sm:text-[9px] font-mono ${SHELF_NOTES[key].tone}`}>{SHELF_NOTES[key].note}</span>
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-200">{t(`drink.${key}`)}</span>
+            <span className={`text-[8px] sm:text-[9px] font-mono ${SHELF_TONES[key]}`}>{t(`shelf.${key}`)}</span>
           </button>
         ))}
         {/* The rest of the drinks, in a menu. */}
         <button onClick={() => setTab('drinks')} aria-haspopup="dialog" className="flex-1 py-1.5 px-1 bg-fuchsia-950/50 hover:bg-fuchsia-900/50 active:scale-95 border border-fuchsia-700/70 hover:border-fuchsia-400/80 rounded-xl flex flex-col items-center transition">
           <span className="text-sm sm:text-base">🍹</span>
-          <span className="text-[10px] sm:text-[11px] font-bold text-slate-200">Menu</span>
-          <span className="text-[8px] sm:text-[9px] font-mono text-fuchsia-300 whitespace-nowrap">{DRINK_COUNT} drinks</span>
+          <span className="text-[10px] sm:text-[11px] font-bold text-slate-200">{t('shelf.menu')}</span>
+          <span className="text-[8px] sm:text-[9px] font-mono text-fuchsia-300 whitespace-nowrap">{t('shelf.count', { n: DRINK_COUNT })}</span>
         </button>
       </div>
 
@@ -89,14 +85,14 @@ export default function ActionButtons() {
       <div className="flex items-stretch gap-1.5 sm:gap-2">
         <button
           {...holdProps(startClench, stopClench)}
-          title="Hold to clench (Space on a keyboard)"
+          title={t('clench.title')}
           className={`flex-1 basis-0 min-w-0 py-3 px-2 rounded-2xl font-extrabold text-xs tracking-wide uppercase shadow-lg transition flex flex-col items-center justify-center border-2 select-none cursor-pointer touch-none ${isClenching ? 'bg-cyan-500 border-cyan-200 scale-95 shadow-cyan-500/50 text-white' : 'bg-gradient-to-r from-sky-600 via-cyan-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 border-cyan-300 text-white shadow-cyan-600/30'} ${clenchCue && !isClenching ? 'ring-4 ring-amber-300 animate-pulse' : ''}`}
         >
           <div className="flex flex-wrap items-center justify-center gap-x-1.5 text-center">
             <span className="text-sm">🛡️</span>
             <span>{clenchLabel}</span>
           </div>
-          <span className="hold-hint text-[9px] text-cyan-100 font-mono font-normal">Hold it in</span>
+          <span className="hold-hint text-[9px] text-cyan-100 font-mono font-normal">{t('clench.hint')}</span>
         </button>
 
         <div className="flex-1 basis-0 min-w-0 relative rounded-2xl overflow-hidden">
@@ -119,21 +115,21 @@ export default function ActionButtons() {
         <button
           onClick={() => act(soothe)}
           disabled={sootheSeconds > 0}
-          aria-label="Soothe"
+          aria-label={t('soothe.label')}
           className="min-w-12 px-2.5 py-3 rounded-2xl glass-hud hover:border-emerald-400/80 text-emerald-300 font-bold text-xs uppercase active:scale-95 transition flex flex-col items-center justify-center flex-shrink-0 disabled:opacity-45 disabled:active:scale-100"
-          title="Soothe: calms the bladder down"
+          title={t('soothe.title')}
         >
           <span className="text-sm">🧘</span>
-          <span className="text-[9px] font-mono mt-0.5">{sootheSeconds > 0 ? `${sootheSeconds}s` : 'Soothe'}</span>
+          <span className="text-[9px] font-mono mt-0.5">{sootheSeconds > 0 ? t('unit.seconds', { n: sootheSeconds }) : t('soothe.label')}</span>
         </button>
 
         <button
           onClick={() => act(slapRandom)}
           className="min-w-12 px-2.5 py-3 rounded-2xl glass-hud hover:border-amber-400/80 text-amber-300 font-bold text-xs uppercase active:scale-95 transition flex flex-col items-center justify-center flex-shrink-0"
-          title="Slap Bladder"
+          title={t('slap.title')}
         >
           <span className="text-sm">👋</span>
-          <span className="text-[9px] font-mono mt-0.5">Slap</span>
+          <span className="text-[9px] font-mono mt-0.5">{t('slap.label')}</span>
         </button>
       </div>
     </div>

@@ -12,6 +12,7 @@ import ToolRail from './ToolRail'
 import ActionRail from './ActionRail'
 import MicroStage from '../micro/MicroStage'
 import StickerToast from './StickerToast'
+import { t } from '../../i18n'
 
 // Tabs load on first open (they're precached for offline play either way).
 const TelemetryTab = lazy(() => import('./Tabs/TelemetryTab'))
@@ -57,7 +58,7 @@ function RecenterButton() {
   if (!moved) return null
   return (
     <button onClick={recenter} className="glass-hud pointer-events-auto min-h-11 px-3 rounded-full text-[11px] font-bold text-sky-300 active:scale-95 transition">
-      ⌖ Recenter
+      {t('hud.recenter')}
     </button>
   )
 }
@@ -71,8 +72,8 @@ function StatusCard() {
       <div
         data-testid="mood"
         role="img"
-        aria-label={`Feeling ${mood}`}
-        title={`Feeling ${mood}`}
+        aria-label={t('hud.feeling', { mood: t(`mood.${mood}`) })}
+        title={t('hud.feeling', { mood: t(`mood.${mood}`) })}
         className="w-8 h-8 flex-shrink-0 rounded-xl bg-gradient-to-tr from-rose-600 via-amber-500 to-amber-300 flex items-center justify-center text-lg shadow-md transition-transform duration-150"
         style={{ transform: `scale(${status.iconScale})` }}
       >
@@ -80,7 +81,7 @@ function StatusCard() {
       </div>
       <div className="min-w-0">
         <div className="flex items-center gap-2">
-          <h1 className="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-100 whitespace-nowrap">Vesica 3D</h1>
+          <h1 className="text-xs sm:text-sm font-extrabold tracking-wider uppercase text-slate-100 whitespace-nowrap">{t('hud.title')}</h1>
           <span data-testid="status-badge" className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border whitespace-nowrap ${status.badgeTone}`}>
             {status.badge}
           </span>
@@ -132,11 +133,11 @@ export default function HUD() {
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {deferredPrompt && (
               <button onClick={installPwa} className={`${TOP_BUTTON} text-amber-400 border border-amber-400/40 hover:bg-amber-500/10`}>
-                <span>📲</span><span className="text-[11px]">Install</span>
+                <span>📲</span><span className="text-[11px]">{t('hud.install')}</span>
               </button>
             )}
             {canFullscreen && (
-              <button onClick={toggleFullscreen} aria-label="Toggle fullscreen" title="Toggle Fullscreen" className={`${TOP_BUTTON} text-slate-300 hover:text-amber-400`}>
+              <button onClick={toggleFullscreen} aria-label={t('hud.fullscreen')} title={t('hud.fullscreen')} className={`${TOP_BUTTON} text-slate-300 hover:text-amber-400`}>
                 ⛶
               </button>
             )}

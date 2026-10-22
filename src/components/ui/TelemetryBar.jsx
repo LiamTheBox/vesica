@@ -1,6 +1,7 @@
 import { useHud } from '../../store/useUiStore'
 import { organStatus, sphincterReadout } from './status'
 import { countRender } from '../../debug/devHook'
+import { t } from '../../i18n'
 
 function Reading({ label, children, className = '', testId }) {
   return (
@@ -34,9 +35,9 @@ export default function TelemetryBar() {
       <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-3 items-end">
         <div className="min-w-0">
           <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono mb-1">
-            <span>VOLUME {caffeinated && <span role="img" aria-label="Caffeine: urges come sooner" title="Caffeine: urges come sooner">☕</span>}</span>
+            <span>{t('bar.volume')} {caffeinated && <span role="img" aria-label={t('bar.caffeine')} title={t('bar.caffeine')}>☕</span>}</span>
             {/* With no limit (the arcade), the bar still fills up to full. */}
-            <span className="font-bold text-amber-300">{volume} / {endless ? '∞' : maxCapacity} ml</span>
+            <span className="font-bold text-amber-300">{t('bar.volumeOf', { volume, most: endless ? '∞' : maxCapacity })}</span>
           </div>
           <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden border border-slate-700/50">
             <div className="h-full bg-gradient-to-r from-amber-400 via-yellow-300 to-rose-500 transition-all duration-150" style={{ width: `${fillPct}%` }}></div>
@@ -44,7 +45,7 @@ export default function TelemetryBar() {
         </div>
         <div>
           <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono mb-1">
-            <span>KEGEL {tipsy && <span role="img" aria-label="Alcohol: the clench tires faster" title="Alcohol: the clench tires faster">🍺</span>}</span>
+            <span>{t('bar.kegel')} {tipsy && <span role="img" aria-label={t('bar.alcohol')} title={t('bar.alcohol')}>🍺</span>}</span>
             <span className="font-bold text-cyan-400">{stamPct}%</span>
           </div>
           <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden border border-slate-700/50">
@@ -54,10 +55,10 @@ export default function TelemetryBar() {
       </div>
 
       <div className="grid grid-cols-[auto_auto_minmax(0,1fr)] gap-3">
-        <Reading label="Pressure" testId="pressure" className={pressureTone}>{pressure.toFixed(1)} cmH₂O</Reading>
-        <Reading label="Flow" className="text-amber-300">{flowRate.toFixed(1)} ml/s</Reading>
+        <Reading label={t('bar.pressure')} testId="pressure" className={pressureTone}>{t('unit.cmH2O', { n: pressure.toFixed(1) })}</Reading>
+        <Reading label={t('bar.flow')} className="text-amber-300">{t('unit.mlPerS', { n: flowRate.toFixed(1) })}</Reading>
         <div className="text-right min-w-0">
-          <Reading label="Sphincter" testId="sphincter-readout" className={sphincterTone}>{sphincterText}</Reading>
+          <Reading label={t('bar.sphincter')} testId="sphincter-readout" className={sphincterTone}>{sphincterText}</Reading>
         </div>
       </div>
     </div>

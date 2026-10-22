@@ -1,5 +1,6 @@
 import { CHATTER, URGENT } from './lines'
 import { personalityOf } from './personalities'
+import { LANGUAGE } from '../i18n'
 
 // The bladder's voice: which line it says when, through the browser's speech engine, and
 // the subtitle for each line (shown with the voice off too). What it says, and how, is its
@@ -21,22 +22,23 @@ const SECONDS_PER_WORD = 0.38 // at rate 1, to estimate how long a line takes
 // Picked automatically when the player hasn't chosen one: a voice whose name matches.
 const PREFERRED = ['female', 'woman', 'samantha', 'victoria', 'karen', 'zira', 'susan', 'catherine', 'fiona', 'moira', 'tessa', 'ava', 'allison']
 
-// The English voices, those on the device first: a network voice (like Chrome's "Google US
-// English") goes silent offline. `localService` is missing in some browsers; those count
-// as on the device.
-export function englishVoices(voices) {
-  const english = voices.filter((v) => v.lang?.toLowerCase().startsWith('en'))
-  return [...english.filter((v) => v.localService !== false), ...english.filter((v) => v.localService === false)]
+// The voices that speak the game's language (i18n's LANGUAGE, English for now), those on the
+// device first: a network voice (like Chrome's "Google US English") goes silent offline.
+// `localService` is missing in some browsers; those count as on the device.
+export function voicesIn(voices, language = LANGUAGE) {
+  const speaking = voices.filter((v) => v.lang?.toLowerCase().startsWith(language))
+  return [...speaking.filter((v) => v.localService !== false), ...speaking.filter((v) => v.localService === false)]
 }
 
-// The voice named `name` if it's installed; otherwise the first preferred English voice
-// on the device, then any on the device, then the network ones, then whatever there is.
+// The voice named `name` if it's installed; otherwise the first preferred voice in the
+// game's language on the device, then any on the device, then the network ones, then
+// whatever there is.
 export function pickVoice(voices, name = '') {
   const chosen = name && voices.find((v) => v.name === name)
   if (chosen) return chosen
-  const english = englishVoices(voices)
-  const preferred = english.find((v) => v.localService !== false && PREFERRED.some((k) => v.name.toLowerCase().includes(k)))
-  return preferred ?? english[0] ?? voices[0] ?? null
+  const speaking = voicesIn(voices)
+  const preferred = speaking.find((v) => v.localService !== false && PREFERRED.some((k) => v.name.toLowerCase().includes(k)))
+  return preferred ?? speaking[0] ?? voices[0] ?? null
 }
 
 export class Voice {
@@ -69,9 +71,9 @@ export class Voice {
     this.synth?.addEventListener?.('voiceschanged', () => this.loadVoices())
   }
 
-  // The English voices to choose from, those on the device first.
+  // The voices to choose from: the game's language, those on the device first.
   voices() {
-    return this.synth ? englishVoices(this.synth.getVoices() ?? []) : []
+    return this.synth ? voicesIn(this.synth.getVoices() ?? []) : []
   }
 
   loadVoices() {

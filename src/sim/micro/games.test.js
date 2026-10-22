@@ -4,6 +4,7 @@ import {
   SEAL, STEADY, STOP, STOP_CLOSE,
 } from './games'
 import { DT, play } from '../../test/micro'
+import { t } from '../../i18n'
 
 const SPEEDS = [1, 1.6, 2.2]
 const SEEDS = [1, 2, 3, 4, 5]
@@ -17,7 +18,7 @@ describe('the microgames (M8)', () => {
   it('each has a one-word verb, a length and its rules', () => {
     expect(new Set(GAMES.map((g) => g.id)).size).toBe(GAMES.length)
     for (const game of GAMES) {
-      expect(game.verb).toMatch(/^[A-Z]+!$/)
+      expect(t(`verb.${game.id}`)).toMatch(/^[A-Z]+!$/)
       expect(game.seconds).toBeGreaterThan(2)
       expect(['win', 'lose']).toContain(game.timeout)
     }

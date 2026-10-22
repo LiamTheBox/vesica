@@ -2,6 +2,7 @@ import {
   BALANCE_FALLEN, CLENCH_RING_Y, DODGE_REACH, DODGE_Y, HOLD_BAND, MATCH, RELEASE, RELEASE_ON, SEAL_RADIUS, SQUEEZE_BOTTOM,
   SQUEEZE_TOP,
 } from '../../sim/micro/games'
+import { t } from '../../i18n'
 
 // Draws a microgames run (M8) on a 2D canvas: the game's scene in a square play area, its
 // verb, the fuse and the result. Abstract shapes only: the ring is the sphincter, amber is
@@ -513,7 +514,7 @@ export function drawMicro(ctx, run, width, height) {
 
   if (run.phase === 'boss') {
     const pulse = 1 + 0.06 * Math.sin(run.t * 18)
-    text(ctx, 'BOSS!', area.left + area.size / 2, area.top + area.size * 0.45, area.size * 0.2 * pulse, C.boss)
+    text(ctx, t('micro.boss'), area.left + area.size / 2, area.top + area.size * 0.45, area.size * 0.2 * pulse, C.boss)
     return
   }
   ctx.save()
@@ -524,7 +525,7 @@ export function drawMicro(ctx, run, width, height) {
     drawTouch(ctx, V, run.input)
     drawFuse(ctx, area, Math.max(0, 1 - run.t / run.duration))
   } else if (run.phase === 'prompt') {
-    drawVerb(ctx, area, run.game.verb, run.t, !!run.boss)
+    drawVerb(ctx, area, t(`verb.${run.game.id}`), run.t, !!run.boss)
   } else if (run.phase === 'result') {
     drawResult(ctx, area, run.won, run.t)
   }

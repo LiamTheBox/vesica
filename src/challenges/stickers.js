@@ -1,22 +1,23 @@
 // Stickers (A12): small achievements, each earned once and kept on the device. They're read
 // from the events the game already reports (and, for a few, the simulation's state), so the
-// rules here don't change how anything plays.
+// rules here don't change how anything plays. Each one's name and how to earn it are i18n's
+// sticker.<id> and sticker.<id>.hint.
 
 export const STICKERS = [
-  { id: 'banked', icon: '🏦', name: 'Banked', hint: 'Bank an arcade run' },
-  { id: 'dry', icon: '💎', name: 'Bone Dry', hint: 'Bank an arcade run without a leak' },
-  { id: 'level5', icon: '⭐', name: 'Level 5', hint: 'Reach level 5 in the arcade' },
-  { id: 'perfect10', icon: '🎯', name: 'Ten Perfect', hint: '10 perfect clenches in one arcade run' },
-  { id: 'combo10', icon: '🔥', name: 'Combo ×10', hint: 'Reach a ×10 combo' },
-  { id: 'saves3', icon: '🛡️', name: 'Close Calls', hint: 'Save 3 slips in one run' },
-  { id: 'held700', icon: '🫙', name: 'Held 700 ml', hint: 'Hold 700 ml' },
-  { id: 'beyond', icon: '🎈', name: 'Beyond Full', hint: 'Hold more than 750 ml' },
-  { id: 'taster', icon: '🍹', name: 'Taste Tester', hint: 'Try 10 different drinks' },
-  { id: 'pitcher', icon: '🍻', name: 'Pitcher Survivor', hint: 'Drink a beer pitcher, then go a minute without a leak' },
-  { id: 'commute', icon: '🚌', name: 'Commuter', hint: 'Win the commute' },
-  { id: 'bullseye', icon: '🏹', name: 'Bullseye', hint: 'Win the precision void' },
-  { id: 'micro10', icon: '⚡', name: 'Ten Cleared', hint: 'Clear 10 microgames in a run' },
-  { id: 'boss', icon: '👑', name: 'Boss Beaten', hint: 'Beat a microgames boss' },
+  { id: 'banked', icon: '🏦' },
+  { id: 'dry', icon: '💎' },
+  { id: 'level5', icon: '⭐' },
+  { id: 'perfect10', icon: '🎯' },
+  { id: 'combo10', icon: '🔥' },
+  { id: 'saves3', icon: '🛡️' },
+  { id: 'held700', icon: '🫙' },
+  { id: 'beyond', icon: '🎈' },
+  { id: 'taster', icon: '🍹' },
+  { id: 'pitcher', icon: '🍻' },
+  { id: 'commute', icon: '🚌' },
+  { id: 'bullseye', icon: '🏹' },
+  { id: 'micro10', icon: '⚡' },
+  { id: 'boss', icon: '👑' },
 ]
 
 const TASTER_DRINKS = 10

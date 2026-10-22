@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createSimState } from '../sim/sim'
 import { createStickerProgress, earn, EMPTY_STICKERS, STICKERS, stickersFromEvent, stickersFromTick } from './stickers'
+import { t } from '../i18n'
 
 const at = (state = {}) => Object.assign(createSimState(), state)
 // The stickers each event earns, in turn, with what's kept and counted carried along.
@@ -18,7 +19,11 @@ function play(events, sim = at(), kept = EMPTY_STICKERS) {
 
 describe('stickers (A12)', () => {
   it('each has an id, an icon, a name and how to earn it, and the ids are unique', () => {
-    for (const sticker of STICKERS) for (const key of ['id', 'icon', 'name', 'hint']) expect(sticker[key], sticker.id).toBeTruthy()
+    for (const sticker of STICKERS) {
+      expect(sticker.icon, sticker.id).toBeTruthy()
+      expect(t(`sticker.${sticker.id}`), sticker.id).not.toBe(`sticker.${sticker.id}`)
+      expect(t(`sticker.${sticker.id}.hint`), sticker.id).not.toBe(`sticker.${sticker.id}.hint`)
+    }
     expect(new Set(STICKERS.map((s) => s.id)).size).toBe(STICKERS.length)
   })
 

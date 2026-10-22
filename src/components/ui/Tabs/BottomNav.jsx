@@ -1,20 +1,21 @@
 import { useUiStore } from '../../../store/useUiStore'
+import { t } from '../../../i18n'
+
+const NAV = [
+  { id: 'sim', icon: '🫁' },
+  { id: 'telemetry', icon: '📈' },
+  { id: 'challenges', icon: '🏆' },
+  { id: 'stories', icon: '📖' },
+  { id: 'settings', icon: '⚙️' },
+]
 
 export default function BottomNav() {
   const currentTab = useUiStore((s) => s.currentTab)
   const setTab = useUiStore((s) => s.setTab)
 
-  const navItems = [
-    { id: 'sim', icon: '🫁', label: 'Sim' },
-    { id: 'telemetry', icon: '📈', label: 'Telemetry' },
-    { id: 'challenges', icon: '🏆', label: 'Challenges' },
-    { id: 'stories', icon: '📖', label: 'Stories' },
-    { id: 'settings', icon: '⚙️', label: 'Settings' }
-  ]
-
   return (
     <nav className="max-w-md w-full mx-auto pointer-events-auto glass-hud px-2 py-1 rounded-2xl flex items-center justify-around text-[10px] font-mono">
-      {navItems.map(item => (
+      {NAV.map(item => (
         <button
           key={item.id}
           onClick={() => setTab(item.id)}
@@ -26,7 +27,7 @@ export default function BottomNav() {
           }`}
         >
           <span className="text-base">{item.icon}</span>
-          <span>{item.label}</span>
+          <span>{t(`nav.${item.id}`)}</span>
         </button>
       ))}
     </nav>

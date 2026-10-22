@@ -2,7 +2,7 @@
 // pressure spike survived with one control action. Logic only: the runner (runner.js) plays
 // them and src/components/micro/ draws them.
 //
-// A game is { id, verb, seconds, start, step, timeout }:
+// A game is { id, seconds, start, step, timeout } (its one-word prompt is i18n's verb.<id>):
 // - seconds: how long it lasts at speed 1 (the runner divides by the speed);
 // - start(rng, speed): a fresh round at `speed` (1 at first, up to MAX_SPEED), with
 //   anything random drawn from `rng` up front, so a round plays the same for the same rolls;
@@ -18,7 +18,6 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 export const CLENCH_RING_Y = 0.78
 export const CLENCH = {
   id: 'clench',
-  verb: 'CLENCH!',
   seconds: 4.5,
   start(rng, speed) {
     const count = speed < 1.35 ? 1 : speed < 1.75 ? 2 : 3
@@ -47,7 +46,6 @@ export const CLENCH = {
 // PUSH!: the pressure rises; every tap knocks it back. Keep it below the top.
 export const PUSH = {
   id: 'push',
-  verb: 'PUSH!',
   seconds: 4,
   start(rng, speed) {
     return { level: 0.35, rate: (0.38 + 0.06 * rng()) * speed, knock: 0.09, knocked: 0 }
@@ -65,7 +63,6 @@ export const SEAL_RADIUS = 0.3
 const SEAL_REACH = 0.12 // how close to a crack a tap must land
 export const SEAL = {
   id: 'seal',
-  verb: 'SEAL!',
   seconds: 4.5,
   start(rng, speed) {
     const count = Math.min(6, 3 + Math.floor((speed - 1) * 3))
@@ -119,7 +116,6 @@ const DAMP = 1.2
 const PULL = 12 // the pull at full drag, rad/s²
 export const BALANCE = {
   id: 'balance',
-  verb: 'BALANCE!',
   seconds: 5,
   start(rng, speed) {
     const duration = this.seconds / speed
@@ -166,7 +162,6 @@ export const HOLD_SQUEEZE = 1.4 // how fast a full squeeze lowers the needle, pe
 const OUT_ALLOWANCE = 0.6 // seconds out of the band, in all
 export const HOLD = {
   id: 'hold',
-  verb: 'HOLD!',
   seconds: 5,
   start(rng, speed) {
     const lift = Math.pow(speed, 0.4)
@@ -194,7 +189,6 @@ export const MATCH_SHUT = 0.06 // and fully squeezed
 export const ringFor = (squeeze) => MATCH_OPEN - (MATCH_OPEN - MATCH_SHUT) * squeeze
 export const MATCH = {
   id: 'match',
-  verb: 'MATCH!',
   seconds: 5,
   start(rng, speed) {
     return {
@@ -225,7 +219,6 @@ export const MATCH = {
 export const STOP_CLOSE = 0.2 // seconds to close
 export const STOP = {
   id: 'stop',
-  verb: 'STOP!',
   seconds: 4.5,
   start(rng, speed) {
     const width = 0.13 / Math.pow(speed, 0.35)
@@ -249,7 +242,6 @@ export const STOP = {
 export const RELEASE_ON = 0.12 // the spike counts as on above this
 export const RELEASE = {
   id: 'release',
-  verb: 'RELEASE!',
   seconds: 5,
   start(rng, speed) {
     const begin = (0.5 + 0.6 * rng()) / speed
@@ -281,7 +273,6 @@ export const RELEASE = {
 export const PULSE_BEATS = 5
 export const PULSE = {
   id: 'pulse',
-  verb: 'PULSE!',
   seconds: 4.5,
   start(rng, speed) {
     const gap = 0.55 / Math.pow(speed, 0.6)
@@ -310,7 +301,6 @@ export const PULSE = {
 // let go and it's lost. It waits a moment for the press, then moves.
 export const STEADY = {
   id: 'steady',
-  verb: 'STEADY!',
   seconds: 4.5,
   start(rng, speed) {
     const jolts = []
@@ -357,7 +347,6 @@ export const DODGE_Y = 0.86 // where you are
 export const DODGE_REACH = 0.07 // how close a spike's middle can pass
 export const DODGE = {
   id: 'dodge',
-  verb: 'DODGE!',
   seconds: 4.5,
   start(rng, speed) {
     const spikes = []

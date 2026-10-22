@@ -3,7 +3,8 @@ import { useUiStore } from '../../../store/useUiStore'
 import { setGraphics, updateSettings, WALL_FEELS } from '../../../settings/settings'
 import { voice } from '../../../audio/voice'
 import { PERSONALITIES } from '../../../audio/personalities'
-import { QUALITY_TIERS, TIER_ORDER } from '../../../settings/quality'
+import { t } from '../../../i18n'
+import { TIER_ORDER } from '../../../settings/quality'
 import Sheet from '../Sheet'
 
 function Toggle({ label, hint, checked, onChange }) {
@@ -32,7 +33,7 @@ function Slider({ label, value, display, min, max, step, onChange }) {
 
 const percent = (v) => `${Math.round(v * 100)}%`
 
-// The installed English voices; the list fills in once the browser has loaded them.
+// The installed voices in the game's language; the list fills in once the browser has loaded them.
 function useVoices() {
   const [voices, setVoices] = useState(() => voice.voices())
   useEffect(() => voice.onVoicesChanged(() => setVoices(voice.voices())), [])
@@ -50,18 +51,18 @@ function VoicePicker() {
   }
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[11px] text-slate-400">Voice</span>
+      <span className="text-[11px] text-slate-400">{t('settings.voice.pick')}</span>
       <select value={voiceName} onChange={(e) => choose(e.target.value)} className="min-h-11 rounded-xl bg-slate-800 text-slate-200 text-xs px-2 cursor-pointer">
-        <option value="">Automatic</option>
+        <option value="">{t('settings.voice.auto')}</option>
         {voices.map((v) => (
-          <option key={v.voiceURI || v.name} value={v.name}>{v.name}{v.localService === false ? ' (online)' : ''}</option>
+          <option key={v.voiceURI || v.name} value={v.name}>{v.localService === false ? t('settings.voice.online', { name: v.name }) : v.name}</option>
         ))}
       </select>
     </label>
   )
 }
 
-const GRAPHICS_OPTIONS = [{ key: 'auto', label: 'Auto' }, ...TIER_ORDER.map((key) => ({ key, label: QUALITY_TIERS[key].label }))]
+const GRAPHICS_OPTIONS = [{ key: 'auto', label: t('settings.graphics.auto') }, ...TIER_ORDER.map((key) => ({ key, label: t(`quality.${key}`) }))]
 
 // Who the bladder is (A11): its lines and how it says them, and its name on the subtitles.
 function PersonalityPicker() {
@@ -74,9 +75,9 @@ function PersonalityPicker() {
   }
   return (
     <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
-      <span className="text-xs font-bold text-slate-300">🎭 Personality</span>
-      <div role="radiogroup" aria-label="Personality" className="grid grid-cols-3 gap-1.5">
-        {Object.entries(PERSONALITIES).map(([key, who]) => (
+      <span className="text-xs font-bold text-slate-300">{t('settings.personality')}</span>
+      <div role="radiogroup" aria-label={t('settings.personality.label')} className="grid grid-cols-3 gap-1.5">
+        {Object.keys(PERSONALITIES).map((key) => (
           <button
             key={key}
             role="radio"
@@ -84,13 +85,13 @@ function PersonalityPicker() {
             onClick={() => choose(key)}
             className={`min-h-11 rounded-xl text-xs font-bold transition active:scale-95 ${chosen === key ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
           >
-            {who.label}
+            {t(`personality.${key}`)}
           </button>
         ))}
       </div>
-      <p className="text-[10px] text-slate-500 font-mono">{PERSONALITIES[chosen].hint}</p>
+      <p className="text-[10px] text-slate-500 font-mono">{t(`personality.${chosen}.hint`)}</p>
       <label className="flex items-center justify-between gap-3 min-h-11">
-        <span className="text-[11px] text-slate-400">Name</span>
+        <span className="text-[11px] text-slate-400">{t('settings.name')}</span>
         <input
           type="text"
           value={name}
@@ -106,24 +107,24 @@ function PersonalityPicker() {
 
 function WallFeelPicker() {
   const wallFeel = useUiStore((s) => s.settings.wallFeel)
-  const chosen = WALL_FEELS.find((feel) => feel.key === wallFeel) ?? WALL_FEELS[0]
+  const chosen = WALL_FEELS.includes(wallFeel) ? wallFeel : WALL_FEELS[0]
   return (
     <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
-      <span className="text-xs font-bold text-slate-300">🫧 Wall Feel</span>
-      <div role="radiogroup" aria-label="Wall feel" className="grid grid-cols-4 gap-1.5">
+      <span className="text-xs font-bold text-slate-300">{t('settings.wallFeel')}</span>
+      <div role="radiogroup" aria-label={t('settings.wallFeel.label')} className="grid grid-cols-4 gap-1.5">
         {WALL_FEELS.map((feel) => (
           <button
-            key={feel.key}
+            key={feel}
             role="radio"
-            aria-checked={chosen.key === feel.key}
-            onClick={() => updateSettings({ wallFeel: feel.key })}
-            className={`min-h-11 rounded-xl text-xs font-bold transition active:scale-95 ${chosen.key === feel.key ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+            aria-checked={chosen === feel}
+            onClick={() => updateSettings({ wallFeel: feel })}
+            className={`min-h-11 rounded-xl text-xs font-bold transition active:scale-95 ${chosen === feel ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
           >
-            {feel.label}
+            {t(`wallFeel.${feel}`)}
           </button>
         ))}
       </div>
-      <p className="text-[10px] text-slate-500 font-mono">{chosen.hint}</p>
+      <p className="text-[10px] text-slate-500 font-mono">{t(`wallFeel.${chosen}.hint`)}</p>
     </div>
   )
 }
@@ -133,8 +134,8 @@ function GraphicsPicker() {
   const autoQuality = useUiStore((s) => s.autoQuality)
   return (
     <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
-      <span className="text-xs font-bold text-slate-300">🎛️ Graphics Quality</span>
-      <div role="radiogroup" aria-label="Graphics quality" className="grid grid-cols-4 gap-1.5">
+      <span className="text-xs font-bold text-slate-300">{t('settings.graphics')}</span>
+      <div role="radiogroup" aria-label={t('settings.graphics.label')} className="grid grid-cols-4 gap-1.5">
         {GRAPHICS_OPTIONS.map((option) => (
           <button
             key={option.key}
@@ -149,8 +150,8 @@ function GraphicsPicker() {
       </div>
       <p data-testid="graphics-hint" className="text-[10px] text-slate-500 font-mono">
         {graphics === 'auto'
-          ? `Auto picks what this device runs smoothly: now ${QUALITY_TIERS[autoQuality].label}`
-          : 'Lower settings run cooler and save battery'}
+          ? t('settings.graphics.autoNow', { tier: t(`quality.${autoQuality}`) })
+          : t('settings.graphics.fixed')}
       </p>
     </div>
   )
@@ -164,50 +165,50 @@ export default function SettingsTab() {
   if (currentTab !== 'settings') return null
 
   return (
-    <Sheet title="Settings" subtitle="Sound, voice, touch and graphics" titleTone="text-slate-200" width="max-w-lg" onClose={() => setTab('sim')}>
+    <Sheet title={t('settings.title')} subtitle={t('settings.subtitle')} titleTone="text-slate-200" width="max-w-lg" onClose={() => setTab('sim')}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-300">All Sound</span>
+        <span className="text-xs font-bold text-slate-300">{t('settings.sound')}</span>
         <button
           onClick={() => updateSettings({ masterMuted: !settings.masterMuted })}
           className="text-xs font-bold px-3 min-h-11 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700"
         >
-          {settings.masterMuted ? 'Muted (unmute)' : 'On (mute all)'}
+          {t(settings.masterMuted ? 'settings.sound.muted' : 'settings.sound.on')}
         </button>
       </div>
 
       <PersonalityPicker />
 
       <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
-        <Toggle label="🗣️ Voice" checked={settings.voiceEnabled} onChange={(v) => updateSettings({ voiceEnabled: v })} />
+        <Toggle label={t('settings.voice')} checked={settings.voiceEnabled} onChange={(v) => updateSettings({ voiceEnabled: v })} />
         <VoicePicker />
-        <Slider label="Voice volume" value={settings.voiceVolume} display={percent(settings.voiceVolume)} min={0} max={1} step={0.05} onChange={(v) => updateSettings({ voiceVolume: v })} />
+        <Slider label={t('settings.voice.volume')} value={settings.voiceVolume} display={percent(settings.voiceVolume)} min={0} max={1} step={0.05} onChange={(v) => updateSettings({ voiceVolume: v })} />
         <Slider
-          label="Chats on its own at most every"
+          label={t('settings.voice.gap')}
           value={settings.chatGap}
-          display={`${settings.chatGap}s`}
+          display={t('unit.seconds', { n: settings.chatGap })}
           min={10}
           max={90}
           step={5}
           onChange={(v) => updateSettings({ chatGap: v })}
         />
-        <p className="text-[10px] text-slate-500 font-mono">Reactions to what you do don't wait. Lines show as subtitles with the voice off too, and recent ones aren't repeated.</p>
+        <p className="text-[10px] text-slate-500 font-mono">{t('settings.voice.about')}</p>
       </div>
 
       <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
-        <Toggle label="🔊 Sound Effects" checked={settings.sfxEnabled} onChange={(v) => updateSettings({ sfxEnabled: v })} />
-        <Slider label="Effects volume" value={settings.sfxVolume} display={percent(settings.sfxVolume)} min={0} max={1} step={0.05} onChange={(v) => updateSettings({ sfxVolume: v })} />
+        <Toggle label={t('settings.effects')} checked={settings.sfxEnabled} onChange={(v) => updateSettings({ sfxEnabled: v })} />
+        <Slider label={t('settings.effects.volume')} value={settings.sfxVolume} display={percent(settings.sfxVolume)} min={0} max={1} step={0.05} onChange={(v) => updateSettings({ sfxVolume: v })} />
       </div>
 
       <div className="p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
         <Toggle
-          label="📳 Vibration"
-          hint="Tactile pulse on spikes, clenches and voiding"
+          label={t('settings.vibration')}
+          hint={t('settings.vibration.hint')}
           checked={settings.haptics}
           onChange={(v) => updateSettings({ haptics: v })}
         />
         <Toggle
-          label="🌀 Shake Phone to Slosh"
-          hint="Moving the device sloshes the bladder (asks for motion access on iPhone)"
+          label={t('settings.shake')}
+          hint={t('settings.shake.hint')}
           checked={settings.shakeToSlosh}
           onChange={(v) => updateSettings({ shakeToSlosh: v })}
         />

@@ -3,6 +3,7 @@ import { useUiStore } from '../../../store/useUiStore'
 import { STORIES } from '../../../stories/stories'
 import { loadReading, saveReading, TEXT_SIZES } from '../../../stories/reading'
 import Sheet from '../Sheet'
+import { t } from '../../../i18n'
 
 // The stories (M9): optional reading, never part of play. The chapters, and a reader that
 // remembers the chapter, the place in it and the text size.
@@ -64,12 +65,12 @@ export default function StoriesTab() {
   const index = story ? STORIES.indexOf(story) : -1
 
   return (
-    <Sheet title="Stories" subtitle="Optional reading, whenever you like" titleTone="text-rose-300" onClose={close} scrollRef={scrollRef} onScroll={onScroll}>
+    <Sheet title={t('stories.title')} subtitle={t('stories.subtitle')} titleTone="text-rose-300" onClose={close} scrollRef={scrollRef} onScroll={onScroll}>
       {!story && (
         <div className="flex flex-col gap-2">
           {STORIES.map((s) => {
             const place = reading.places[s.id] ?? 0
-            const badge = place >= 0.98 ? 'Read ✓' : place > 0.02 ? 'Continue' : null
+            const badge = place >= 0.98 ? t('stories.read') : place > 0.02 ? t('stories.continue') : null
             return (
               <button
                 key={s.id}
@@ -77,9 +78,9 @@ export default function StoriesTab() {
                 className="p-3 rounded-2xl bg-slate-900/70 hover:bg-slate-800/80 border border-slate-800 hover:border-rose-500/60 text-left flex items-center justify-between gap-3 transition"
               >
                 <span className="min-w-0">
-                  <span className="block text-[10px] font-mono uppercase tracking-wider text-slate-500">Chapter {s.number}</span>
+                  <span className="block text-[10px] font-mono uppercase tracking-wider text-slate-500">{t('stories.chapter', { n: s.number })}</span>
                   <span className="block text-sm font-bold text-slate-100">{s.title}</span>
-                  <span className="block text-[11px] font-mono text-slate-400">{s.minutes} min read</span>
+                  <span className="block text-[11px] font-mono text-slate-400">{t('stories.minutes', { n: s.minutes })}</span>
                 </span>
                 {badge && <span className="text-[10px] font-mono font-bold text-rose-300 whitespace-nowrap">{badge}</span>}
               </button>
@@ -91,14 +92,14 @@ export default function StoriesTab() {
       {story && (
         <article className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
-            <button onClick={() => open(null)} className={BUTTON}>‹ Chapters</button>
+            <button onClick={() => open(null)} className={BUTTON}>{t('stories.back')}</button>
             <div className="flex items-center gap-1.5">
-              <button aria-label="Smaller text" disabled={reading.size === 0} onClick={() => update({ size: reading.size - 1 })} className={BUTTON}>A−</button>
-              <button aria-label="Larger text" disabled={reading.size === TEXT_SIZES.length - 1} onClick={() => update({ size: reading.size + 1 })} className={BUTTON}>A+</button>
+              <button aria-label={t('stories.smaller')} disabled={reading.size === 0} onClick={() => update({ size: reading.size - 1 })} className={BUTTON}>A−</button>
+              <button aria-label={t('stories.larger')} disabled={reading.size === TEXT_SIZES.length - 1} onClick={() => update({ size: reading.size + 1 })} className={BUTTON}>A+</button>
             </div>
           </div>
           <header>
-            <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500">Chapter {story.number} of {STORIES.length}</div>
+            <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500">{t('stories.chapterOf', { n: story.number, total: STORIES.length })}</div>
             <h3 className="text-lg font-extrabold text-slate-100">{story.title}</h3>
           </header>
           <div className={`flex flex-col gap-3 leading-relaxed text-slate-200 max-w-prose ${TEXT_SIZES[reading.size]}`}>
@@ -109,10 +110,10 @@ export default function StoriesTab() {
             })}
           </div>
           <div className="flex justify-between gap-2 pt-2 border-t border-slate-700/60">
-            <button disabled={index === 0} onClick={() => open(STORIES[index - 1].id)} className={BUTTON}>‹ Previous</button>
+            <button disabled={index === 0} onClick={() => open(STORIES[index - 1].id)} className={BUTTON}>{t('stories.previous')}</button>
             {index < STORIES.length - 1
-              ? <button onClick={() => open(STORIES[index + 1].id)} className={BUTTON}>Next chapter ›</button>
-              : <button onClick={() => open(null)} className={BUTTON}>All chapters</button>}
+              ? <button onClick={() => open(STORIES[index + 1].id)} className={BUTTON}>{t('stories.next')}</button>
+              : <button onClick={() => open(null)} className={BUTTON}>{t('stories.all')}</button>}
           </div>
         </article>
       )}

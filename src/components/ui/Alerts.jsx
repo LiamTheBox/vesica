@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useHud, useUiStore } from '../../store/useUiStore'
 import { organStatus } from './status'
 import { MOOD_FACES } from '../../feedback/mood'
+import { t } from '../../i18n'
 
 // What a line is about, where that says more than the bladder's face; otherwise the face
 // it said it with.
@@ -38,7 +39,7 @@ export function Subtitles() {
           <div className="glass-hud px-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-amber-400/40 max-w-full">
             <div className="text-lg flex-shrink-0">{SUBTITLE_ICONS[subtitle.category] ?? MOOD_FACES[subtitle.mood] ?? '🗣️'}</div>
             <div className="text-left overflow-hidden">
-              <div className="text-[9px] uppercase tracking-wider font-extrabold text-amber-400 font-mono">{name} (Bladder)</div>
+              <div className="text-[9px] uppercase tracking-wider font-extrabold text-amber-400 font-mono">{t('subtitle.speaker', { name })}</div>
               <p className="text-xs sm:text-sm font-semibold text-slate-100 leading-snug break-words">"{subtitle.text}"</p>
             </div>
           </div>
@@ -63,32 +64,32 @@ export function StageAlerts() {
     <>
       {leakGrace && (
         <div className={`${BANNER} bg-rose-600/95 text-white shadow-rose-600/50 animate-bounce`}>
-          💦 SLIPPING! CLENCH NOW!
+          {t('alert.slipping')}
         </div>
       )}
       {urgeWarned && (
         <div className={`${BANNER} bg-amber-300/95 text-slate-950 animate-pulse`}>
-          ⚡ URGE INCOMING: CLENCH AS IT LANDS
+          {t('alert.urgeIncoming')}
         </div>
       )}
       {coughWarned && (
         <div className={`${BANNER} bg-sky-300/95 text-slate-950 animate-pulse`}>
-          🤧 SNEEZE INCOMING: BRACE!
+          {t('alert.sneezeIncoming')}
         </div>
       )}
       {isUrgeWaveActive && (
         <div className={`${BANNER} bg-amber-500/90 text-slate-950 animate-pulse flex items-center gap-2`}>
-          <span>⚡</span><span>URGE WAVE! CLENCH TO CALM IT</span>
+          <span>⚡</span><span>{t('alert.urge')}</span>
         </div>
       )}
       {isStressLeaking && (
         <div className={`${BANNER} bg-rose-600/95 text-white shadow-rose-600/50 animate-bounce`}>
-          💦 LEAKING! CLENCH TO STOP IT
+          {t('alert.leak')}
         </div>
       )}
       {involuntaryVoiding && (
         <div className={`${BANNER} bg-red-600/95 text-white tracking-widest shadow-red-600/60 animate-bounce`}>
-          ⚠️ IT GAVE WAY: EMPTYING!
+          {t('alert.failure')}
         </div>
       )}
     </>

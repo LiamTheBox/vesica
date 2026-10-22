@@ -5,6 +5,7 @@ import { quitArcadeRun, startArcadeRun } from '../../../sim/arcade'
 import { quitMicroRun, startMicroRun } from '../../../sim/micro/runner'
 import { describeBest } from '../../../challenges/bests'
 import { STICKERS } from '../../../challenges/stickers'
+import { formatNumber, t } from '../../../i18n'
 import Sheet from '../Sheet'
 
 const BADGE = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded'
@@ -21,18 +22,18 @@ function Stickers() {
   const count = STICKERS.filter((sticker) => earned[sticker.id]).length
   return (
     <div className="p-3.5 bg-slate-900/70 border border-amber-800/50 rounded-2xl flex flex-col gap-2">
-      <div className="font-extrabold text-xs text-slate-200">🏆 Stickers ({count}/{STICKERS.length})</div>
+      <div className="font-extrabold text-xs text-slate-200">{t('stickers.title', { count, total: STICKERS.length })}</div>
       <ul className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
         {STICKERS.map((sticker) => {
           const got = !!earned[sticker.id]
           return (
-            <li key={sticker.id} title={sticker.hint} className={`flex items-center gap-2 p-1.5 rounded-xl border ${got ? 'bg-amber-950/40 border-amber-700/60' : 'bg-slate-900 border-slate-800'}`}>
+            <li key={sticker.id} title={t(`sticker.${sticker.id}.hint`)} className={`flex items-center gap-2 p-1.5 rounded-xl border ${got ? 'bg-amber-950/40 border-amber-700/60' : 'bg-slate-900 border-slate-800'}`}>
               <span className={`text-xl flex-shrink-0 ${got ? '' : 'grayscale opacity-40'}`} aria-hidden="true">{sticker.icon}</span>
               <span className="min-w-0">
                 <span className={`block text-[11px] font-bold leading-tight ${got ? 'text-amber-200' : 'text-slate-400'}`}>
-                  {sticker.name}<span className="sr-only">{got ? ', earned' : ', not yet'}</span>
+                  {t(`sticker.${sticker.id}`)}<span className="sr-only">{t(got ? 'stickers.earned' : 'stickers.notYet')}</span>
                 </span>
-                {!got && <span className="block text-[9px] text-slate-500 leading-tight">{sticker.hint}</span>}
+                {!got && <span className="block text-[9px] text-slate-500 leading-tight">{t(`sticker.${sticker.id}.hint`)}</span>}
               </span>
             </li>
           )
@@ -45,7 +46,7 @@ function Stickers() {
 function StatusBadge({ running, runningText, result }) {
   if (running) return <span className={TONES.running}>{runningText}</span>
   if (result) return <span className={result.success ? TONES.success : TONES.failed}>{result.text}</span>
-  return <span className={TONES.ready}>READY</span>
+  return <span className={TONES.ready}>{t('challenges.ready')}</span>
 }
 
 export default function ChallengesTab() {
@@ -64,79 +65,77 @@ export default function ChallengesTab() {
   const inMicro = activeChallenge === 'micro'
 
   return (
-    <Sheet title="Challenges" subtitle="Arcade is the default mode; the sandbox and its challenges are below" titleTone="text-cyan-400" onClose={() => setTab('sim')}>
+    <Sheet title={t('challenges.title')} subtitle={t('challenges.subtitle')} titleTone="text-cyan-400" onClose={() => setTab('sim')}>
       <div className="p-3.5 bg-slate-900/70 border border-fuchsia-800/60 rounded-2xl flex flex-col gap-2">
         <div className="flex justify-between items-center gap-2">
-          <div className="font-extrabold text-xs text-slate-200">🕹️ Arcade (Endless Hold)</div>
-          <StatusBadge running={inArcade} runningText={`RUN: ${arcadeScore.toLocaleString('en-US')} PTS`} result={results.arcade} />
+          <div className="font-extrabold text-xs text-slate-200">{t('challenges.arcade')}</div>
+          <StatusBadge running={inArcade} runningText={t('challenges.arcade.running', { score: formatNumber(arcadeScore) })} result={results.arcade} />
         </div>
         <p className="text-[11px] text-slate-400 leading-relaxed">
-          Drinks keep coming and every urge is announced. Clench as it lands to calm it, brace for sneezes, and hold on as long as you can.
-          Empty to bank your score before the sphincter gives out. It gets harder every 30 s.
+          {t('challenges.arcade.about')}
         </p>
         {bests.arcade && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('arcade', bests.arcade)}</p>}
         <button onClick={() => act(startArcadeRun)} className="w-full py-2 bg-gradient-to-r from-fuchsia-600 to-violet-600 hover:from-fuchsia-500 hover:to-violet-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
-          {inArcade ? 'Restart Arcade Run' : 'Start Arcade Run'}
+          {t(inArcade ? 'challenges.arcade.restart' : 'challenges.arcade.start')}
         </button>
       </div>
 
       <div className="p-3.5 bg-slate-900/70 border border-violet-800/60 rounded-2xl flex flex-col gap-2">
         <div className="flex justify-between items-center gap-2">
-          <div className="font-extrabold text-xs text-slate-200">⚡ Microgames</div>
-          <StatusBadge running={inMicro} runningText={`RUN: ${microScore} CLEARED`} result={results.micro} />
+          <div className="font-extrabold text-xs text-slate-200">{t('challenges.micro')}</div>
+          <StatusBadge running={inMicro} runningText={t('challenges.micro.running', { score: microScore })} result={results.micro} />
         </div>
         <p className="text-[11px] text-slate-400 leading-relaxed">
-          A word, a few seconds, one move: tap, hold or drag. Each game is a spike the sphincter has to take. Four lives,
-          a small leak for each one lost, faster and faster, and a boss every 15.
+          {t('challenges.micro.about')}
         </p>
         {bests.micro && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('micro', bests.micro)}</p>}
         <button onClick={() => act(startMicroRun)} className="w-full py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
-          {inMicro ? 'Restart Microgames' : 'Play Microgames'}
+          {t(inMicro ? 'challenges.micro.restart' : 'challenges.micro.start')}
         </button>
       </div>
 
       <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
-        <div className="font-extrabold text-xs text-slate-200">🧪 Sandbox (Free Play)</div>
+        <div className="font-extrabold text-xs text-slate-200">{t('challenges.sandbox')}</div>
         <p className="text-[11px] text-slate-400 leading-relaxed">
-          The simulation on its own: no score, no served drinks, no warnings. The challenges below run in it.
+          {t('challenges.sandbox.about')}
         </p>
         <button
           onClick={() => { act(quitArcadeRun); act(quitMicroRun); setTab('sim') }}
           className="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-xs uppercase tracking-wider transition"
         >
-          {inArcade || inMicro ? 'End Run and Free Play' : 'Free Play'}
+          {t(inArcade || inMicro ? 'challenges.sandbox.endRun' : 'challenges.sandbox.start')}
         </button>
       </div>
 
       <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
         <div className="flex justify-between items-center gap-2">
-          <div className="font-extrabold text-xs text-slate-200">🚌 Rush Hour Commute (60s Survival)</div>
+          <div className="font-extrabold text-xs text-slate-200">{t('challenges.commute')}</div>
           <StatusBadge
             running={activeChallenge === 'commute'}
-            runningText={`COMMUTE: ${challengeSeconds}s (${totalLeaked}ml leaked)`}
+            runningText={t('challenges.commute.running', { s: challengeSeconds, leaked: totalLeaked })}
             result={results.commute}
           />
         </div>
         <p className="text-[11px] text-slate-400 leading-relaxed">
-          High initial volume with sudden potholes and urge contractions. Survive the full 60 seconds with less than 20ml total leakage!
+          {t('challenges.commute.about')}
         </p>
         {bests.commute && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('commute', bests.commute)}</p>}
         <button onClick={() => act(startCommuteChallenge)} className="w-full py-2 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
-          Start Commute Run
+          {t('challenges.commute.start')}
         </button>
       </div>
 
       <div className="p-3.5 bg-slate-900/70 border border-slate-800 rounded-2xl flex flex-col gap-2">
         <div className="flex justify-between items-center gap-2">
-          <div className="font-extrabold text-xs text-slate-200">🎯 Precision Void (Target: Exactly 200ml)</div>
-          <StatusBadge running={activeChallenge === 'precision'} runningText="HOLD TO VOID 200ml" result={results.precision} />
+          <div className="font-extrabold text-xs text-slate-200">{t('challenges.precision')}</div>
+          <StatusBadge running={activeChallenge === 'precision'} runningText={t('challenges.precision.running')} result={results.precision} />
         </div>
         <p className="text-[11px] text-slate-400 leading-relaxed">
-          Account for latency and flow momentum to void exactly 200ml (±10ml tolerance) in a single continuous hold.
+          {t('challenges.precision.about')}
         </p>
         {bests.precision && <p className="text-[11px] font-mono font-bold text-amber-300">{describeBest('precision', bests.precision)}</p>}
         <button onClick={() => act(startPrecisionChallenge)} className="w-full py-2 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 rounded-xl font-bold text-xs uppercase tracking-wider transition">
-          Attempt Precision Void
+          {t('challenges.precision.start')}
         </button>
       </div>
 

@@ -3,6 +3,7 @@ import { sim } from '../../sim/engine'
 import { microPointer } from '../../sim/micro/runner'
 import { useUiStore } from '../../store/useUiStore'
 import { drawMicro, playArea } from './draw'
+import { t } from '../../i18n'
 
 // The microgames' play area over the stage (M8). It draws the running game every frame and
 // feeds it one pointer: a finger or the left mouse button. Extra fingers and other buttons
@@ -96,7 +97,7 @@ export default function MicroStage() {
     <canvas
       ref={ref}
       data-testid="micro-stage"
-      aria-label="Microgame: tap, hold or drag; Space presses"
+      aria-label={t('micro.label')}
       className="absolute inset-0 w-full h-full pointer-events-auto touch-none select-none"
     />
   )

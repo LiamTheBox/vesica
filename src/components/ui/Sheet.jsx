@@ -1,3 +1,5 @@
+import { t } from '../../i18n'
+
 // A panel that slides up from the bottom on phones (centred on wider screens). It
 // scrolls inside itself on short screens; the rest of the page blocks touch
 // scrolling, so the sheet opts back in with `touch-action: pan-y`. `scrollRef` and
@@ -25,7 +27,7 @@ export default function Sheet({ title, subtitle, titleTone = 'text-slate-200', o
             <h2 className={`text-sm sm:text-base font-extrabold font-mono uppercase tracking-wider ${titleTone}`}>{title}</h2>
             {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
           </div>
-          <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-white text-lg font-bold min-w-11 min-h-11 flex-shrink-0">✕</button>
+          <button onClick={onClose} aria-label={t('sheet.close')} className="text-slate-400 hover:text-white text-lg font-bold min-w-11 min-h-11 flex-shrink-0">✕</button>
         </div>
         {children}
       </div>

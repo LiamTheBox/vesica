@@ -36,14 +36,9 @@ export function updateSettings(patch) {
   saveJson('settings', settings)
 }
 
-// The original's four soft-body presets (physics/constants.js), as Settings names them. How
-// full it is still changes how it feels.
-export const WALL_FEELS = [
-  { key: 'jello', label: 'Jelly', hint: 'Soft and wobbly, as in the original' },
-  { key: 'balloon', label: 'Balloon', hint: 'Springier: dents bounce back fast' },
-  { key: 'anatomical', label: 'Firm', hint: 'Dents less and settles quickly' },
-  { key: 'highTension', label: 'Tense', hint: 'Stiff, with quick, short quivers' },
-]
+// The original's four soft-body presets (physics/constants.js), in the order Settings offers
+// them (named by i18n's wallFeel.<key>). How full it is still changes how it feels.
+export const WALL_FEELS = ['jello', 'balloon', 'anatomical', 'highTension']
 
 // Graphics quality: 'auto' or a fixed tier. Choosing Auto again re-detects from the top.
 export function setGraphics(graphics) {

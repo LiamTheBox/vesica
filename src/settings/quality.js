@@ -4,10 +4,10 @@
 // matter; clearcoat and mesh detail barely register, so every tier keeps them.
 export const QUALITY_TIERS = {
   // Refractive liquid, rendered at half resolution: indistinguishable from full.
-  high: { label: 'High', maxDpr: 2, transmission: true, transmissionScale: 0.5 },
+  high: { maxDpr: 2, transmission: true, transmissionScale: 0.5 },
   // Liquid faked with plain transparency; slightly softer image.
-  medium: { label: 'Medium', maxDpr: 1.5, transmission: false, transmissionScale: 1 },
-  low: { label: 'Low', maxDpr: 1, transmission: false, transmissionScale: 1 },
+  medium: { maxDpr: 1.5, transmission: false, transmissionScale: 1 },
+  low: { maxDpr: 1, transmission: false, transmissionScale: 1 },
 }
 
 export const TIER_ORDER = ['high', 'medium', 'low']

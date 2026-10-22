@@ -2,6 +2,8 @@
 // 200 ml on a successful run. Arcade: the highest score, banked or not. Microgames: the most
 // games cleared in a run.
 
+import { formatNumber, t } from '../i18n'
+
 export const EMPTY_BESTS = { commute: null, precision: null, arcade: null, micro: null }
 
 export function recordResult(bests, result) {
@@ -34,9 +36,9 @@ export const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds 
 
 export function describeBest(challenge, best) {
   if (!best) return null
-  if (challenge === 'arcade') return `Best: ${best.score.toLocaleString('en-US')} pts (${clock(best.seconds)} held)`
-  if (challenge === 'micro') return `Best: ${best.score} cleared (speed ${best.level})`
-  if (challenge === 'commute') return `Best: ${best.leaked} ml lost`
+  if (challenge === 'arcade') return t('best.arcade', { score: formatNumber(best.score), clock: clock(best.seconds) })
+  if (challenge === 'micro') return t('best.micro', best)
+  if (challenge === 'commute') return t('best.commute', best)
   const offBy = best.voided - 200
-  return `Best: ${best.voided} ml (${offBy === 0 ? 'perfect' : `${offBy > 0 ? '+' : ''}${offBy} ml`})`
+  return t('best.precision', { voided: best.voided, off: offBy === 0 ? t('best.perfect') : t('best.offBy', { n: `${offBy > 0 ? '+' : ''}${offBy}` }) })
 }
