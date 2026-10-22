@@ -20,6 +20,12 @@
     -webkit-touch-callout: none;
     -webkit-user-select: none;
   }
+  /* Text fields (the bladder's name) still take typing and selection; iOS won't focus one
+     that inherits user-select: none. */
+  input[type="text"] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }
 
 @layer components {

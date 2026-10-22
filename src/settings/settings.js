@@ -15,6 +15,7 @@ export function applySettings(settings) {
   voice.volume = settings.voiceVolume
   voice.chatGap = settings.chatGap
   voice.setVoiceName(settings.voiceName)
+  voice.setPersonality(settings.personality)
   audio.sfxEnabled = settings.sfxEnabled
   audio.sfxVolume = settings.sfxVolume
   feedbackSettings.haptics = settings.haptics

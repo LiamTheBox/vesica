@@ -20,6 +20,7 @@ const subtitleSeconds = (spoken = 3) => Math.min(8, Math.max(3, 1.5 + 1.5 * spok
 // Screen readers hear it from a hidden live region, as it's said.
 export function Subtitles() {
   const subtitle = useUiStore((s) => s.currentSubtitle)
+  const name = useUiStore((s) => s.settings.bladderName.trim() || 'Vesica')
   const [expiredId, setExpiredId] = useState(null)
   const visible = !!subtitle && subtitle.id !== expiredId
 
@@ -37,7 +38,7 @@ export function Subtitles() {
           <div className="glass-hud px-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-amber-400/40 max-w-full">
             <div className="text-lg flex-shrink-0">{SUBTITLE_ICONS[subtitle.category] ?? MOOD_FACES[subtitle.mood] ?? '🗣️'}</div>
             <div className="text-left overflow-hidden">
-              <div className="text-[9px] uppercase tracking-wider font-extrabold text-amber-400 font-mono">Vesica (Bladder)</div>
+              <div className="text-[9px] uppercase tracking-wider font-extrabold text-amber-400 font-mono">{name} (Bladder)</div>
               <p className="text-xs sm:text-sm font-semibold text-slate-100 leading-snug break-words">"{subtitle.text}"</p>
             </div>
           </div>

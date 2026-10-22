@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useUiStore } from '../../../store/useUiStore'
 import { setGraphics, updateSettings, WALL_FEELS } from '../../../settings/settings'
 import { voice } from '../../../audio/voice'
+import { PERSONALITIES } from '../../../audio/personalities'
 import { QUALITY_TIERS, TIER_ORDER } from '../../../settings/quality'
 import Sheet from '../Sheet'
 
@@ -61,6 +62,47 @@ function VoicePicker() {
 }
 
 const GRAPHICS_OPTIONS = [{ key: 'auto', label: 'Auto' }, ...TIER_ORDER.map((key) => ({ key, label: QUALITY_TIERS[key].label }))]
+
+// Who the bladder is (A11): its lines and how it says them, and its name on the subtitles.
+function PersonalityPicker() {
+  const personality = useUiStore((s) => s.settings.personality)
+  const name = useUiStore((s) => s.settings.bladderName)
+  const chosen = PERSONALITIES[personality] ? personality : 'dramatic'
+  const choose = (key) => {
+    updateSettings({ personality: key })
+    voice.sample()
+  }
+  return (
+    <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+      <span className="text-xs font-bold text-slate-300">🎭 Personality</span>
+      <div role="radiogroup" aria-label="Personality" className="grid grid-cols-3 gap-1.5">
+        {Object.entries(PERSONALITIES).map(([key, who]) => (
+          <button
+            key={key}
+            role="radio"
+            aria-checked={chosen === key}
+            onClick={() => choose(key)}
+            className={`min-h-11 rounded-xl text-xs font-bold transition active:scale-95 ${chosen === key ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+          >
+            {who.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-slate-500 font-mono">{PERSONALITIES[chosen].hint}</p>
+      <label className="flex items-center justify-between gap-3 min-h-11">
+        <span className="text-[11px] text-slate-400">Name</span>
+        <input
+          type="text"
+          value={name}
+          maxLength={16}
+          placeholder="Vesica"
+          onChange={(e) => updateSettings({ bladderName: e.target.value })}
+          className="min-h-11 w-40 rounded-xl bg-slate-800 text-slate-200 text-xs px-3 border border-slate-700 focus:border-amber-400 outline-none"
+        />
+      </label>
+    </div>
+  )
+}
 
 function WallFeelPicker() {
   const wallFeel = useUiStore((s) => s.settings.wallFeel)
@@ -132,6 +174,8 @@ export default function SettingsTab() {
           {settings.masterMuted ? 'Muted (unmute)' : 'On (mute all)'}
         </button>
       </div>
+
+      <PersonalityPicker />
 
       <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
         <Toggle label="🗣️ Voice" checked={settings.voiceEnabled} onChange={(v) => updateSettings({ voiceEnabled: v })} />

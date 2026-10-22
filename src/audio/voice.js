@@ -1,7 +1,9 @@
-import { CHATTER, LINES, NORMAL_VOICE, URGENT, VOICE_STYLE } from './lines'
+import { CHATTER, URGENT } from './lines'
+import { personalityOf } from './personalities'
 
 // The bladder's voice: which line it says when, through the browser's speech engine, and
-// the subtitle for each line (shown with the voice off too).
+// the subtitle for each line (shown with the voice off too). What it says, and how, is its
+// personality's (personalities.js).
 
 // Who gets to speak. Chatter used to share one 10 s cooldown with everything, so a poke, a
 // leak or even a failure often went unsaid. Now urgent lines (a leak, a failure) cut in
@@ -44,6 +46,7 @@ export class Voice {
     this.volume = 1.0
     this.voiceName = '' // the player's choice; '' picks one
     this.voice = null
+    this.personality = 'dramatic'
 
     this.clock = 0 // s, advanced by update()
     this.chatGap = 30 // s between chatter lines (the Settings slider)
@@ -84,21 +87,30 @@ export class Voice {
     return () => this.voiceListeners.delete(listener)
   }
 
+  // Its lines change with it, so the record of recent ones starts over.
+  setPersonality(key) {
+    if (key === this.personality) return
+    this.personality = key
+    this.recentHistory.clear()
+  }
+
   setVoiceName(name) {
     if (name === this.voiceName) return
     this.voiceName = name
     this.loadVoices()
   }
 
-  // Says a short hello in the current voice (after choosing one in Settings).
+  // Says a short hello in the current voice and personality (after choosing them in Settings).
   sample() {
     if (!this.enabled || this.muted || !this.synth) return
+    const who = personalityOf(this.personality)
+    const style = who.styleOf('nominal')
     this.synth.cancel()
-    const utterance = new SpeechSynthesisUtterance('Hi. This is my voice.')
+    const utterance = new SpeechSynthesisUtterance(who.sample)
     if (this.voice) utterance.voice = this.voice
-    utterance.volume = this.volume
-    utterance.pitch = NORMAL_VOICE.pitch
-    utterance.rate = NORMAL_VOICE.rate
+    utterance.volume = this.volume * who.volume
+    utterance.pitch = style.pitch
+    utterance.rate = style.rate
     this.synth.speak(utterance)
   }
 
@@ -121,7 +133,8 @@ export class Voice {
   // Says a line of `category` if it's its turn (see PRIORITY), and shows it as a subtitle,
   // also with the voice off. Returns whether it was said.
   speak(category) {
-    const list = LINES[category]
+    const who = personalityOf(this.personality)
+    const list = who.lines[category]
     if (!list || list.length === 0) return false
     const priority = this.priorityOf(category)
     const now = this.clock
@@ -149,7 +162,7 @@ export class Voice {
     this.recentHistory.set(category, recent)
 
     const text = list[chosenIndex]
-    const style = VOICE_STYLE[category] ?? NORMAL_VOICE
+    const style = who.styleOf(category)
     const seconds = 0.3 + (text.split(' ').length * SECONDS_PER_WORD) / style.rate
     this.busyUntil = now + seconds
     this.busyPriority = priority
@@ -162,7 +175,7 @@ export class Voice {
       if (busy || this.synth.speaking) this.synth.cancel() // cut off the less important line
       const utterance = new SpeechSynthesisUtterance(text)
       if (this.voice) utterance.voice = this.voice
-      utterance.volume = this.volume
+      utterance.volume = this.volume * who.volume
       utterance.pitch = style.pitch
       utterance.rate = style.rate
       // Busy until it really ends (slow voices outlast the estimate), up to twice the estimate.
