@@ -24,6 +24,8 @@ export default function TelemetryBar() {
   const sphincterText = useHud((h) => sphincterReadout(h).text)
   const sphincterTone = useHud((h) => sphincterReadout(h).tone)
   const pressureTone = useHud((h) => organStatus(h).pressureTone)
+  const caffeinated = useHud((h) => h.caffeinated)
+  const tipsy = useHud((h) => h.tipsy)
 
   const fillPct = Math.min(100, Math.round((volume / maxCapacity) * 100))
 
@@ -32,7 +34,7 @@ export default function TelemetryBar() {
       <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-3 items-end">
         <div className="min-w-0">
           <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono mb-1">
-            <span>VOLUME</span>
+            <span>VOLUME {caffeinated && <span role="img" aria-label="Caffeine: urges come sooner" title="Caffeine: urges come sooner">☕</span>}</span>
             {/* With no limit (the arcade), the bar still fills up to full. */}
             <span className="font-bold text-amber-300">{volume} / {endless ? '∞' : maxCapacity} ml</span>
           </div>
@@ -42,7 +44,7 @@ export default function TelemetryBar() {
         </div>
         <div>
           <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono mb-1">
-            <span>KEGEL</span>
+            <span>KEGEL {tipsy && <span role="img" aria-label="Alcohol: the clench tires faster" title="Alcohol: the clench tires faster">🍺</span>}</span>
             <span className="font-bold text-cyan-400">{stamPct}%</span>
           </div>
           <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden border border-slate-700/50">

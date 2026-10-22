@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  cough, createSimState, FAILURE_PRESSURE, ingestBeverage, LEAK_FLOW, PEAK_FLOW, resetOrgan,
+  ALCOHOL, CAFFEINE, cough, createSimState, FAILURE_PRESSURE, ingestBeverage, LEAK_FLOW, PEAK_FLOW, resetOrgan,
   RESEAL_STRAIN, SANDBOX_RULES, soothe, startClench, startCommuteChallenge, startPrecisionChallenge, startVoidAttempt,
   stepSim, stopClench, stopVoidAttempt, voidFlow,
 } from './sim'
@@ -468,5 +468,61 @@ describe('precision challenge', () => {
     startPrecisionChallenge(sim, [], fixed(0.5))
     sim.baseDrip = 0
     expect(voidUntil(sim, 100)).toMatchObject({ challenge: 'precision', success: false })
+  })
+})
+
+describe('what drinks do besides fill it (A10)', () => {
+  it('caffeine and alcohol build up with each drink, up to a limit, and fade', () => {
+    const sim = quietSim(200)
+    ingestBeverage(sim, [], 'coffee', fixed(0.5))
+    ingestBeverage(sim, [], 'water', fixed(0.5))
+    expect(sim.caffeine).toBe(CAFFEINE.dose)
+    expect(sim.alcohol).toBe(0)
+    for (let i = 0; i < 5; i++) ingestBeverage(sim, [], 'whisky', fixed(0.5))
+    expect(sim.alcohol).toBe(ALCOHOL.most)
+    run(sim, 30)
+    expect(sim.caffeine).toBeCloseTo(CAFFEINE.dose - 30 * CAFFEINE.fade, 6)
+    resetOrgan(sim, [], fixed(0.5))
+    expect([sim.caffeine, sim.alcohol]).toEqual([0, 0])
+  })
+
+  // Seconds until `until` is true, stepping a sim set up by `setup`.
+  const secondsUntil = (setup, until) => {
+    const sim = quietSim(500)
+    setup(sim)
+    let t = 0
+    run(sim, 20, { until: (s, e) => { t += DT; return until(s, e) } })
+    return t
+  }
+  const waveStarts = (s, e) => e.some((x) => x.type === 'urgeStart')
+
+  it('caffeine brings the next urge wave sooner', () => {
+    const withCaffeine = (caffeine) => secondsUntil((sim) => Object.assign(sim, { caffeine, urgeWaveTimer: 10 }), waveStarts)
+    expect(withCaffeine(0)).toBeCloseTo(10, 0)
+    expect(withCaffeine(1)).toBeLessThan(7.5)
+  })
+
+  it('leaves an announced wave its full warning', () => {
+    const sim = quietSim(500)
+    Object.assign(sim, { urgeWarningTime: 1.2, caffeine: 1.5, urgeWaveTimer: 3 })
+    let warnedAt = null
+    let t = 0
+    run(sim, 10, {
+      until: (s, e) => {
+        t += DT
+        if (warnedAt === null && e.some((x) => x.type === 'urgeWarning')) warnedAt = t
+        return e.some((x) => x.type === 'urgeStart')
+      },
+    })
+    expect(t - warnedAt).toBeCloseTo(1.2, 1)
+  })
+
+  it('alcohol tires the clench', () => {
+    const holdFor = (alcohol) => secondsUntil((sim) => {
+      sim.alcohol = alcohol
+      startClench(sim, [])
+    }, (s) => !s.isClenching)
+    expect(holdFor(0)).toBeGreaterThan(8)
+    expect(holdFor(1)).toBeLessThan(holdFor(0) * 0.7)
   })
 })

@@ -74,6 +74,8 @@ function hudOf(s) {
     isStressLeaking: s.isStressLeaking,
     involuntaryVoiding: s.involuntaryVoiding,
     isUrgeWaveActive: s.isUrgeWaveActive,
+    caffeinated: s.caffeine > 0.05,
+    tipsy: s.alcohol > 0.05,
     totalLeaked: Math.round(s.totalLeakedVolume),
     maxPressure: round1(s.maxRecordedPressure),
     activeChallenge: s.activeChallenge,

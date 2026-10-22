@@ -1,5 +1,5 @@
 import { PHYSICS_CONFIGS } from '../physics/constants'
-import { DRINKS } from './drinks'
+import { DRINKS, hasAlcohol, hasCaffeine } from './drinks'
 
 // Simulation core, ported from the original single-file game
 // (`Vesica 3D Mobile Web App.html`): `updatePhysics()` without the rendering, plus
@@ -49,6 +49,14 @@ export const OVERLOAD_STAMINA = 4.0
 // doesn't count toward a total failure.
 export const TOUCH_PRESSURE = 12.0
 const TOUCH_FADE = 6.0 // per second
+
+// What a drink does beyond its volume (A10). Each caffeinated drink adds CAFFEINE.dose to
+// `sim.caffeine`, each alcoholic one ALCOHOL.dose to `sim.alcohol`, up to `most`; both
+// fade by `fade` a second. Caffeine brings urge waves sooner (at 1, the time to the next
+// one runs `urge` times faster, though never once a wave is announced); alcohol tires the
+// clench (at 1, it drains `fatigue` times faster).
+export const CAFFEINE = { dose: 0.5, most: 1.5, fade: 1 / 90, urge: 1.5 }
+export const ALCOHOL = { dose: 0.4, most: 1.5, fade: 1 / 120, fatigue: 1.6 }
 
 // Voiding: a typical adult's peak flow, tapering over the last ~150 ml as the emptying
 // bladder's contraction weakens. Voiding eases the strain.
@@ -119,6 +127,8 @@ export function createSimState() {
     maxRecordedPressure: 7.2,
     touchPressure: 0, // cmH2O from the latest poke or slap (TOUCH_PRESSURE)
     hydration: 0.85,
+    caffeine: 0, // see CAFFEINE
+    alcohol: 0, // see ALCOHOL
     sloshAngleX: 0,
     sloshAngleZ: 0,
     sloshVelX: 0,
@@ -207,6 +217,8 @@ export function ingestBeverage(sim, out, type, rng = Math.random, { served = fal
   const b = DRINKS[type]
   if (!b) return
   sim.activeBeverages.push({ rem: b.vol, rate: b.rate, hyd: b.hyd })
+  if (hasCaffeine(type)) sim.caffeine = Math.min(CAFFEINE.most, sim.caffeine + CAFFEINE.dose)
+  if (hasAlcohol(type)) sim.alcohol = Math.min(ALCOHOL.most, sim.alcohol + ALCOHOL.dose)
   impartSloshForce(sim, (rng() - 0.5) * 4.0, (rng() - 0.5) * 4.0)
   sim.jiggleIntensity = Math.min(1.0, sim.jiggleIntensity + 0.35)
   out.push({ type: 'ingest', beverage: type, served })
@@ -266,6 +278,8 @@ export function cough(sim, out, rng = Math.random) {
 export function resetOrgan(sim, out, rng = Math.random) {
   sim.volume = 40
   sim.activeBeverages = []
+  sim.caffeine = 0
+  sim.alcohol = 0
   sim.isAttemptingVoid = false
   sim.voidLatencyTimer = 0
   sim.isActivelyVoiding = false
@@ -341,6 +355,8 @@ export function stepSim(sim, dt, out, rng = Math.random) {
     sim.hydration = sim.hydration * 0.98 + b.hyd * 0.02
     if (b.rem <= 0) sim.activeBeverages.splice(i, 1)
   }
+  sim.caffeine = Math.max(0, sim.caffeine - CAFFEINE.fade * dt)
+  sim.alcohol = Math.max(0, sim.alcohol - ALCOHOL.fade * dt)
 
   // It fills up to its limit, and keeps whatever is over it if the limit drops (an arcade
   // run ending).
@@ -379,7 +395,8 @@ export function stepSim(sim, dt, out, rng = Math.random) {
   if (sim.isClenching) {
     const idle = !sim.isUrgeWaveActive && !sim.urgeWarned && !sim.coughWarned && sim.coughImpulseIntensity <= 0 &&
       !sim.isStressLeaking && sim.leakGrace <= 0
-    sim.kegelStamina = Math.max(0, sim.kegelStamina - sim.kegelFatigueRate * (idle ? sim.idleClenchCost : 1) * dt)
+    const tipsy = 1 + (ALCOHOL.fatigue - 1) * sim.alcohol
+    sim.kegelStamina = Math.max(0, sim.kegelStamina - sim.kegelFatigueRate * (idle ? sim.idleClenchCost : 1) * tipsy * dt)
     sim.sphincterToneStrain = Math.max(0, sim.sphincterToneStrain - sim.kegelReliefRate * (idle ? sim.idleRelief : 1) * dt)
     if (sim.kegelStamina <= 0.02) {
       sim.isClenching = false
@@ -395,8 +412,9 @@ export function stepSim(sim, dt, out, rng = Math.random) {
     sim.coughImpulseIntensity = Math.max(0, sim.coughImpulseIntensity - dt * 3.5)
   }
 
-  // Urge waves. The arcade announces each one `urgeWarningTime` ahead.
-  sim.urgeWaveTimer -= dt
+  // Urge waves. The arcade announces each one `urgeWarningTime` ahead. Caffeine brings the
+  // next one sooner, but leaves the warning its full length.
+  sim.urgeWaveTimer -= dt * (sim.urgeWarned ? 1 : 1 + (CAFFEINE.urge - 1) * sim.caffeine)
   const urgeReady = fillRatio > 0.45 && !sim.isActivelyVoiding && !sim.isUrgeWaveActive
   if (urgeReady && sim.urgeWarningTime > 0 && !sim.urgeWarned && sim.urgeWaveTimer <= sim.urgeWarningTime) {
     sim.urgeWaveTimer = sim.urgeWarningTime

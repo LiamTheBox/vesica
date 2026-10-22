@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { extractOriginalConst } from '../test/original'
-import { DRINK_COUNT, DRINK_GROUPS, drinkKind, DRINKS, SHELF } from './drinks'
+import { DRINK_COUNT, DRINK_GROUPS, drinkKind, DRINKS, hasAlcohol, hasCaffeine, SERVED_TIERS, SHELF } from './drinks'
 import { createSimState, ingestBeverage } from './sim'
 
 describe('drinks menu', () => {
@@ -50,5 +50,19 @@ describe('drinks menu', () => {
       water: 'water', bottle: 'big', coffee: 'caffeine', cola: 'caffeine', bigSoda: 'big', chamomile: 'other',
       beer: 'alcohol', pitcher: 'alcohol', whisky: 'alcohol', milk: 'other', lemonade: 'other',
     })
+  })
+})
+
+describe('what the arcade serves (A10)', () => {
+  it('starts with hydrating drinks, adds caffeine and sweet ones, then alcohol and big ones', () => {
+    const [first, second, third] = SERVED_TIERS
+    expect(first.length).toBeGreaterThanOrEqual(10)
+    expect(first.some((key) => hasCaffeine(key) || hasAlcohol(key))).toBe(false)
+    expect(second.some(hasCaffeine)).toBe(true)
+    expect(second.some(hasAlcohol)).toBe(false)
+    expect(third.some(hasAlcohol)).toBe(true)
+    expect(third).toHaveLength(DRINK_COUNT)
+    for (const key of first) expect(second).toContain(key)
+    for (const key of second) expect(third).toContain(key)
   })
 })

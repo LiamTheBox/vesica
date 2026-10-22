@@ -41,6 +41,8 @@ export const initialHud = {
   isStressLeaking: false,
   involuntaryVoiding: false,
   isUrgeWaveActive: false,
+  caffeinated: false, // caffeine is bringing urges sooner
+  tipsy: false, // alcohol is tiring the clench
   totalLeaked: 0,
   maxPressure: 7.2,
   activeChallenge: null,

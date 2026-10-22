@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createSimState, ingestBeverage, resetOrgan, SANDBOX_RULES, startClench, startVoidAttempt, stopClench } from './sim'
-import { ARCADE_RULES, fillMultiplier, quitArcadeRun, scoreArcade, startArcadeRun, stepGame } from './arcade'
+import { ARCADE_RULES, fillMultiplier, nextServe, quitArcadeRun, scoreArcade, startArcadeRun, stepGame } from './arcade'
+import { DRINKS, hasAlcohol, hasCaffeine, SERVED_TIERS } from './drinks'
 
 const DT = 1 / 60
 const fixed = (value) => () => value
@@ -288,5 +289,41 @@ describe('scoring', () => {
     expect(events.find((e) => e.type === 'challengeResult').score).toBeGreaterThan(2800)
     expect(sim.arcade).toBe(null)
     expect(sim.isActivelyVoiding).toBe(true) // the void carries on
+  })
+})
+
+describe('drinks served from the whole menu (A10)', () => {
+  let seed = 7
+  const rng = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+  // `count` drinks served at `level`, at random.
+  const servedAt = (level, count = 200) => {
+    const sim = quietRun(100)
+    const served = []
+    for (let i = 0; i < count; i++) {
+      Object.assign(sim.arcade, { time: (level - 1) * 30, serveTimer: 0 })
+      for (const e of run(sim, DT, { rng })) if (e.type === 'ingest') served.push(e.beverage)
+    }
+    return served
+  }
+
+  it('serves no caffeine or alcohol at first, caffeine from level 3 and alcohol from level 5', () => {
+    expect(servedAt(1)).toHaveLength(200)
+    expect(servedAt(1).some((key) => hasCaffeine(key) || hasAlcohol(key))).toBe(false)
+    expect(servedAt(3).some(hasCaffeine)).toBe(true)
+    expect(servedAt(3).some(hasAlcohol)).toBe(false)
+    expect(servedAt(5).some(hasAlcohol)).toBe(true)
+  })
+
+  it('waits longer after a bigger drink, so a run fills as fast as with the shelf alone', () => {
+    expect(nextServe(1, 300)).toBeCloseTo(2 * nextServe(1, 150), 6)
+    // The old menus' ml a second, by level: their average serving every 26 - 1.5 (level - 1) s, at least 12.
+    const old = { 1: 150 / 26, 3: 205 / 23, 5: 275 / 20, 9: 275 / 14 }
+    for (const [level, rate] of Object.entries(old)) {
+      const menu = SERVED_TIERS[Math.min(2, Math.floor((level - 1) / 2))]
+      const ml = menu.reduce((sum, key) => sum + DRINKS[key].vol, 0)
+      const seconds = menu.reduce((sum, key) => sum + nextServe(Number(level), DRINKS[key].vol), 0)
+      expect(ml / seconds / rate).toBeGreaterThan(0.9)
+      expect(ml / seconds / rate).toBeLessThan(1.1)
+    }
   })
 })

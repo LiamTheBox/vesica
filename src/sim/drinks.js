@@ -98,3 +98,16 @@ export function drinkKind(key) {
   if (DRINKS[key].vol >= BIG_DRINK) return 'big'
   return KINDS[key] ?? (CAFFEINE.has(key) ? 'caffeine' : 'other')
 }
+
+export const hasCaffeine = (key) => CAFFEINE.has(key)
+export const hasAlcohol = (key) => KINDS[key] === 'alcohol'
+
+// What the arcade serves as the levels go up (A10): hydrating drinks first, then caffeine
+// and sweet ones, then alcohol and the big ones. Each tier adds to the one before.
+const gentle = (key) => !hasCaffeine(key) && !hasAlcohol(key) && DRINKS[key].hyd >= 0.7 && DRINKS[key].vol <= 350
+const strong = (key) => hasAlcohol(key) || DRINKS[key].vol >= BIG_DRINK
+export const SERVED_TIERS = [
+  Object.keys(DRINKS).filter(gentle),
+  Object.keys(DRINKS).filter((key) => !strong(key)),
+  Object.keys(DRINKS),
+]

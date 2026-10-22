@@ -1,4 +1,4 @@
-import { DRINKS } from './drinks'
+import { DRINKS, SERVED_TIERS } from './drinks'
 import { cough, fillRatioOf, ingestBeverage, resetOrgan, restoreSandboxRules, stepSim } from './sim'
 import { stepMicro } from './micro/runner'
 
@@ -43,10 +43,15 @@ const FIRST_SNEEZE_LEVEL = 2
 
 export const fillMultiplier = (fillRatio) => (fillRatio >= 1 ? 5 : fillRatio >= 0.75 ? 3 : fillRatio >= 0.5 ? 2 : 1)
 
-// Bigger drinks come later in the run.
-const MENUS = [['water', 'coffee'], ['water', 'coffee', 'soda'], ['water', 'coffee', 'soda', 'beer']]
-const menuFor = (level) => MENUS[Math.min(MENUS.length - 1, Math.floor((level - 1) / 2))]
+// Served from the whole menu (A10): hydrating drinks at levels 1-2, caffeine and sweet ones
+// from 3 (urges come sooner), alcohol and the big ones from 5 (the clench tires). The wait
+// for the next scales with the drink's volume, so a run fills as fast as when it served the
+// shelf's four: on average SERVED_ML a serving every serveInterval.
+const tierFor = (level) => Math.min(SERVED_TIERS.length - 1, Math.floor((level - 1) / 2))
+const SERVED_ML = [150, 205, 275]
+const MIN_SERVE_GAP = 6
 const serveInterval = (level) => Math.max(12, 26 - 1.5 * (level - 1))
+export const nextServe = (level, ml) => Math.max(MIN_SERVE_GAP, (serveInterval(level) * ml) / SERVED_ML[tierFor(level)])
 const sneezeInterval = (level, rng) => (12 + rng() * 10) * Math.max(0.6, 1 - 0.05 * (level - FIRST_SNEEZE_LEVEL))
 
 // Each level: stronger, more frequent urges that take longer to calm, announced later,
@@ -120,9 +125,10 @@ function stepArcade(sim, dt, out, rng) {
 
   a.serveTimer -= dt
   if (a.serveTimer <= 0) {
-    const menu = menuFor(level)
-    ingestBeverage(sim, out, menu[Math.floor(rng() * menu.length)], rng, { served: true })
-    a.serveTimer = serveInterval(level)
+    const menu = SERVED_TIERS[tierFor(level)]
+    const key = menu[Math.floor(rng() * menu.length)]
+    ingestBeverage(sim, out, key, rng, { served: true })
+    a.serveTimer = nextServe(level, DRINKS[key].vol)
   }
 
   if (level >= FIRST_SNEEZE_LEVEL) {

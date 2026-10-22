@@ -1,8 +1,11 @@
 import { act } from '../../sim/engine'
 import { ingestBeverage } from '../../sim/sim'
-import { DIURETIC_HYD, DRINK_COUNT, DRINK_GROUPS } from '../../sim/drinks'
+import { DIURETIC_HYD, DRINK_COUNT, DRINK_GROUPS, hasAlcohol, hasCaffeine } from '../../sim/drinks'
 import { useUiStore } from '../../store/useUiStore'
 import Sheet from './Sheet'
+
+// What a drink does besides fill the bladder, if anything.
+const effectOf = (key, d) => (hasAlcohol(key) ? '🍺 tires the clench' : hasCaffeine(key) ? '☕ urges sooner' : d.hyd <= DIURETIC_HYD ? 'diuretic' : null)
 
 // Every drink, by group, opened from the drinks shelf. The sheet scrolls when they don't
 // all fit on the screen; choosing one drinks it and closes the menu.
@@ -31,7 +34,7 @@ export default function DrinksMenu() {
                   <span className="block text-xs font-bold leading-tight text-slate-100">{d.name}</span>
                   {/* How much reaches the bladder, and how long it takes to arrive. */}
                   <span className="block text-[10px] font-mono text-cyan-400 whitespace-nowrap">+{d.vol} ml · {Math.round(d.vol / d.rate)} s</span>
-                  {d.hyd <= DIURETIC_HYD && <span className="block text-[10px] font-mono text-amber-400">diuretic</span>}
+                  {effectOf(key, d) && <span className="block text-[10px] font-mono text-amber-400 whitespace-nowrap">{effectOf(key, d)}</span>}
                 </span>
               </button>
             ))}
