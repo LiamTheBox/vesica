@@ -6,6 +6,7 @@ import { emoteFor } from './emotes'
 import { onSimEvent, onSimTick, sim } from '../sim/engine'
 import { useUiStore } from '../store/useUiStore'
 import { clock, recordResult } from '../challenges/bests'
+import { createStickerProgress, earn, stickersFromEvent, stickersFromTick } from '../challenges/stickers'
 import { saveJson } from '../store/persist'
 
 // Turns simulation events into sound, voice, haptics and UI reactions, matching what
@@ -217,6 +218,18 @@ const handlers = {
   },
 }
 
+// Stickers (challenges/stickers.js): earned ones are kept, shown for a moment and cheered.
+const stickerProgress = createStickerProgress()
+function keepStickers(stickers, toast = null) {
+  useUiStore.setState(toast ? { stickers, stickerToast: toast } : { stickers })
+  saveJson('stickers', stickers)
+}
+function earnStickers(ids) {
+  keepStickers(earn(useUiStore.getState().stickers, ids, new Date().toISOString().slice(0, 10)), { ids, id: Date.now() })
+  audio.playCue('bank')
+  haptic([40, 30, 80])
+}
+
 // The body language's moves (emotes.js; the 3D model makes them), heard and felt.
 const EMOTE_SOUNDS = {
   sigh: () => audio.playExhale(),
@@ -244,6 +257,9 @@ export function onEvent(event) {
   EMOTE_SOUNDS[emoteFor(event, useUiStore.getState().mood)]?.()
   const line = reactionLine(event, sim, mood)
   if (line) voice.speak(line)
+  const { earned, tasted } = stickersFromEvent(useUiStore.getState().stickers, stickerProgress, event, sim)
+  if (tasted) keepStickers({ ...useUiStore.getState().stickers, tasted })
+  if (earned.length) earnStickers(earned)
 }
 
 // A bolus of urine squirting in from a ureter (organRig): a soft gulp from that side.
@@ -262,6 +278,8 @@ function onTick(sim, dt) {
   if (sim.isClenching) audio.updateClenchHum(sim.kegelStamina)
   if (sim.flowRate > 0) audio.updateDynamicJet(sim.flowRate, sim.pressure)
   stepMood(mood, dt, sim)
+  const earned = stickersFromTick(useUiStore.getState().stickers, stickerProgress, sim, dt)
+  if (earned.length) earnStickers(earned)
   const now = moodOf(mood, sim)
   if (now !== useUiStore.getState().mood) useUiStore.setState({ mood: now })
   sinceMoodLogged += dt

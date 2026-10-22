@@ -4,6 +4,7 @@ import { startCommuteChallenge, startPrecisionChallenge } from '../../../sim/sim
 import { quitArcadeRun, startArcadeRun } from '../../../sim/arcade'
 import { quitMicroRun, startMicroRun } from '../../../sim/micro/runner'
 import { describeBest } from '../../../challenges/bests'
+import { STICKERS } from '../../../challenges/stickers'
 import Sheet from '../Sheet'
 
 const BADGE = 'text-[9px] font-mono font-bold px-2 py-0.5 rounded'
@@ -12,6 +13,33 @@ const TONES = {
   running: `${BADGE} bg-amber-950 text-amber-400 border border-amber-800 animate-pulse`,
   success: `${BADGE} bg-emerald-950 text-emerald-400 border border-emerald-800`,
   failed: `${BADGE} bg-rose-950 text-rose-400 border border-rose-800`,
+}
+
+// Every sticker (A12): earned ones in colour, the rest faded with how to earn them.
+function Stickers() {
+  const earned = useUiStore((s) => s.stickers.earned)
+  const count = STICKERS.filter((sticker) => earned[sticker.id]).length
+  return (
+    <div className="p-3.5 bg-slate-900/70 border border-amber-800/50 rounded-2xl flex flex-col gap-2">
+      <div className="font-extrabold text-xs text-slate-200">🏆 Stickers ({count}/{STICKERS.length})</div>
+      <ul className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        {STICKERS.map((sticker) => {
+          const got = !!earned[sticker.id]
+          return (
+            <li key={sticker.id} title={sticker.hint} className={`flex items-center gap-2 p-1.5 rounded-xl border ${got ? 'bg-amber-950/40 border-amber-700/60' : 'bg-slate-900 border-slate-800'}`}>
+              <span className={`text-xl flex-shrink-0 ${got ? '' : 'grayscale opacity-40'}`} aria-hidden="true">{sticker.icon}</span>
+              <span className="min-w-0">
+                <span className={`block text-[11px] font-bold leading-tight ${got ? 'text-amber-200' : 'text-slate-400'}`}>
+                  {sticker.name}<span className="sr-only">{got ? ', earned' : ', not yet'}</span>
+                </span>
+                {!got && <span className="block text-[9px] text-slate-500 leading-tight">{sticker.hint}</span>}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
 }
 
 function StatusBadge({ running, runningText, result }) {
@@ -111,6 +139,8 @@ export default function ChallengesTab() {
           Attempt Precision Void
         </button>
       </div>
+
+      <Stickers />
     </Sheet>
   )
 }

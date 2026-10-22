@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { EMPTY_BESTS } from '../challenges/bests'
+import { EMPTY_STICKERS } from '../challenges/stickers'
 import { loadJson, saveJson } from './persist'
 import { isTier } from '../settings/quality'
 
@@ -82,6 +83,10 @@ export const useUiStore = create((set) => ({
   arcadeToast: null,
   // Best results, kept on the device.
   bests: loadJson('bests', EMPTY_BESTS),
+  // Stickers earned and drinks tried (challenges/stickers.js), kept on the device; the
+  // latest ones earned, shown for a moment: { ids, id }.
+  stickers: loadJson('stickers', EMPTY_STICKERS),
+  stickerToast: null,
   settings: loadJson('settings', DEFAULT_SETTINGS),
   hud: initialHud,
   // Where the 3D stage sits on screen ({ x, y, width, height }), for camera framing.

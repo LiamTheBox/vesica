@@ -11,6 +11,7 @@ import { countRender } from '../../debug/devHook'
 import ToolRail from './ToolRail'
 import ActionRail from './ActionRail'
 import MicroStage from '../micro/MicroStage'
+import StickerToast from './StickerToast'
 
 // Tabs load on first open (they're precached for offline play either way).
 const TelemetryTab = lazy(() => import('./Tabs/TelemetryTab'))
@@ -182,6 +183,7 @@ export default function HUD() {
         </div>
       </div>
 
+      <StickerToast />
       <ChallengeResultCard />
       <LazyTab id="telemetry"><TelemetryTab /></LazyTab>
       <LazyTab id="challenges"><ChallengesTab /></LazyTab>
