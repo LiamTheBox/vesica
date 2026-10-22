@@ -12,15 +12,13 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 ## Where things stand (2026-10-22)
 
 - **M0–M9:** code done, automated gates passed, tagged `m0`–`m9`. Every **phone check is still open** (below).
-- **Tests:** `npm run check` green (256 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
+- **Tests:** `npm run check` green (259 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
   (your choice: it loads the CPU). Its specs follow the code but last ran before the 2026-10-21 changes (85 passed).
 - **Live:** https://liamthebox.github.io/vesica/, deployed by GitHub Actions on every push to `main`.
 - **Rules for everything new** (requested 2026-10-21): fully offline (nothing loaded from the network); every mode
   plays with one pointer, touch or mouse (tap, hold, drag; Space presses on a keyboard; pinch, wheel and right-drag
   only move the camera); the minigames are abstract sphincter-control challenges, and any story stays outside them,
   optional to read. Safe for work: adults, no nudity or sexual framing.
-- **Waiting for your call:** the arcade can't be lost by anyone who clenches (found 2026-10-22; measurements and a
-  proposed fix in [KNOWN_ISSUES.md](KNOWN_ISSUES.md)).
 - **Next:** the phone checks.
 
 ## Done
@@ -56,6 +54,8 @@ Requested along the way, each in its own commits:
   brings urges sooner while alcohol tires the clench (in every mode); three personalities (dramatic, shy,
   deadpan) and a name for the bladder; fourteen stickers kept on the device; every interface word in one English
   table (`src/i18n/en.js`), ready for a translation; colour emoji on Linux desktops.
+- **2026-10-22, arcade balance (approved):** a slip saved costs stamina and leaves the grip shaky (SHAKY by the
+  stamina bar), as does a clench that gives out; the time to save a slip shrinks to 0.3 s by level 8.
 
 ## Open: phone checks
 
@@ -81,6 +81,8 @@ On the live site (or `npm run preview:phone` for installing and offline). Tick t
   name field takes typing on an iPhone and shows on the subtitles; a sticker shows when earned and in the
   Challenges list; ☕ and 🍺 show by the telemetry bar after coffee or beer, and the arcade serves them from
   level 3 and 5.
+- ☐ **Arcade balance (2026-10-22):** a few honest runs end somewhere around 4–6 minutes; waiting for SLIPPING!
+  loses in a minute or two; SHAKY shows in amber by the stamina bar after a close call or a clench that gives out.
 
 ## M10 — Release (optional) ◐
 
@@ -98,11 +100,14 @@ What was measured or learned on the way that the code doesn't show:
   60 fps at 4.8 ms of main thread a frame (11.7 ms before M7; the original 8.2 ms). Software GPU, a stand-in for a
   weak phone, same scene: 6.8 / 25 / 38 fps on High / Medium / Low (the original 7.3). The gap was Three.js r185's
   transmission pass. `npm run test:perf` is the gate: worst second ≥ 45 fps on the real GPU, ≥ 30 fps on Low.
-- **Arcade balance** (headless bots, 2026-10-22): only a player who never clenches loses (~1 min); every other
-  one, even one who clenches only when SLIPPING! shows, lasts 10 minutes without a leak (see KNOWN_ISSUES). Before
-  the arcade bladder got no limit (2026-10-21), late clenching lost in ~3.5 min and a typical player in 3–4 min.
-  A10's drinks raised 5-minute scores 2–9 % and changed nothing else. The commute challenge is much easier under
-  the 2026-10-21 rules.
+- **Arcade balance** (2026-10-22, `node tools/arcade-bots.mjs`: scripted players reacting in 0.2–0.4 s, 20 runs
+  each). Median time to lose: never clenching 0:57; clenching only on SLIPPING! 1:12; calming 1 wave in 4 1:20;
+  holding Clench down for good 3:57; clenching as each wave lands, not on the warning, 4:46; a typical player (85 %
+  of warnings, 60 % of sneezes, Soothe at 70 % strain) 5:37, from 3:15 to 8:01. A strong player (95 % / 90 %)
+  mostly lasts past 20 minutes and a flawless one never loses: nothing gets harder after level 11 (5 minutes).
+  Reactions of 0.22 or 0.38 s change these little. Before the save cost: SLIPPING! only ~4:10, a typical player
+  ~6:30 (a quarter lasted 10 minutes), holding Clench down ~6:50. A10's drinks raised 5-minute scores 2–9 % and
+  changed nothing else. The commute challenge is much easier under the 2026-10-21 rules.
 - **Browser tests:** headless WebGL is software-rendered at a few fps, so timing-dependent specs pause the loop and
   step simulated time (`window.__vesica.step(n)`).
 - **Local setup:** VS Code runs as a Flatpak and sets `XDG_CACHE_HOME`, so

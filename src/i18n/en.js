@@ -51,6 +51,8 @@ export default {
   'bar.volume': 'VOLUME',
   'bar.volumeOf': '{volume} / {most} ml',
   'bar.kegel': 'KEGEL',
+  'bar.shaky': 'SHAKY',
+  'bar.shakyHint': 'Shaky grip: stamina comes back slowly',
   'bar.pressure': 'Pressure',
   'bar.flow': 'Flow',
   'bar.sphincter': 'Sphincter',

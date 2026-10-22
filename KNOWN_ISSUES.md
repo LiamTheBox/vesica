@@ -5,19 +5,6 @@ was tried, so nobody repeats a dead end. Fixed issues move to the bottom with th
 
 ## Open
 
-### The arcade can't be lost by anyone who clenches
-- **Seen:** 2026-10-22, balancing A10 with scripted players (headless, 12–24 runs each, 10 minutes a run). Since
-  the arcade bladder got no limit (2026-10-21: past full it feels no fuller, and a run ends only on a total
-  failure), every player who clenches at all survives the full 10 minutes **without a single leak**: one who always
-  clenches late, one who holds Clench down for good, one who calms only 1 wave in 4, and even one who clenches
-  **only when SLIPPING! shows** (strain at 100 %, 0.6 s to react). A slip saved costs nothing and scores +30, so
-  waiting for the slip is a safe strategy. Only a player who never clenches loses (~1 min). (The 3–4 minute runs in
-  the old ROADMAP were measured before the no-limit change.)
-- **Proposed (changes the game, so waiting for a yes):** make saving a slip cost something and shrink the window as
-  the levels go up. For example: each save takes a big bite of stamina and leaves the grip weaker for a while, and
-  the 0.6 s grace drops toward ~0.3 s by level 8. Then re-tune with the bots: a player who waits for slips should
-  leak within a couple of minutes, a typical player should lose somewhere around 4–6 minutes.
-
 The two below are in the browser suite (`npm run test:e2e`), which isn't run for now (it loads the CPU).
 
 ### Real-time waits are unreliable in browser tests
@@ -63,3 +50,4 @@ The two below are in the browser suite (`npm run test:e2e`), which isn't run for
 | A microgames run hid the strain readout once its banner replaced the telemetry bar; the banner shows STRAIN now | 2026-10-21 |
 | Sheets: whatever scrolled past showed through above the pinned header (it pinned inside the panel's padding) | 2026-10-21 |
 | The faces, ☕ and ⚡ were black-and-white outlines on Linux: the generic sans-serif there (DejaVu Sans) has monochrome emoji and won over the colour fallback; a range-limited 'Color Emoji' face now comes first | 2026-10-22 |
+| The arcade could hardly be lost: a slip saved cost nothing, and a clench that gave out came back in time to save the next, so waiting for SLIPPING! lasted ~4 min and holding Clench down ~7. A save now costs 35 % stamina and, like a clench giving out, leaves the grip shaky (stamina back at 40 % speed for 6 s); the time to save a slip drops from 0.6 s to 0.3 s by level 8. Numbers in ROADMAP's reference | 2026-10-22 |

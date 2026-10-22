@@ -67,6 +67,7 @@ function hudOf(s) {
     dilationPct: Math.round(s.sphincterDilation * 100),
     isClenching: s.isClenching,
     clenchExhausted: s.clenchExhausted,
+    shaky: s.shaky > 0,
     isAttemptingVoid: s.isAttemptingVoid,
     isActivelyVoiding: s.isActivelyVoiding,
     voidProgress: s.isAttemptingVoid ? Math.round(Math.min(1, s.voidLatencyTimer / s.voidLatencyRequired) * 50) / 50 : 0,

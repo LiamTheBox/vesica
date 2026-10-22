@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { createSimState, ingestBeverage, resetOrgan, SANDBOX_RULES, startClench, startVoidAttempt, stopClench } from './sim'
+import {
+  createSimState, ingestBeverage, resetOrgan, SANDBOX_RULES, SHAKY_RECOVERY, startClench, startVoidAttempt, stepSim, stopClench,
+} from './sim'
 import { ARCADE_RULES, fillMultiplier, nextServe, quitArcadeRun, scoreArcade, startArcadeRun, stepGame } from './arcade'
 import { DRINKS, hasAlcohol, hasCaffeine, SERVED_TIERS } from './drinks'
 
@@ -188,17 +190,26 @@ describe('clench economy', () => {
     expect(sim.sphincterToneStrain).toBeCloseTo(0.5, 6)
   })
 
-  it('needs 30 % stamina back after giving out', () => {
+  it('needs 30 % stamina back after giving out, and the shaky grip gets it back slowly', () => {
     const sim = quietRun(300)
     play(sim, startClench)
     run(sim, 4, { until: (s) => s.clenchExhausted })
     expect(sim.clenchExhausted).toBe(true)
-    run(sim, 0.2)
+    expect(sim.shaky).toBeCloseTo(ARCADE_RULES.shakyTime, 1)
+    run(sim, 0.8) // ~0.2 back at 40 % of the usual rate (it would be ~0.5)
     play(sim, startClench)
     expect(sim.isClenching).toBe(false)
-    run(sim, 0.3)
+    run(sim, 0.4)
     play(sim, startClench)
     expect(sim.isClenching).toBe(true)
+  })
+
+  it("the sandbox's grip never gets shaky", () => {
+    const sim = createSimState()
+    startClench(sim, [])
+    for (let t = 0; t < 12 && !sim.clenchExhausted; t += DT) stepSim(sim, DT, [], fixed(0.5))
+    expect(sim.clenchExhausted).toBe(true)
+    expect(sim.shaky).toBe(0)
   })
 })
 
@@ -213,6 +224,39 @@ describe('leaks', () => {
     const events = run(sim, DT)
     expect(types(events)).toContain('leakSaved')
     expect(points(events, 'saved')).toHaveLength(1)
+  })
+
+  it('a save costs stamina and leaves the grip shaky: stamina comes back slowly for a while', () => {
+    const sim = quietRun(450)
+    sim.sphincterToneStrain = 1
+    run(sim, 0.3)
+    play(sim, startClench)
+    const before = sim.kegelStamina
+    run(sim, DT)
+    expect(sim.kegelStamina).toBeCloseTo(before - ARCADE_RULES.saveStamina, 2)
+    expect(sim.shaky).toBeCloseTo(ARCADE_RULES.shakyTime, 1)
+
+    sim.sphincterToneStrain = 0
+    play(sim, stopClench)
+    const shaken = sim.kegelStamina
+    run(sim, 1)
+    expect(sim.kegelStamina - shaken).toBeCloseTo(sim.kegelRecoverRate * SHAKY_RECOVERY, 2)
+    run(sim, ARCADE_RULES.shakyTime)
+    expect(sim.shaky).toBe(0)
+    sim.kegelStamina = 0.2
+    run(sim, 0.5)
+    expect(sim.kegelStamina).toBeCloseTo(0.2 + sim.kegelRecoverRate * 0.5, 2)
+  })
+
+  it('give less time each level: 0.3 s from level 8', () => {
+    const sim = quietRun(450)
+    sim.urgeWaveTimer = 999
+    sim.arcade.time = 7 * 30
+    run(sim, DT)
+    expect(sim.arcade.level).toBe(8)
+    expect(sim.leakGraceTime).toBeCloseTo(0.3, 6)
+    sim.sphincterToneStrain = 1
+    expect(types(run(sim, 0.35))).toContain('leakStart')
   })
 
   it('cost points and the combo when the grace runs out', () => {

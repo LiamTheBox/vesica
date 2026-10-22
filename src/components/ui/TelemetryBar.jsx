@@ -27,6 +27,7 @@ export default function TelemetryBar() {
   const pressureTone = useHud((h) => organStatus(h).pressureTone)
   const caffeinated = useHud((h) => h.caffeinated)
   const tipsy = useHud((h) => h.tipsy)
+  const shaky = useHud((h) => h.shaky)
 
   const fillPct = Math.min(100, Math.round((volume / maxCapacity) * 100))
 
@@ -45,11 +46,14 @@ export default function TelemetryBar() {
         </div>
         <div>
           <div className="flex justify-between items-center text-[9px] text-slate-400 font-mono mb-1">
-            <span>{t('bar.kegel')} {tipsy && <span role="img" aria-label={t('bar.alcohol')} title={t('bar.alcohol')}>🍺</span>}</span>
-            <span className="font-bold text-cyan-400">{stamPct}%</span>
+            {/* After a save or a clench giving out (arcade), stamina comes back slowly for a while. */}
+            <span title={shaky ? t('bar.shakyHint') : undefined} className={shaky ? 'font-bold text-amber-400 animate-pulse' : undefined}>
+              {t(shaky ? 'bar.shaky' : 'bar.kegel')} {tipsy && <span role="img" aria-label={t('bar.alcohol')} title={t('bar.alcohol')}>🍺</span>}
+            </span>
+            <span className={`font-bold ${shaky ? 'text-amber-400' : 'text-cyan-400'}`}>{stamPct}%</span>
           </div>
           <div className="w-full bg-slate-800/80 h-1.5 rounded-full overflow-hidden border border-slate-700/50">
-            <div className="h-full bg-gradient-to-r from-cyan-500 to-sky-400 transition-all duration-100" style={{ width: `${stamPct}%` }}></div>
+            <div className={`h-full bg-gradient-to-r transition-all duration-100 ${shaky ? 'from-amber-500 to-orange-400' : 'from-cyan-500 to-sky-400'}`} style={{ width: `${stamPct}%` }}></div>
           </div>
         </div>
       </div>

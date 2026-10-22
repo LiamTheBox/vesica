@@ -46,6 +46,7 @@ export const initialHud = {
   isUrgeWaveActive: false,
   caffeinated: false, // caffeine is bringing urges sooner
   tipsy: false, // alcohol is tiring the clench
+  shaky: false, // a save or a clench giving out left the grip shaky: stamina comes back slowly
   totalLeaked: 0,
   maxPressure: 7.2,
   activeChallenge: null,

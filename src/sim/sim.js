@@ -42,6 +42,9 @@ export const RESEAL_STRAIN = 0.85
 // A clench holding the sphincter at 100 % against more strain burns stamina fast: this
 // much per unit of strain it holds back.
 export const OVERLOAD_STAMINA = 4.0
+// While the grip is shaky (in the arcade, after a slip saved or a clench that gave out),
+// stamina comes back at this share of its usual rate.
+export const SHAKY_RECOVERY = 0.4
 
 // A poke or a slap jolts the pressure for a moment, more the fuller the bladder (taut, it
 // has no give): up to this many cmH2O when full, fading in a fraction of a second. It
@@ -78,6 +81,8 @@ export const SANDBOX_RULES = {
   idleRelief: 1, // share of the strain relief such a clench still gives
   clenchLockout: 0, // stamina needed to clench again after giving out
   leakGraceTime: 0, // seconds at 100 % strain before the leak starts
+  saveStamina: 0, // stamina a slip saved in that time costs...
+  shakyTime: 0, // ...and how long that, or a clench giving out, leaves the grip shaky (SHAKY_RECOVERY)
   sootheCooldownTime: 0, // seconds before Soothe works again
   volumeCap: 1.25, // the most it holds, as a share of its capacity (the arcade's has no limit)
   fullAt: 1.25, // the fill past which pressure and urgency stop climbing (the arcade's: 1, full)
@@ -110,6 +115,7 @@ export function createSimState() {
     isStressLeaking: false,
     stressLeakTargetLoss: 0,
     leakGrace: 0, // seconds spent at 100 % strain without a clench (arcade grace)
+    shaky: 0, // seconds the grip stays shaky (shakyTime)
 
     coughImpulseIntensity: 0.0,
     coughWarned: false, // a cough is on its way (an announced sneeze in the arcade)
@@ -286,6 +292,7 @@ export function resetOrgan(sim, out, rng = Math.random) {
   sim.involuntaryVoiding = false
   sim.isStressLeaking = false
   sim.leakGrace = 0
+  sim.shaky = 0
   sim.kegelStamina = 1.0
   sim.sphincterToneStrain = 0
   sim.detrusorSpasmIntensity = 0
@@ -391,7 +398,7 @@ export function stepSim(sim, dt, out, rng = Math.random) {
 
   // Kegel stamina. Holding the Kegel also eases the sphincter's strain, the longer the
   // more (not in the original, which only eased it with Soothe). A clench with nothing to
-  // hold back can cost extra (arcade).
+  // hold back can cost extra, and one that gives out leaves the grip shaky (arcade).
   if (sim.isClenching) {
     const idle = !sim.isUrgeWaveActive && !sim.urgeWarned && !sim.coughWarned && sim.coughImpulseIntensity <= 0 &&
       !sim.isStressLeaking && sim.leakGrace <= 0
@@ -401,10 +408,11 @@ export function stepSim(sim, dt, out, rng = Math.random) {
     if (sim.kegelStamina <= 0.02) {
       sim.isClenching = false
       sim.clenchExhausted = true
+      sim.shaky = Math.max(sim.shaky, sim.shakyTime)
       out.push({ type: 'clenchExhausted' })
     }
   } else {
-    sim.kegelStamina = Math.min(1.0, sim.kegelStamina + sim.kegelRecoverRate * dt)
+    sim.kegelStamina = Math.min(1.0, sim.kegelStamina + sim.kegelRecoverRate * (sim.shaky > 0 ? SHAKY_RECOVERY : 1) * dt)
     if (sim.kegelStamina > Math.max(0.15, sim.clenchLockout)) sim.clenchExhausted = false
   }
 
@@ -503,7 +511,12 @@ export function stepSim(sim, dt, out, rng = Math.random) {
       }
     }
   } else if (sim.leakGrace > 0) {
-    if (sim.isClenching) out.push({ type: 'leakSaved' })
+    if (sim.isClenching) {
+      // A save is a scramble: it costs stamina and leaves the grip shaky for a while.
+      sim.kegelStamina = Math.max(0, sim.kegelStamina - sim.saveStamina)
+      sim.shaky = sim.shakyTime
+      out.push({ type: 'leakSaved' })
+    }
     sim.leakGrace = 0
   }
 
@@ -602,4 +615,5 @@ export function stepSim(sim, dt, out, rng = Math.random) {
   if (sim.creakCooldown > 0) sim.creakCooldown -= dt
   sim.touchPressure *= Math.exp(-TOUCH_FADE * dt)
   if (sim.sootheCooldown > 0) sim.sootheCooldown = Math.max(0, sim.sootheCooldown - dt)
+  if (sim.shaky > 0) sim.shaky = Math.max(0, sim.shaky - dt)
 }
