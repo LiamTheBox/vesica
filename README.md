@@ -53,7 +53,10 @@ Pushing to `main` deploys the app to GitHub Pages.
 - `src/sim/`: the simulation (physiology, arcade rules, drinks); `src/sim/micro/`: the microgames' rules
 - `src/feedback/`: what the bladder feels (`mood.js`), says (`reactions.js`) and does (`emotes.js`), what it
   notices of the camera (`camera.js`), and how events sound and buzz (`feedback.js`)
-- `src/audio/`: the sound effects (`AudioManager.js`), the voice (`voice.js`) and its lines (`lines.js`)
+- `src/audio/`: the sound effects (`AudioManager.js`), the voice (`voice.js`), its personalities
+  (`personalities.js`) and their lines (`lines.js`, `linesShy.js`, `linesDeadpan.js`)
+- `src/i18n/`: every interface word, by key (`en.js`); English is the only language for now
+- `src/challenges/`: best results and stickers, kept on the device
 - `src/components/3d/`: the bladder (`organGeometry.js` its shape, `organRig.js` its movement each frame,
   `bodyLanguage.js` its moves), the ureters and the stream; `src/components/micro/`: the microgames' drawing
 - `src/components/ui/`: the HUD, buttons and menus

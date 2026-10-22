@@ -9,17 +9,19 @@ numbers measured on the way, are in its commits (`git log m<N-1>..m<N>`, `git sh
 
 Status legend: ☐ todo · ◐ in progress · ☑ done
 
-## Where things stand (2026-10-21)
+## Where things stand (2026-10-22)
 
 - **M0–M9:** code done, automated gates passed, tagged `m0`–`m9`. Every **phone check is still open** (below).
-- **Tests:** `npm run check` green (226 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
+- **Tests:** `npm run check` green (256 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
   (your choice: it loads the CPU). Its specs follow the code but last ran before the 2026-10-21 changes (85 passed).
 - **Live:** https://liamthebox.github.io/vesica/, deployed by GitHub Actions on every push to `main`.
 - **Rules for everything new** (requested 2026-10-21): fully offline (nothing loaded from the network); every mode
   plays with one pointer, touch or mouse (tap, hold, drag; Space presses on a keyboard; pinch, wheel and right-drag
   only move the camera); the minigames are abstract sphincter-control challenges, and any story stays outside them,
   optional to read. Safe for work: adults, no nudity or sexual framing.
-- **Next:** the phone checks; then whichever of the backlog's bigger additions you want ([BACKLOG.md](BACKLOG.md)).
+- **Waiting for your call:** the arcade can't be lost by anyone who clenches (found 2026-10-22; measurements and a
+  proposed fix in [KNOWN_ISSUES.md](KNOWN_ISSUES.md)).
+- **Next:** the phone checks.
 
 ## Done
 
@@ -50,6 +52,10 @@ Requested along the way, each in its own commits:
   `organRig.js` split in four; a strained body trembles; at most 12 ripples; reduced motion; body language you can
   hear; plain words across the app; reactions to the camera; pleading and sulking when held full; a mood strip and
   line log on the Pressure Chart.
+- **2026-10-22, from the backlog (approved):** the arcade serves the whole drinks menu by level, and caffeine
+  brings urges sooner while alcohol tires the clench (in every mode); three personalities (dramatic, shy,
+  deadpan) and a name for the bladder; fourteen stickers kept on the device; every interface word in one English
+  table (`src/i18n/en.js`), ready for a translation; colour emoji on Linux desktops.
 
 ## Open: phone checks
 
@@ -68,8 +74,13 @@ On the live site (or `npm run preview:phone` for installing and offline). Tick t
 - ☐ **M8:** a 10-game microgames run with a finger, and one with a mouse.
 - ☐ **M9:** read a chapter: comfortable text size and scrolling.
 - ☐ **2026-10-21:** a few arcade runs; pan to the sphincter with two fingers; watch a void and a leak.
-- ☐ **Backlog work:** Settings → Voice lists the phone's voices and the chosen one talks offline; each Wall Feel
-  feels different; opening the cutaway gets a line and a blush; the Pressure Chart's mood strip fills in.
+- ☐ **Backlog work (2026-10-21):** Settings → Voice lists the phone's voices and the chosen one talks offline;
+  each Wall Feel feels different; opening the cutaway gets a line and a blush; the Pressure Chart's mood strip
+  fills in.
+- ☐ **Backlog work (2026-10-22):** each personality sounds right on the phone (shy quieter, deadpan flat); the
+  name field takes typing on an iPhone and shows on the subtitles; a sticker shows when earned and in the
+  Challenges list; ☕ and 🍺 show by the telemetry bar after coffee or beer, and the arcade serves them from
+  level 3 and 5.
 
 ## M10 — Release (optional) ◐
 
@@ -87,10 +98,11 @@ What was measured or learned on the way that the code doesn't show:
   60 fps at 4.8 ms of main thread a frame (11.7 ms before M7; the original 8.2 ms). Software GPU, a stand-in for a
   weak phone, same scene: 6.8 / 25 / 38 fps on High / Medium / Low (the original 7.3). The gap was Three.js r185's
   transmission pass. `npm run test:perf` is the gate: worst second ≥ 45 fps on the real GPU, ≥ 30 fps on Low.
-- **Arcade balance** (headless bots, 2026-10-21): never clenching fails in ~1 min; always clenching late in
-  ~3.5 min; mostly using the warnings, sometimes late, 3–4 min; Clench held down for good ~4.5 min; a perfect
-  clench on every warning survives (combo bonus capped at ×10). The commute challenge is much easier under these
-  rules.
+- **Arcade balance** (headless bots, 2026-10-22): only a player who never clenches loses (~1 min); every other
+  one, even one who clenches only when SLIPPING! shows, lasts 10 minutes without a leak (see KNOWN_ISSUES). Before
+  the arcade bladder got no limit (2026-10-21), late clenching lost in ~3.5 min and a typical player in 3–4 min.
+  A10's drinks raised 5-minute scores 2–9 % and changed nothing else. The commute challenge is much easier under
+  the 2026-10-21 rules.
 - **Browser tests:** headless WebGL is software-rendered at a few fps, so timing-dependent specs pause the loop and
   step simulated time (`window.__vesica.step(n)`).
 - **Local setup:** VS Code runs as a Flatpak and sets `XDG_CACHE_HOME`, so
