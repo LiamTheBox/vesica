@@ -53,7 +53,7 @@ export default function ActionButtons() {
   const voidSecondsLeft = useHud((h) => h.voidSecondsLeft)
   const sootheSeconds = useHud((h) => h.sootheSeconds)
   // An announced threat (arcade): the Clench button calls for the thumb.
-  const clenchCue = useHud((h) => h.urgeWarned || h.coughWarned || h.leakGrace)
+  const clenchCue = useHud((h) => h.urgeWarned || h.coughWarned)
   const setTab = useUiStore((s) => s.setTab)
 
   const clenchLabel = t(isClenching ? 'clench.holding' : clenchExhausted ? 'clench.exhausted' : 'clench.hold')
@@ -111,7 +111,7 @@ export default function ActionButtons() {
           <div className="absolute bottom-0 left-0 h-1.5 bg-rose-600 z-20 transition-all duration-75" style={{ width: `${voidProgress * 100}%` }}></div>
         </div>
 
-        {/* In the arcade Soothe needs 20 s to come back; the button counts down. */}
+        {/* In the arcade Soothe needs 25 s to come back; the button counts down. */}
         <button
           onClick={() => act(soothe)}
           disabled={sootheSeconds > 0}

@@ -14,7 +14,7 @@ const EVENTS = [
   { type: 'clenchStart' }, { type: 'clenchExhausted' },
   { type: 'urgeWarning' }, { type: 'sneezeWarning' }, { type: 'urgeStart' },
   { type: 'urgeEnd', suppressed: true }, { type: 'urgeEnd', suppressed: false },
-  { type: 'leakWarning' }, { type: 'leakSaved' }, { type: 'leakStart' }, { type: 'leakEnd' },
+  { type: 'leakSaved' }, { type: 'leakStart' }, { type: 'leakEnd' },
   { type: 'failureStart' }, { type: 'failureEnd' }, { type: 'voidStart' },
   { type: 'agitation', strength: 2.5 }, { type: 'soothe' },
   { type: 'poke', touch: true }, { type: 'slap' }, { type: 'squeezeStart' },

@@ -33,7 +33,6 @@ export const DEADPAN_LINES = {
   soothe: ["Calmer. Thanks.", "Breathing. Fine.", "Less spasm. Good.", "Okay. Relaxed-ish.", "Better. Marginally."],
   cough: ["A cough. Lovely.", "That jolted me.", "Warn me next time.", "Nearly. Careful.", "Bless you, I suppose."],
   coughBraced: ["Braced. Easy.", "Sneeze blocked.", "Held. As usual.", "Nothing escaped.", "Bless you. Handled."],
-  slipping: ["Slipping. Clench.", "Clench. Now.", "Losing it. Squeeze.", "This is the moment. Squeeze.", "Now would be good."],
   saved: ["Caught it.", "Close. Handled.", "Saved. Barely.", "Nice reflexes.", "Phew. I guess."],
   leak: ["Leaking. Great.", "Some got out.", "Well. That's damp.", "A spurt. Wonderful.", "Oops."],
   leakOver: ["Never speak of this.", "Damp. Moving on.", "That didn't happen.", "Sealed. Mostly.", "Embarrassing. Noted."],

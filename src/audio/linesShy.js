@@ -33,7 +33,6 @@ export const SHY_LINES = {
   soothe: ["Oh... that's nice.", "Thank you...", "Calmer now.", "Breathing... okay.", "Mm... better."],
   cough: ["Eep! A cough!", "Oh! That jolted me.", "Careful... please.", "That almost... phew.", "Oh! Bless you."],
   coughBraced: ["Phew... held it.", "I was ready!", "Nothing got out!", "Bless you. I held.", "Oh! I did it."],
-  slipping: ["I'm slipping! Help!", "Please clench!", "Oh no, squeeze!", "It's coming... clench!", "Help! Now!"],
   saved: ["Phew... caught it.", "That was close...", "Oh! Thank you.", "Saved... barely.", "My heart..."],
   leak: ["Oh no... sorry!", "Eep! A little...", "I'm so sorry!", "It slipped... sorry.", "Oh no oh no..."],
   leakOver: ["Please don't look.", "That was... embarrassing.", "Sorry about that.", "Let's forget that.", "I'm so embarrassed..."],

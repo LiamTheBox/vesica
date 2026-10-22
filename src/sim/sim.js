@@ -35,7 +35,10 @@ export const COUGH_STRAIN_RATE = 1.05
 export const SQUEEZE_STRAIN_RATE = 0.2
 // Leaks start at 100 % strain: a spurt at LEAK_FLOW, or total failure when the pressure
 // is above FAILURE_PRESSURE (the original's threshold). After a spurt runs its course the
-// sphincter regains some grip.
+// sphincter regains some grip. It holds on at 100 % for LEAK_COUNTDOWN seconds first, a
+// countdown that doesn't show (requested): it stops while a clench holds the sphincter,
+// and starts over once the strain is back below 100 %.
+export const LEAK_COUNTDOWN = 5.0
 export const LEAK_FLOW = 12.0
 export const FAILURE_PRESSURE = 65.0
 export const RESEAL_STRAIN = 0.85
@@ -80,8 +83,7 @@ export const SANDBOX_RULES = {
   idleClenchCost: 1, // stamina cost of a clench with nothing to hold back
   idleRelief: 1, // share of the strain relief such a clench still gives
   clenchLockout: 0, // stamina needed to clench again after giving out
-  leakGraceTime: 0, // seconds at 100 % strain before the leak starts
-  saveStamina: 0, // stamina a slip saved in that time costs...
+  saveStamina: 0, // stamina a save (a clench caught the leak countdown running) costs...
   shakyTime: 0, // ...and how long that, or a clench giving out, leaves the grip shaky (SHAKY_RECOVERY)
   sootheCooldownTime: 0, // seconds before Soothe works again
   volumeCap: 1.25, // the most it holds, as a share of its capacity (the arcade's has no limit)
@@ -114,7 +116,7 @@ export function createSimState() {
 
     isStressLeaking: false,
     stressLeakTargetLoss: 0,
-    leakGrace: 0, // seconds spent at 100 % strain without a clench (arcade grace)
+    leakGrace: 0, // seconds of LEAK_COUNTDOWN gone
     shaky: 0, // seconds the grip stays shaky (shakyTime)
 
     coughImpulseIntensity: 0.0,
@@ -234,6 +236,13 @@ export function startClench(sim, out) {
   if (sim.kegelStamina <= 0.05 || (sim.clenchExhausted && sim.kegelStamina < sim.clenchLockout)) return
   sim.isClenching = true
   out.push({ type: 'clenchStart' })
+  if (sim.leakGrace > 0) {
+    // Caught with the sphincter about to give way: a save, which is a scramble (in the
+    // arcade it costs stamina and leaves the grip shaky for a while).
+    sim.kegelStamina = Math.max(0, sim.kegelStamina - sim.saveStamina)
+    sim.shaky = sim.shakyTime
+    out.push({ type: 'leakSaved' })
+  }
 }
 
 export function stopClench(sim, out) {
@@ -401,7 +410,7 @@ export function stepSim(sim, dt, out, rng = Math.random) {
   // hold back can cost extra, and one that gives out leaves the grip shaky (arcade).
   if (sim.isClenching) {
     const idle = !sim.isUrgeWaveActive && !sim.urgeWarned && !sim.coughWarned && sim.coughImpulseIntensity <= 0 &&
-      !sim.isStressLeaking && sim.leakGrace <= 0
+      !sim.isStressLeaking
     const tipsy = 1 + (ALCOHOL.fatigue - 1) * sim.alcohol
     sim.kegelStamina = Math.max(0, sim.kegelStamina - sim.kegelFatigueRate * (idle ? sim.idleClenchCost : 1) * tipsy * dt)
     sim.sphincterToneStrain = Math.max(0, sim.sphincterToneStrain - sim.kegelReliefRate * (idle ? sim.idleRelief : 1) * dt)
@@ -492,14 +501,12 @@ export function stepSim(sim, dt, out, rng = Math.random) {
     sim.sphincterToneStrain = Math.min(1.0, strain)
   }
 
-  // At 100 % strain the sphincter gives way unless a clench holds it: a spurt, or total
-  // failure under high pressure. The arcade allows `leakGraceTime` to clench first.
+  // At 100 % strain the sphincter holds on for LEAK_COUNTDOWN seconds without a clench,
+  // then gives way: a spurt, or total failure under high pressure.
   const canLeak = !sim.isActivelyVoiding && !sim.isStressLeaking && !sim.involuntaryVoiding && sim.volume > 0
-  if (canLeak && sim.sphincterToneStrain >= 1.0 && !sim.isClenching) {
-    if (sim.leakGrace < sim.leakGraceTime) {
-      if (sim.leakGrace === 0) out.push({ type: 'leakWarning' })
-      sim.leakGrace += dt
-    } else {
+  if (canLeak && sim.sphincterToneStrain >= 1.0) {
+    if (!sim.isClenching) sim.leakGrace += dt
+    if (sim.leakGrace >= LEAK_COUNTDOWN) {
       sim.leakGrace = 0
       if (sim.pressure - sim.touchPressure > FAILURE_PRESSURE) {
         sim.involuntaryVoiding = true
@@ -510,13 +517,7 @@ export function stepSim(sim, dt, out, rng = Math.random) {
         out.push({ type: 'leakStart' })
       }
     }
-  } else if (sim.leakGrace > 0) {
-    if (sim.isClenching) {
-      // A save is a scramble: it costs stamina and leaves the grip shaky for a while.
-      sim.kegelStamina = Math.max(0, sim.kegelStamina - sim.saveStamina)
-      sim.shaky = sim.shakyTime
-      out.push({ type: 'leakSaved' })
-    }
+  } else {
     sim.leakGrace = 0
   }
 

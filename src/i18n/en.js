@@ -41,7 +41,6 @@ export default {
   'status.relaxed.sub': 'Comfortable for now',
   'readout.gaveWay': 'GAVE WAY (100%)',
   'readout.leaking': 'LEAKING ({pct}%)',
-  'readout.slipping': 'SLIPPING (100%)',
   'readout.clenched': 'CLENCHED ({pct}%)',
   'readout.open': 'OPEN ({pct}%)',
   'readout.strained': 'STRAINED ({pct}%)',
@@ -102,7 +101,6 @@ export default {
   'tools.orbit': 'Orbit',
 
   // Banners at the top of the stage, and the subtitles.
-  'alert.slipping': '💦 SLIPPING! CLENCH NOW!',
   'alert.urgeIncoming': '⚡ URGE INCOMING: CLENCH AS IT LANDS',
   'alert.sneezeIncoming': '🤧 SNEEZE INCOMING: BRACE!',
   'alert.urge': 'URGE WAVE! CLENCH TO CALM IT',
@@ -220,7 +218,7 @@ export default {
   'sticker.combo10': 'Combo ×10',
   'sticker.combo10.hint': 'Reach a ×10 combo',
   'sticker.saves3': 'Close Calls',
-  'sticker.saves3.hint': 'Save 3 slips in one run',
+  'sticker.saves3.hint': 'At 100 % strain, clench before it gives way: 3 times in one run',
   'sticker.held700': 'Held 700 ml',
   'sticker.held700.hint': 'Hold 700 ml',
   'sticker.beyond': 'Beyond Full',

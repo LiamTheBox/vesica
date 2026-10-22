@@ -39,7 +39,6 @@ export const LINES = {
   soothe: ["Ahh... deep breath.", "That's better. Calmer.", "Mmm, the spasm's easing.", "Breathe in... and out.", "Okay. Okay. I'm calm.", "Thanks, I needed that.", "Relaxing... relaxing...", "Phew. The tension's going."],
   cough: ["Whoa! That cough!", "Oof! Right in the bladder!", "Careful with the coughing!", "That nearly did it!", "Warn me next time!", "Bless you. Hold on!"],
   coughBraced: ["Braced! Nothing got out.", "Ha! Clenched in time!", "Sneeze blocked!", "Bless you. And well braced!", "Didn't even budge!"],
-  slipping: ["I'm slipping! Clench!", "Losing it! Squeeze now!", "Help! Clench!", "It's coming out! Squeeze!", "Now! Clench now!"],
   saved: ["Caught it! Phew!", "Whoa, that was close!", "Saved it! Barely!", "Nice clench! Not a drop!", "Close one! Good reflexes!"],
   leak: ["Oops! A little got out!", "Agh! I leaked!", "No no no, it's slipping!", "A spurt got past!", "Squeeze! It's leaking!", "Oh no. Oh no no.", "Leak! Leak!", "That one slipped through!"],
   leakOver: ["Sealed. Let's never speak of this.", "That was embarrassing.", "Pretend that didn't happen.", "Ugh. A little damp now.", "Stopped it. Mostly.", "Oops. Sorry about that."],
@@ -71,7 +70,7 @@ export const LINES = {
 // bladder's own chatter about how full it is waits its turn, and everything else is a
 // reaction to what just happened. Starting to empty counts as urgent, so it cuts off
 // whatever was being said and drops any line waiting.
-export const URGENT = new Set(['leak', 'involuntary', 'slipping', 'saved', 'urgeIncoming', 'sneezeIncoming', 'voiding'])
+export const URGENT = new Set(['leak', 'involuntary', 'saved', 'urgeIncoming', 'sneezeIncoming', 'voiding'])
 export const CHATTER = new Set(['sleepy', 'nominal', 'distended', 'full', 'critical', 'pleading', 'sulking'])
 
 // How each kind of line is said.
@@ -83,7 +82,7 @@ const PLAYFUL = { pitch: 1.35, rate: 1.1 }
 const GRUMPY = { pitch: 1.1, rate: 1.1 }
 export const NORMAL_VOICE = { pitch: 1.2, rate: 1.05 }
 export const VOICE_STYLE = {
-  critical: FRANTIC, involuntary: FRANTIC, leak: FRANTIC, slipping: FRANTIC, urgeIncoming: FRANTIC, sneezeIncoming: FRANTIC,
+  critical: FRANTIC, involuntary: FRANTIC, leak: FRANTIC, urgeIncoming: FRANTIC, sneezeIncoming: FRANTIC,
   shaken: EXCITED, squeezed: EXCITED, clench: EXCITED, cough: EXCITED, urge: EXCITED, saved: EXCITED, proud: EXCITED, levelUp: EXCITED,
   soothe: { pitch: 1.15, rate: 0.9 },
   voiding: RELAXED, emptied: RELAXED, urgePassed: RELAXED, urgeFaded: RELAXED, leakOver: RELAXED,

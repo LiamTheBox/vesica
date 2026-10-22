@@ -101,7 +101,7 @@ export function stepMood(mood, dt, sim = null) {
 export function moodOf(mood, sim) {
   const fill = fillRatioOf(sim)
   const strain = sim.sphincterToneStrain
-  if (sim.involuntaryVoiding || sim.isStressLeaking || sim.leakGrace > 0 || strain > PANIC_STRAIN) return 'panic'
+  if (sim.involuntaryVoiding || sim.isStressLeaking || strain > PANIC_STRAIN) return 'panic'
   if (mood.embarrassment > 0) return 'embarrassed'
   if (sim.isActivelyVoiding) return 'relieved'
   if (mood.pride > 0) return 'proud'

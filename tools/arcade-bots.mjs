@@ -1,7 +1,9 @@
 // Plays the arcade headless with scripted players who react like people (0.2-0.4 s), to
 // check its balance after a change to the rules. Prints, for each player, how many runs
-// were lost and when, the leaks, saves, slips, clenches that gave out, and the score.
-// Usage: node tools/arcade-bots.mjs [runs=20] [minutes=10]   (REACT=0.3 sets the mean reaction, in s)
+// were lost and when, the leaks, saves, times at 100 % strain, clenches that gave out,
+// and the score.
+// Usage: node tools/arcade-bots.mjs [runs=20] [minutes=10]
+//   REACT=0.3 sets the mean reaction, in s; RULES='{"saveStamina":0.5}' tries other arcade rules.
 import { register } from 'node:module'
 
 // The app's imports leave off '.js' (Vite adds it); this lets plain Node do the same.
@@ -14,16 +16,19 @@ register('data:text/javascript,' + encodeURIComponent(`
   }
 `))
 const { createSimState, soothe, startClench, stopClench } = await import('../src/sim/sim.js')
-const { scoreArcade, startArcadeRun, stepGame } = await import('../src/sim/arcade.js')
+const { ARCADE_RULES, scoreArcade, startArcadeRun, stepGame } = await import('../src/sim/arcade.js')
+Object.assign(ARCADE_RULES, JSON.parse(process.env.RULES ?? '{}'))
 
 const DT = 1 / 60
 const RUNS = Number(process.argv[2] ?? 20)
 const MINUTES = Number(process.argv[3] ?? 10)
 const REACT = Number(process.env.REACT ?? 0.3)
+const NOTICE = 0.3 // extra time to notice the readout reach 100 %
 
 // onWarning: share of urge warnings it clenches for; onWave: share of the other waves it
 // clenches for when they land; onSneeze: share of sneezes it braces for; slips: clenches
-// when SLIPPING! shows (for 0.8 s); sootheAt: the strain at which it presses Soothe;
+// (for 0.8 s) when the readout shows 100 % strain, unclenched, which takes it a moment
+// longer to notice than an alert; sootheAt: the strain at which it presses Soothe;
 // holder: keeps Clench down for good, pressing again whenever it gives out.
 const PLAYERS = {
   never: {},
@@ -63,6 +68,7 @@ function playRun(player, seed) {
   const later = [] // [time, fn]
   const at = (time, fn) => later.push([time, fn])
   let nextPress = 0
+  let wasAtLimit = false
   const run = { lostAt: null, firstLeak: null, leaks: 0, saves: 0, slips: 0, gaveOut: 0, score: 0 }
 
   for (let t = 0; t < MINUTES * 60 && sim.arcade; t += DT) {
@@ -96,14 +102,6 @@ function playRun(player, seed) {
         case 'cough':
           at(t + 0.25, () => reasons.delete('sneeze'))
           break
-        case 'leakWarning': {
-          run.slips++
-          if (!player.slips) break
-          const r = react()
-          at(t + r, () => reasons.add('slip'))
-          at(t + r + 0.8, () => reasons.delete('slip'))
-          break
-        }
         case 'leakSaved': run.saves++; break
         case 'clenchExhausted': run.gaveOut++; nextPress = t + react(); break
         case 'leakStart':
@@ -111,6 +109,17 @@ function playRun(player, seed) {
         case 'challengeResult': run.score = e.score; if (!e.success) run.lostAt = t; break
       }
     }
+    // At 100 % strain the sphincter gives way after a countdown that doesn't show.
+    const atLimit = sim.sphincterToneStrain >= 1 && !sim.isClenching && !sim.isStressLeaking && !sim.involuntaryVoiding
+    if (atLimit && !wasAtLimit) {
+      run.slips++
+      if (player.slips) {
+        const r = react() + NOTICE
+        at(t + r, () => reasons.add('slip'))
+        at(t + r + 0.8, () => reasons.delete('slip'))
+      }
+    }
+    wasAtLimit = atLimit
   }
   if (sim.arcade) run.score = Math.round(sim.arcade.score)
   return run
@@ -121,7 +130,7 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStar
 const spread = (xs) => (xs.length ? `${clock(median(xs))} (${clock(Math.min(...xs))}-${clock(Math.max(...xs))})` : '-')
 
 console.log(`${RUNS} runs each, up to ${MINUTES} min, reacting in ${REACT} s ± 0.1`)
-console.log('player     lost   first leak            lost at               leaks  saves  slips  gave out  score')
+console.log('player     lost   first leak            lost at               leaks  saves  @100%  gave out  score')
 for (const [name, player] of Object.entries(PLAYERS)) {
   const runs = Array.from({ length: RUNS }, (_, i) => playRun(player, 1000 + i))
   const lost = runs.filter((r) => r.lostAt != null).map((r) => r.lostAt)

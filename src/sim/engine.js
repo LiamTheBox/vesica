@@ -83,7 +83,6 @@ function hudOf(s) {
     challengeSeconds: Math.max(0, Math.round(s.challengeTimer)),
     urgeWarned: s.urgeWarned,
     coughWarned: s.coughWarned,
-    leakGrace: s.leakGrace > 0,
     sootheSeconds: Math.ceil(s.sootheCooldown),
     arcadeScore: s.arcade ? Math.floor(s.arcade.score) : 0,
     arcadeCombo: s.arcade ? s.arcade.combo : 0,

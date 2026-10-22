@@ -7,7 +7,7 @@ import { t } from '../../i18n'
 // What a line is about, where that says more than the bladder's face; otherwise the face
 // it said it with.
 const SUBTITLE_ICONS = {
-  leak: '💦', slipping: '💦', clench: '🛡️', coughBraced: '🛡️', soothe: '🧘', cough: '🤧', sneezeIncoming: '🤧',
+  leak: '💦', clench: '🛡️', coughBraced: '🛡️', soothe: '🧘', cough: '🤧', sneezeIncoming: '🤧',
   shaken: '📳', squeezed: '🤏', squeezeEmpty: '🤏', urge: '⚡', urgeIncoming: '⚠️', levelUp: '⭐', sleepy: '💤',
   drinkWater: '💧', drinkCaffeine: '☕', drinkAlcohol: '🍺', drinkBig: '🌊', drinkOther: '🥤', drinkFull: '🙅',
   cutaway: '🔬', tooClose: '👀', dizzy: '😵‍💫', pleading: '🥺', sulking: '😒',
@@ -58,15 +58,9 @@ export function StageAlerts() {
   const isUrgeWaveActive = useHud((h) => h.isUrgeWaveActive)
   const urgeWarned = useHud((h) => h.urgeWarned)
   const coughWarned = useHud((h) => h.coughWarned)
-  const leakGrace = useHud((h) => h.leakGrace)
 
   return (
     <>
-      {leakGrace && (
-        <div className={`${BANNER} bg-rose-600/95 text-white shadow-rose-600/50 animate-bounce`}>
-          {t('alert.slipping')}
-        </div>
-      )}
       {urgeWarned && (
         <div className={`${BANNER} bg-amber-300/95 text-slate-950 animate-pulse`}>
           {t('alert.urgeIncoming')}

@@ -57,6 +57,7 @@ export function stickersFromEvent(kept, progress, event, sim) {
       progress.pitcher = null
       break
     case 'leakSaved':
+      if (!a) break // a run's saves
       progress.saves += 1
       if (progress.saves >= SAVES) earned.push('saves3')
       break

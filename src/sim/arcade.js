@@ -6,8 +6,8 @@ import { stepMicro } from './micro/runner'
 // serves drinks, announces every urge wave and (from level 2) every sneeze, and gets
 // harder every 30 s. The bladder has no limit (requested): it keeps filling past full,
 // but past full it feels no fuller, so the run lasts as long as the clench holds out. A
-// slip saved at the last moment costs stamina and leaves the grip shaky, so waiting for
-// slips loses. Points come from holding (more the fuller you are), from clenching
+// clench that catches the sphincter about to give way (100 % strain: see LEAK_COUNTDOWN)
+// costs stamina and leaves the grip shaky, so waiting for that to happen loses. Points come from holding (more the fuller you are), from clenching
 // on time — as the wave lands, which calms it at once — and from bracing for sneezes.
 // Emptying the bladder banks the score; a total failure ends the run.
 
@@ -21,10 +21,9 @@ export const ARCADE_RULES = {
   idleClenchCost: 3, // clenching with nothing to hold back wastes stamina...
   idleRelief: 0, // ...and eases no strain
   clenchLockout: 0.3, // after giving out, the clench needs 30 % stamina back
-  leakGraceTime: 0.6, // at 100 % strain there's a moment to clench before it leaks (less each level)...
-  saveStamina: 0.35, // ...and a save costs stamina...
+  saveStamina: 0.35, // a save costs stamina...
   shakyTime: 6, // ...and, like a clench giving out, leaves the grip shaky: stamina comes back slowly
-  sootheCooldownTime: 20,
+  sootheCooldownTime: 25, // Soothe brings the strain back under 100 %, so it comes back slowly
   volumeCap: Infinity, // it never runs out of room...
   fullAt: 1, // ...and past full, pressure and urgency hold at full's
 }
@@ -39,7 +38,7 @@ const MAX_COMBO_BONUS = 10 // the combo multiplies points up to this
 const PERFECT_STAMINA = 0.15 // refunded on a perfect clench
 const GOOD_POINTS = 20
 const BRACED_POINTS = 40 // times the combo
-const SAVED_POINTS = 30 // clenched during the leak grace
+const SAVED_POINTS = 30 // clenched with the leak countdown running
 const LEAK_PENALTY = 100
 const DRINK_BONUS = 0.5 // points per ml the player chooses to drink
 const SNEEZE_WARNING = 1.0
@@ -59,8 +58,7 @@ export const nextServe = (level, ml) => Math.max(MIN_SERVE_GAP, (serveInterval(l
 const sneezeInterval = (level, rng) => (12 + rng() * 10) * Math.max(0.6, 1 - 0.05 * (level - FIRST_SNEEZE_LEVEL))
 
 // Each level: stronger, more frequent urges that take longer to calm, announced later,
-// and a pelvic floor that tires: holding eases less strain, the brace lets more through,
-// and a slip gives less time to clench (0.3 s from level 8).
+// and a pelvic floor that tires: holding eases less strain and the brace lets more through.
 function applyLevel(sim, level) {
   const up = level - 1
   sim.urgeStrength = Math.min(1.8, 1 + 0.1 * up)
@@ -69,7 +67,6 @@ function applyLevel(sim, level) {
   sim.urgeWarningTime = Math.max(0.6, ARCADE_RULES.urgeWarningTime - 0.06 * up)
   sim.kegelReliefRate = ARCADE_RULES.kegelReliefRate * Math.max(0.3, 1 - 0.08 * up)
   sim.clenchGuard = ARCADE_RULES.clenchGuard + Math.min(0.25, 0.025 * up)
-  sim.leakGraceTime = Math.max(0.3, ARCADE_RULES.leakGraceTime - 0.045 * up)
 }
 
 export function startArcadeRun(sim, out, rng = Math.random) {

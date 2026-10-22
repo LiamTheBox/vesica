@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ALCOHOL, CAFFEINE, cough, createSimState, FAILURE_PRESSURE, ingestBeverage, LEAK_FLOW, PEAK_FLOW, resetOrgan,
+  ALCOHOL, CAFFEINE, cough, createSimState, FAILURE_PRESSURE, ingestBeverage, LEAK_COUNTDOWN, LEAK_FLOW, PEAK_FLOW, resetOrgan,
   RESEAL_STRAIN, SANDBOX_RULES, soothe, startClench, startCommuteChallenge, startPrecisionChallenge, startVoidAttempt,
   stepSim, stopClench, stopVoidAttempt, voidFlow,
 } from './sim'
@@ -226,22 +226,46 @@ describe('sphincter strain (requested)', () => {
 })
 
 describe('stress leaks', () => {
-  it('only start at 100 % strain: a spurt at 12 ml/s', () => {
+  it('only start at 100 % strain, after a 5 s countdown that never shows: a spurt at 12 ml/s', () => {
     const sim = quietSim(600)
     sim.sphincterToneStrain = 0.99
-    expect(types(run(sim, 0.5))).not.toContain('leakStart')
+    expect(types(run(sim, 6))).not.toContain('leakStart')
 
     sim.sphincterToneStrain = 1.0
-    const events = run(sim, DT)
+    expect(LEAK_COUNTDOWN).toBe(5)
+    expect(types(run(sim, LEAK_COUNTDOWN - 0.1))).not.toContain('leakStart')
+    const events = run(sim, 0.15)
     expect(types(events)).toContain('leakStart')
     expect(sim.isStressLeaking).toBe(true)
     expect(sim.flowRate).toBe(LEAK_FLOW)
   })
 
+  it('the countdown stops while a clench holds, and starts over once the strain is below 100 %', () => {
+    const sim = quietSim(600)
+    sim.kegelReliefRate = 0 // a clench that eases nothing, as with nothing to hold back in the arcade
+    sim.sphincterToneStrain = 1.0
+    run(sim, 3)
+    const caught = []
+    startClench(sim, caught)
+    expect(types(caught)).toEqual(['clenchStart', 'leakSaved'])
+    expect(types(run(sim, 3))).not.toContain('leakStart')
+    stopClench(sim, [])
+    expect(types(run(sim, 1.9))).not.toContain('leakStart')
+    expect(types(run(sim, 0.2))).toContain('leakStart')
+
+    const eased = quietSim(600)
+    eased.sphincterToneStrain = 1.0
+    run(eased, 4)
+    soothe(eased, [])
+    run(eased, DT)
+    eased.sphincterToneStrain = 1.0
+    expect(types(run(eased, LEAK_COUNTDOWN - 0.1))).not.toContain('leakStart')
+  })
+
   it('stop at the target loss and the sphincter regains some grip', () => {
     const sim = quietSim(600)
     sim.sphincterToneStrain = 1.0
-    const events = run(sim, 5, { until: (s, e) => types(e).includes('leakEnd') })
+    const events = run(sim, LEAK_COUNTDOWN + 5, { until: (s, e) => types(e).includes('leakEnd') })
     expect(types(events)).toContain('leakEnd')
     expect(sim.totalLeakedVolume).toBeCloseTo(35, 0) // 25 + 0.5·20
     expect(sim.sphincterToneStrain).toBe(RESEAL_STRAIN)
@@ -255,7 +279,7 @@ describe('stress leaks', () => {
 
     stopClench(sim, [])
     sim.sphincterToneStrain = 1.0
-    run(sim, 0.5)
+    run(sim, LEAK_COUNTDOWN + 0.1)
     expect(sim.isStressLeaking).toBe(true)
     startClench(sim, [])
     const events = run(sim, DT)
@@ -284,7 +308,7 @@ describe('total sphincter failure', () => {
   it('replaces the spurt at 100 % strain above 65 cmH2O, drains to 70 ml as leaked, then recovers', () => {
     const sim = quietSim(700)
     sim.sphincterToneStrain = 1.0
-    const first = run(sim, DT)
+    const first = run(sim, LEAK_COUNTDOWN + 0.1, { until: (s, e) => types(e).includes('failureStart') })
     expect(sim.pressure).toBeGreaterThan(FAILURE_PRESSURE)
     expect(types(first)).toContain('failureStart')
     expect(types(first)).not.toContain('leakStart')
@@ -400,7 +424,7 @@ describe('reset', () => {
     const sim = quietSim(700)
     Object.assign(sim, {
       sphincterToneStrain: 0.8, totalLeakedVolume: 50, isUrgeWaveActive: true, activeChallenge: 'arcade',
-      arcade: { score: 10 }, idleClenchCost: 3, leakGraceTime: 0.6, urgeWarned: true,
+      arcade: { score: 10 }, idleClenchCost: 3, saveStamina: 0.35, urgeWarned: true,
     })
     const out = []
     resetOrgan(sim, out, fixed(0.5))

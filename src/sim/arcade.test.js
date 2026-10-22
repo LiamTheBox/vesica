@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  createSimState, ingestBeverage, resetOrgan, SANDBOX_RULES, SHAKY_RECOVERY, startClench, startVoidAttempt, stepSim, stopClench,
+  createSimState, ingestBeverage, LEAK_COUNTDOWN, resetOrgan, SANDBOX_RULES, SHAKY_RECOVERY, startClench, startVoidAttempt, stepSim,
+  stopClench,
 } from './sim'
 import { ARCADE_RULES, fillMultiplier, nextServe, quitArcadeRun, scoreArcade, startArcadeRun, stepGame } from './arcade'
 import { DRINKS, hasAlcohol, hasCaffeine, SERVED_TIERS } from './drinks'
@@ -214,27 +215,36 @@ describe('clench economy', () => {
 })
 
 describe('leaks', () => {
-  it('give 0.6 s at 100 % strain to clench: a save scores', () => {
+  it('wait 5 s at 100 % strain, unannounced: a clench before then is a save, and scores', () => {
     const sim = quietRun(450)
     sim.sphincterToneStrain = 1
-    const warned = run(sim, 0.3)
-    expect(types(warned)).toContain('leakWarning')
-    expect(sim.isStressLeaking).toBe(false)
-    play(sim, startClench)
-    const events = run(sim, DT)
+    expect(types(run(sim, LEAK_COUNTDOWN - 0.1))).not.toContain('leakStart')
+    const events = play(sim, startClench)
     expect(types(events)).toContain('leakSaved')
     expect(points(events, 'saved')).toHaveLength(1)
+  })
+
+  it('a clench stops the countdown without easing the strain; letting go picks it up where it was', () => {
+    const sim = quietRun(450)
+    sim.urgeWaveTimer = 999
+    sim.sphincterToneStrain = 1
+    run(sim, 3)
+    play(sim, startClench)
+    expect(types(run(sim, 1))).not.toContain('leakStart')
+    expect(sim.sphincterToneStrain).toBe(1)
+    play(sim, stopClench)
+    expect(types(run(sim, 1.9))).not.toContain('leakStart')
+    expect(types(run(sim, 0.2))).toContain('leakStart')
   })
 
   it('a save costs stamina and leaves the grip shaky: stamina comes back slowly for a while', () => {
     const sim = quietRun(450)
     sim.sphincterToneStrain = 1
     run(sim, 0.3)
-    play(sim, startClench)
     const before = sim.kegelStamina
-    run(sim, DT)
-    expect(sim.kegelStamina).toBeCloseTo(before - ARCADE_RULES.saveStamina, 2)
-    expect(sim.shaky).toBeCloseTo(ARCADE_RULES.shakyTime, 1)
+    play(sim, startClench)
+    expect(sim.kegelStamina).toBeCloseTo(before - ARCADE_RULES.saveStamina, 6)
+    expect(sim.shaky).toBe(ARCADE_RULES.shakyTime)
 
     sim.sphincterToneStrain = 0
     play(sim, stopClench)
@@ -248,34 +258,23 @@ describe('leaks', () => {
     expect(sim.kegelStamina).toBeCloseTo(0.2 + sim.kegelRecoverRate * 0.5, 2)
   })
 
-  it('give less time each level: 0.3 s from level 8', () => {
-    const sim = quietRun(450)
-    sim.urgeWaveTimer = 999
-    sim.arcade.time = 7 * 30
-    run(sim, DT)
-    expect(sim.arcade.level).toBe(8)
-    expect(sim.leakGraceTime).toBeCloseTo(0.3, 6)
-    sim.sphincterToneStrain = 1
-    expect(types(run(sim, 0.35))).toContain('leakStart')
-  })
-
-  it('cost points and the combo when the grace runs out', () => {
+  it('cost points and the combo when the countdown runs out', () => {
     const sim = quietRun(450)
     sim.arcade.score = 500
     sim.arcade.combo = 3
     sim.sphincterToneStrain = 1
-    const events = run(sim, 0.7)
+    const events = run(sim, LEAK_COUNTDOWN + 0.1)
     expect(types(events)).toContain('leakStart')
     expect(sim.arcade).toMatchObject({ combo: 0, leaks: 1 })
-    expect(sim.arcade.score).toBeGreaterThan(400) // 500 + ~12 for holding through the grace − 100
-    expect(sim.arcade.score).toBeLessThan(420)
+    expect(sim.arcade.score).toBeGreaterThan(495) // 500 + ~100 for holding through the countdown − 100
+    expect(sim.arcade.score).toBeLessThan(505)
   })
 
   it('a total failure ends the run, unbanked', () => {
     const sim = quietRun(720)
     sim.arcade.score = 1234
     sim.sphincterToneStrain = 1
-    const events = run(sim, 0.7)
+    const events = run(sim, LEAK_COUNTDOWN + 0.1)
     const result = events.find((e) => e.type === 'challengeResult')
     expect(result).toMatchObject({ challenge: 'arcade', success: false, leaks: 0 })
     expect(result.score).toBeGreaterThanOrEqual(1234)

@@ -53,7 +53,6 @@ export const initialHud = {
   challengeSeconds: 0,
   urgeWarned: false,
   coughWarned: false,
-  leakGrace: false,
   sootheSeconds: 0,
   arcadeScore: 0,
   arcadeCombo: 0,

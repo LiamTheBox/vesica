@@ -24,7 +24,7 @@ function touchLine(sim, mood, empty, middle, full) {
 
 // A clench with nothing to hold back.
 const idleClench = (sim) => !sim.isUrgeWaveActive && !sim.urgeWarned && !sim.coughWarned && !sim.isStressLeaking &&
-  sim.leakGrace <= 0 && fillRatioOf(sim) < 0.45 && sim.sphincterToneStrain < 0.3
+  fillRatioOf(sim) < 0.45 && sim.sphincterToneStrain < 0.3
 
 const LINE_FOR = {
   ingest: (e, sim) => (fillRatioOf(sim) > TOO_FULL_TO_DRINK ? 'drinkFull' : DRINK_LINES[drinkKind(e.beverage)]),
@@ -34,7 +34,6 @@ const LINE_FOR = {
   sneezeWarning: () => 'sneezeIncoming',
   urgeStart: () => 'urge',
   urgeEnd: (e) => (e.suppressed ? 'urgePassed' : 'urgeFaded'),
-  leakWarning: () => 'slipping',
   leakSaved: () => 'saved',
   leakStart: () => 'leak',
   leakEnd: () => 'leakOver',

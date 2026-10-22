@@ -10,11 +10,11 @@ const PULSE = ' animate-pulse'
 export function sphincterReadout(hud) {
   if (hud.involuntaryVoiding) return { text: t('readout.gaveWay'), tone: 'text-red-500' + PULSE }
   if (hud.isStressLeaking) return { text: t('readout.leaking', { pct: hud.tonePct }), tone: 'text-rose-500' + PULSE }
-  if (hud.leakGrace) return { text: t('readout.slipping'), tone: 'text-red-500' + PULSE }
   // Shows the strain easing off while the Kegel is held.
   if (hud.isClenching) return { text: t('readout.clenched', { pct: hud.tonePct }), tone: 'text-cyan-400' }
   if (hud.isActivelyVoiding) return { text: t('readout.open', { pct: hud.dilationPct }), tone: 'text-amber-400' }
-  // Leaks start at 100 %, so the readout turns red on the way there.
+  // Leaks start at 100 %, so the readout turns red on the way there. How long it holds on
+  // at 100 % doesn't show (sim.js, LEAK_COUNTDOWN).
   if (hud.tonePct >= 80) return { text: t('readout.strained', { pct: hud.tonePct }), tone: 'text-red-500' + PULSE }
   if (hud.tonePct > 40) return { text: t('readout.strained', { pct: hud.tonePct }), tone: 'text-amber-400' + PULSE }
   return { text: t('readout.resting', { pct: hud.tonePct }), tone: 'text-rose-400' }

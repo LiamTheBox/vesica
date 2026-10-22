@@ -108,10 +108,6 @@ const handlers = {
     audio.playShiver()
     haptic([15, 40, 15])
   },
-  leakWarning: () => {
-    audio.playCue('alarm')
-    haptic([60, 40, 60])
-  },
   voidAttemptStart: () => haptic(25),
   voidStart: () => {
     audio.startDynamicJet()

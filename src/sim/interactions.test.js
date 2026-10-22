@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createSimState, fillPressure, MAX_RIPPLES, stepSim, TOUCH_PRESSURE } from './sim'
+import { createSimState, fillPressure, LEAK_COUNTDOWN, MAX_RIPPLES, stepSim, TOUCH_PRESSURE } from './sim'
 import { orbitDrag, pokeAt, slapAt, slapRandom, squeezeCancel, squeezeDrag, squeezeRelease, squeezeStart } from './interactions'
 import { extractOriginalConst } from '../test/original'
 
@@ -66,14 +66,17 @@ describe('slap (original slapBladder)', () => {
     expect(sim.ripples[0].center.x).toBe(40 - MAX_RIPPLES)
   })
 
-  it('twenty slaps on a full bladder end in total failure', () => {
+  it('twenty slaps on a full bladder end in total failure, once the leak countdown runs out', () => {
     const sim = createSimState()
     sim.volume = 700
     for (let i = 0; i < 19; i++) slapAt(sim, [], { x: 0, y: 0, z: 2.2 }, 2.4)
     stepSim(sim, 1 / 60, [], () => 0.5)
-    expect(sim.involuntaryVoiding).toBe(false)
+    expect(sim.sphincterToneStrain).toBeLessThan(1)
     slapAt(sim, [], { x: 0, y: 0, z: 2.2 }, 2.4)
-    stepSim(sim, 1 / 60, [], () => 0.5)
+    expect(sim.sphincterToneStrain).toBe(1)
+    for (let t = 0; t < LEAK_COUNTDOWN - 0.1; t += 1 / 60) stepSim(sim, 1 / 60, [], () => 0.5)
+    expect(sim.involuntaryVoiding).toBe(false)
+    for (let t = 0; t < 0.15; t += 1 / 60) stepSim(sim, 1 / 60, [], () => 0.5)
     expect(sim.involuntaryVoiding).toBe(true)
   })
 })
@@ -138,10 +141,12 @@ describe('a full bladder is taut (E)', () => {
     expect(empty.sphincterToneStrain).toBeCloseTo(0.05, 9)
   })
 
-  it("never turns a spurt into a total failure: the poke that tips the strain to 100 % leaks a spurt", () => {
+  it("never turns a spurt into a total failure: a poke as the leak countdown runs out still leaks a spurt", () => {
     const sim = settled(666) // 60 cmH2O: a poke's jolt takes it past the failure threshold (65)
     sim.sphincterToneStrain = 0.97
     pokeAt(sim, [], { x: 0, y: 0, z: 2 }, 2.2, { touch: true })
+    expect(sim.sphincterToneStrain).toBe(1)
+    sim.leakGrace = LEAK_COUNTDOWN - DT / 2
     const events = []
     stepSim(sim, DT, events)
     expect(sim.pressure).toBeGreaterThan(65)

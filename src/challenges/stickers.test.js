@@ -45,8 +45,10 @@ describe('stickers (A12)', () => {
     const run = at({ arcade: { perfects: 10 } })
     expect(play([{ type: 'arcadePoints', reason: 'perfect', combo: 10 }], run).earned).toEqual(['perfect10', 'combo10'])
     const saves = [{ type: 'leakSaved' }, { type: 'leakSaved' }, { type: 'reset' }, { type: 'leakSaved' }, { type: 'leakSaved' }]
-    expect(play(saves).earned).toEqual([])
-    expect(play([...saves, { type: 'leakSaved' }]).earned).toEqual(['saves3'])
+    expect(play(saves, run).earned).toEqual([])
+    expect(play([...saves, { type: 'leakSaved' }], run).earned).toEqual(['saves3'])
+    // Saves in the sandbox don't count.
+    expect(play([...saves, { type: 'leakSaved' }]).earned).toEqual([])
   })
 
   it('clears ten microgames, and beats a boss', () => {
