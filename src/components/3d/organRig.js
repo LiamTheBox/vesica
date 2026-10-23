@@ -245,11 +245,12 @@ export function createOrganRig() {
     // one thickens and flushes.
     const stretch = Math.min(1.0, fillRatio)
     if (wallMat) {
-      // Strained muscle throbs, as in the original.
-      const strainPulse = sim.sphincterToneStrain > 0.3 ? Math.sin(timeSec * 15.0) * 0.35 + 0.35 : 0
+      // Strained muscle throbs red, as in the original, but only once the sphincter is at
+      // 100 % (requested).
+      const strainPulse = sim.sphincterToneStrain >= 1 ? Math.sin(timeSec * 15.0) * 0.35 + 0.35 : 0
       wallMat.emissiveIntensity = 0.08 + stretch * 0.14 + strainPulse + contraction * 0.3 + body.flash * 0.6 + body.blush * 0.35
       wallMat.emissive.copy(WALL_EMISSIVE).lerp(BLUSH_COLOR, body.blush)
-      wallMat.roughness = THREE.MathUtils.lerp(0.5, 0.28, stretch)
+      wallMat.roughness = THREE.MathUtils.lerp(0.55, 0.45, stretch)
     }
     // Toward the neck it turns solid, like the sphincter below it.
     const alpha = THREE.MathUtils.lerp(0.64, 0.3, stretch) + contraction * 0.18

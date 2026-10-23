@@ -15,20 +15,21 @@ import { createSimState } from '../../sim/sim'
 // Three.js clips points whose signed distance to a clipping plane is negative.
 const isClipped = (plane, point) => plane.distanceToPoint(point) < 0
 
-// Whether `p` lies inside `geo`'s surface: closer to the centre than the surface is in its
-// direction (the shapes are all star-shaped about their centre). The ray is nudged a hair
-// off true, since one aimed exactly at a vertex can slip between its triangles.
+// How far `p` lies outside `geo`'s surface (negative: inside), measured from the centre
+// (the shapes are all star-shaped about their centre). The ray is nudged a hair off true,
+// since one aimed exactly at a vertex can slip between its triangles.
 const raycaster = new THREE.Raycaster()
 const NUDGES = [new THREE.Vector3(1e-6, 2e-6, -1.5e-6), new THREE.Vector3(-3e-6, 1e-6, 2e-6)]
-const inside = (geo, p) => {
+const outside = (geo, p) => {
   const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }))
   for (const nudge of NUDGES) {
     raycaster.set(new THREE.Vector3(), p.clone().normalize().add(nudge).normalize())
     const [hit] = raycaster.intersectObject(mesh)
-    if (hit) return p.length() < hit.distance
+    if (hit) return p.length() - hit.distance
   }
   throw new Error(`no surface toward ${p.toArray()}`)
 }
+const inside = (geo, p) => outside(geo, p) < 0
 
 describe('cutaway faces the player', () => {
   const plane = new THREE.Plane()
@@ -154,6 +155,44 @@ describe('ureters', () => {
       }
     })
   }
+
+  it('never sink into the wall, even swollen by urine on its way in (it looked merged with the bladder)', () => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    sim.volume = 750
+    // The left ureter's first bolus arrives 4.5 s in: follow it down the last stretch, where
+    // the tube runs in along the wall. Up to the bell, the tube's surface stays outside.
+    let f = 0
+    for (const at of [4.1, 4.25, 4.35, 4.45]) {
+      for (; f < at * 60; f++) rig.update(sim, 1 / 60, f / 60, {})
+      const pos = rig.ureterGeoLeft.attributes.position
+      const bell = pos.count / URETER_RING - FLARE_RINGS
+      for (let i = (bell - 20) * URETER_RING; i < bell * URETER_RING; i++) {
+        expect(outside(rig.bladderGeo, new THREE.Vector3().fromBufferAttribute(pos, i))).toBeGreaterThan(-0.005)
+      }
+    }
+  })
+
+  it('are see-through like the wall, denser with urine in them, and fade into the wall at the end (requested)', () => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    sim.volume = 400
+    const color = rig.ureterGeoLeft.attributes.color
+    const alphas = () => Array.from({ length: color.count / URETER_RING }, (_, r) => color.getW(r * URETER_RING))
+    // The left ureter's first bolus sets off 2 s in.
+    let f = 0
+    for (; f < 60; f++) rig.update(sim, 1 / 60, f / 60, {})
+    const empty = alphas()
+    expect(empty[0]).toBeGreaterThan(0.4)
+    expect(empty[0]).toBeLessThan(0.75)
+    expect(Math.max(...empty)).toBeCloseTo(empty[0], 9)
+    // Fading out across the bell, to nothing at its rim.
+    const bell = empty.slice(-FLARE_RINGS - 1)
+    for (let r = 1; r < bell.length; r++) expect(bell[r]).toBeLessThan(bell[r - 1])
+    expect(bell.at(-1)).toBe(0)
+    for (; f < 180; f++) rig.update(sim, 1 / 60, f / 60, {})
+    expect(Math.max(...alphas())).toBeGreaterThan(empty[0] + 0.15)
+  })
 })
 
 describe('urine inside the wall', () => {
@@ -688,6 +727,18 @@ describe('body language (D)', () => {
     rig.emote('creak')
     rig.update(sim, 1 / 60, 11, { body, wallMat, mood: 'calm' })
     expect(wallMat.emissiveIntensity).toBeGreaterThan(calm.glow + 0.3)
+  })
+
+  it('throbs red only once the sphincter is at 100 % (requested)', () => {
+    const { rig, sim, body } = settled()
+    const wallMat = { emissive: new THREE.Color(), emissiveIntensity: 0, roughness: 0 }
+    const glow = (strain, from) => {
+      sim.sphincterToneStrain = strain
+      return swing(track(rig, sim, 0.5, from, { body, wallMat }, () => wallMat.emissiveIntensity))
+    }
+    expect(glow(0.5, 6)).toBeLessThan(1e-3)
+    expect(glow(0.99, 6.5)).toBeLessThan(1e-3)
+    expect(glow(1, 7)).toBeGreaterThan(0.5)
   })
 
   it('knows what to do when things happen, and huffs at a poke only when annoyed', () => {

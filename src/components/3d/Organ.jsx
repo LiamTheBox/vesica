@@ -25,18 +25,29 @@ const FLUID_OPACITY = 0.9
 // Light through the urine turns amber with distance, so the far wall seen through it
 // reads as golden liquid rather than red muscle.
 const REFRACTIVE_URINE = { transmission: 0.55, ior: 1.333, thickness: 2.2, attenuationColor: 0xf59e0b, attenuationDistance: 1.2 }
-// Ureters: the wall's tissue, tinted by vertex colours (amber where urine goes down them),
-// with a dim red glow so the blue back light doesn't turn them grey.
-// Both sides drawn, so a tube the cutaway slices shows its inside rather than a hole.
+// Ureters: the wall's tissue, tinted and faded by vertex colours (amber where urine goes
+// down them), with a dim red glow so the blue back light doesn't turn them grey.
+// See-through like the wall (requested), as a membrane is: thin where you look straight
+// through it, dense at the tube's edges, where you look along it. Both sides drawn, so the
+// far side of the tube shows through the near one, and a tube the cutaway slices shows its
+// inside rather than a hole.
+const MEMBRANE_EDGES = /* glsl */ `
+  diffuseColor.a = min(1.0, diffuseColor.a * mix(1.4, 0.55, abs(dot(nonPerturbedNormal, normalize(vViewPosition)))));
+`
 const URETER_MATERIAL = {
-  vertexColors: true, color: 0xffffff, emissive: 0x3d0f14, emissiveIntensity: 0.45, roughness: 0.45, clearcoat: 0.35, clearcoatRoughness: 0.3,
-  side: THREE.DoubleSide,
+  vertexColors: true, color: 0xffffff, emissive: 0x3d0f14, emissiveIntensity: 0.45, roughness: 0.5, clearcoat: 0.15, clearcoatRoughness: 0.4,
+  side: THREE.DoubleSide, transparent: true,
+  onBeforeCompile: (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', `${MEMBRANE_EDGES}\n#include <opaque_fragment>`)
+  },
+  customProgramCacheKey: () => 'membrane',
 }
 
-// The urine reads as liquid, not jelly (requested): its surface is never still, so its
-// highlights shimmer, and thin bright lines of light drift across it, as through moving
-// water. Both move with the urine (they're in its own space), keep the cut face's time (so
-// they quicken while it's sloshed about) and cost a few sines a pixel.
+// The urine reads as liquid, not jelly, and softly lit, not glossy (both requested): its
+// surface is never still, so its soft highlights shimmer, and faint lines of light drift
+// across it, as through moving water. Both move with the urine (they're in its own space),
+// keep the cut face's time (so they quicken while it's sloshed about) and cost a few sines
+// a pixel.
 const LIQUID_PARS = /* glsl */ `
   uniform float uTime;
   varying vec3 vLiquid;
@@ -61,7 +72,7 @@ const LIQUID_RIPPLE = /* glsl */ `
   }
 `
 const LIQUID_GLINT = /* glsl */ `
-  totalEmissiveRadiance += vec3(1.0, 0.92, 0.6) * causticLines(vLiquid, uTime) * 0.4;
+  totalEmissiveRadiance += vec3(1.0, 0.92, 0.6) * causticLines(vLiquid, uTime) * 0.2;
 `
 function liquidShader(time) {
   return (shader) => {
@@ -256,10 +267,10 @@ export default function Organ() {
               color={0xfacc15}
               emissive={0xd97706}
               emissiveIntensity={0.22}
-              roughness={0.06}
+              roughness={0.3}
               metalness={0.0}
-              clearcoat={1}
-              clearcoatRoughness={0.04}
+              clearcoat={0.15}
+              clearcoatRoughness={0.5}
               {...(refractive ? REFRACTIVE_URINE : { transparent: true, opacity: FLUID_OPACITY })}
               clippingPlanes={clip}
               side={THREE.FrontSide}
@@ -285,10 +296,10 @@ export default function Organ() {
             color={0xffffff}
             emissive={WALL_EMISSIVE}
             emissiveIntensity={0.15}
-            roughness={0.4}
+            roughness={0.5}
             metalness={0}
-            clearcoat={0.4}
-            clearcoatRoughness={0.3}
+            clearcoat={0.15}
+            clearcoatRoughness={0.4}
             transparent
             depthWrite={false}
             side={THREE.FrontSide}
@@ -297,12 +308,13 @@ export default function Organ() {
         </mesh>
 
         {/* Ureters (ureter.js): tubes of the same tissue, amber where urine is squeezed down
-            them, flaring into the wall. Cut with the wall so a tube never dangles in front of
-            the section. */}
-        <mesh geometry={rig.ureterGeoLeft} renderOrder={3}>
+            them, flaring into the wall. Drawn after the wall, so one in front of it blends
+            over it; one behind the bladder is hidden by the tissue. Cut with the wall so a
+            tube never dangles in front of the section. */}
+        <mesh geometry={rig.ureterGeoLeft} renderOrder={11}>
           <meshPhysicalMaterial {...URETER_MATERIAL} map={textures.ureterDiff} normalMap={textures.ureterNorm} clippingPlanes={clip} />
         </mesh>
-        <mesh geometry={rig.ureterGeoRight} renderOrder={3}>
+        <mesh geometry={rig.ureterGeoRight} renderOrder={11}>
           <meshPhysicalMaterial {...URETER_MATERIAL} map={textures.ureterDiff} normalMap={textures.ureterNorm} clippingPlanes={clip} />
         </mesh>
       </group>

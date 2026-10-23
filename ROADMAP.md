@@ -12,7 +12,7 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 ## Where things stand (2026-10-23)
 
 - **M0–M9:** code done, automated gates passed, tagged `m0`–`m9`. Every **phone check is still open** (below).
-- **Tests:** `npm run check` green (264 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
+- **Tests:** `npm run check` green (267 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
   (your choice: it loads the CPU). Its specs follow the code but last ran before the 2026-10-21 changes (85 passed).
 - **Live:** https://liamthebox.github.io/vesica/, deployed by GitHub Actions on every push to `main`. From at
   least 2026-10-21 until 2026-10-23 it showed only a blank screen (see KNOWN_ISSUES), so the phone checks below
@@ -66,8 +66,10 @@ Requested along the way, each in its own commits:
   model's, shortened) with the sphincter ring where it leaves the funnel. It fills like an anatomy book's bladder,
   flat-topped when nearly empty and round when full, and while voiding its dome pushes down into a hollow, a little
   in an urge wave. The ureters come down beside it into its upper sides, in the same creased red tissue as the
-  wall. The urine is smooth and glossy, with shimmering light drifting through it (it had the lining's folds), and
-  no longer shows through the wall around a ureter after a squirt. The camera frames the new shape.
+  wall, see-through like it, and fade into it where they join. The urine is smooth and softly lit, with faint light
+  drifting through it (it had the lining's folds; then it was too glossy), and no longer shows through the wall
+  around a ureter after a squirt. The bladder throbs red only at 100 % strain (it started at 30 %). The camera
+  frames the new shape.
 
 ## Open: phone checks
 
@@ -94,12 +96,13 @@ On the live site (or `npm run preview:phone` for installing and offline). Tick t
   Challenges list; ☕ and 🍺 show by the telemetry bar after coffee or beer, and the arcade serves them from
   level 3 and 5.
 - ☐ **Arcade balance and the leak countdown (2026-10-22):** reaching 100 % strain no longer leaks at once but
-  about 5 s later, with nothing shown but the readout; a few honest arcade runs end somewhere around 4–6 minutes,
+  about 5 s later, with nothing shown but the readout and the bladder's red throb; a few honest arcade runs end somewhere around 4–6 minutes,
   and waiting for 100 % loses in a minute or two; SHAKY shows in amber by the stamina bar after a close call or a
   clench that gives out.
 - ☐ **The realistic bladder (2026-10-23):** it looks like the model on the phone, the creases sharp; it rounds out
-  as it fills and its top pushes down into a hollow while voiding; the urine reads as liquid; the ureters join its
-  upper sides with no yellow patch after a squirt; the whole organ fits the stage in portrait and landscape.
+  as it fills and its top pushes down into a hollow while voiding; the urine reads as liquid without looking
+  glossy; the ureters are see-through and blend into its upper sides, with no yellow patch after a squirt; it
+  throbs red only at 100 % strain; the whole organ fits the stage in portrait and landscape.
 
 ## M10 — Release (optional) ◐
 

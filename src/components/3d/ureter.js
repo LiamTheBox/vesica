@@ -2,9 +2,10 @@ import * as THREE from 'three'
 
 // A ureter: the tube from the kidney, down beside the bladder and into the upper side of
 // its wall, as in the realistic model (requested). At the wall it flares into a bell that
-// follows the wall's curve, its rim tucked just under the surface, so it grows out of the
-// wall instead of poking into it. Urine comes down it in boluses, each pushed along by a
-// squeeze of the tube (peristalsis); `step` reports when one squirts into the bladder.
+// follows the wall's curve, its rim tucked just under the surface, and fades into the wall,
+// so it grows out of the wall instead of poking into it. It's see-through like the wall
+// (requested). Urine comes down it in boluses, each pushed along by a squeeze of the tube
+// (peristalsis); `step` reports when one squirts into the bladder.
 
 const SEGMENTS = 64
 const RADIAL = 10
@@ -34,10 +35,12 @@ const BEND = { out: 0.85, up: 0.95 }
 const ARC_SAMPLES = 96
 
 // The same tissue as the wall, a little paler, and the wall's own colour at the rim; urine
-// shows amber.
+// shows amber. As see-through as a slack wall, and less so where urine fills it.
 const COLOR = new THREE.Color(0xc77b7b)
 const RIM_COLOR = new THREE.Color(0xa64848)
 const URINE_COLOR = new THREE.Color(0xe9a92a)
+const OPACITY = 0.6
+const URINE_OPACITY = 0.85
 
 // Peristalsis: a bolus swells the tube, with a squeeze close behind it that pushes it on.
 export const BOLUS_SPEED = 0.4 // tube lengths per second
@@ -45,6 +48,9 @@ const BOLUS_WIDTH = 0.035
 const BOLUS_SWELL = 0.55
 const SQUEEZE = 0.3
 const SQUEEZE_BEHIND = 0.07
+// The tube runs in along the wall, so a swelling there would bulge into it: a bolus
+// flattens over this much of the tube before the bell, as it squeezes into the wall.
+const NEAR_WALL = 0.4
 // Seconds between boluses: a few a minute at rest, faster while drinks are filtered.
 export const REST_INTERVAL = 9
 const intervalFor = (filtration) => (filtration > 0 ? THREE.MathUtils.clamp(24 / filtration, 1, REST_INTERVAL) : REST_INTERVAL)
@@ -90,12 +96,13 @@ export function createUreter(side, wallVertices) {
   const rings = SEGMENTS + 1
   // Only the topology (index, uvs) is kept; the vertices are written by shape().
   const geo = new THREE.TubeGeometry(curve, SEGMENTS, RADIUS, RADIAL, false)
-  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(rings * URETER_RING * 3), 3))
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(rings * URETER_RING * 4), 4))
   const bounds = new THREE.Sphere(new THREE.Vector3(0, 2, 0), 5.5)
   geo.boundingSphere = bounds.clone()
 
   const arc = new Float64Array(ARC_SAMPLES + 1)
   const along = new Float64Array(rings) // each ring's arc-length fraction
+  const room = new Float64Array(rings) // how freely a bolus swells the tube here, 0..1
   const frames = new Float64Array(rings * 9) // centre, N, B per ring
   const wallPoint = new THREE.Vector3()
   const wallNormal = new THREE.Vector3()
@@ -141,6 +148,7 @@ export function createUreter(side, wallVertices) {
     const body = SEGMENTS - FLARE_RINGS
     for (let i = 0; i < rings; i++) {
       along[i] = i <= body ? flareStart * (i / body) : flareStart + (1 - flareStart) * ((i - body) / FLARE_RINGS)
+      room[i] = THREE.MathUtils.smoothstep((flareStart - along[i]) * arc[ARC_SAMPLES], 0, NEAR_WALL)
       const t = curveT(arc, along[i])
       curve.getPoint(t, arcPoint)
       curve.getPoint(Math.min(1, t + 0.001), ahead)
@@ -155,12 +163,13 @@ export function createUreter(side, wallVertices) {
   }
 
   // Writes the tube from its frames: swollen where a bolus is, squeezed behind it, and
-  // flared and pressed onto the wall at the end.
+  // flared, pressed onto the wall and faded into it at the end.
   function shape() {
     const pos = geo.attributes.position.array
     const nrm = geo.attributes.normal.array
     const col = geo.attributes.color.array
     let o = 0
+    let c = 0
     for (let i = 0; i < rings; i++) {
       const s = along[i]
       let swell = 1
@@ -169,14 +178,16 @@ export function createUreter(side, wallVertices) {
         const d = (s - b) / BOLUS_WIDTH
         const q = (s - b + SQUEEZE_BEHIND) / BOLUS_WIDTH
         const g = Math.exp(-d * d)
-        swell += BOLUS_SWELL * g - SQUEEZE * Math.exp(-q * q)
+        swell += (BOLUS_SWELL * g - SQUEEZE * Math.exp(-q * q)) * room[i]
         urine = Math.max(urine, g)
       }
       const f = Math.max(0, (i - (SEGMENTS - FLARE_RINGS)) / FLARE_RINGS)
       const flare = f * f * (3 - 2 * f)
       const radius = RADIUS * swell * (1 + (FLARE_WIDTH - 1) * flare * flare)
       // Urine shows in the tube, not over the bell on the wall.
-      color.copy(COLOR).lerp(RIM_COLOR, flare).lerp(URINE_COLOR, urine * 0.85 * (1 - flare))
+      const inTube = urine * (1 - flare)
+      color.copy(COLOR).lerp(RIM_COLOR, flare).lerp(URINE_COLOR, inTube * 0.85)
+      const alpha = THREE.MathUtils.lerp(OPACITY, URINE_OPACITY, inTube) * (1 - flare)
       const k = i * 9
       for (let j = 0; j <= RADIAL; j++) {
         const v = (j / RADIAL) * Math.PI * 2
@@ -207,8 +218,9 @@ export function createUreter(side, wallVertices) {
         }
         pos[o] = px; pos[o + 1] = py; pos[o + 2] = pz
         nrm[o] = nx; nrm[o + 1] = ny; nrm[o + 2] = nz
-        col[o] = color.r; col[o + 1] = color.g; col[o + 2] = color.b
+        col[c] = color.r; col[c + 1] = color.g; col[c + 2] = color.b; col[c + 3] = alpha
         o += 3
+        c += 4
       }
     }
     geo.attributes.position.needsUpdate = true
