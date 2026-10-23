@@ -32,6 +32,10 @@ jobs:
       # The site lives under /vesica/, so asset URLs need that prefix. Only the deploy
       # build gets it: local dev, preview and the tests keep serving from /.
       - run: npm run build -- --base=/vesica/
+      # The tests and the build can pass while the built site doesn't start (2026-10-23: a
+      # blank screen), so open it in a headless browser before publishing it.
+      - run: npx playwright install --with-deps chromium
+      - run: node tools/smoke-build.mjs dist /vesica/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

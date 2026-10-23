@@ -62,7 +62,8 @@ Pushing to `main` deploys the app to GitHub Pages.
 - `src/components/ui/`: the HUD, buttons and menus
 - `src/stories/`: the optional stories, one Markdown file per chapter
 - `tools/`: `arcade-bots.mjs` plays the arcade with scripted players to check its balance after a rule change
-  (`node tools/arcade-bots.mjs`); `make-icons.mjs` renders the app icons
+  (`node tools/arcade-bots.mjs`); `smoke-build.mjs` opens the production build in a headless browser and fails
+  unless the app starts (the deploy runs it); `make-icons.mjs` renders the app icons
 - `ROADMAP.md`: what's done and the open phone checks; `KNOWN_ISSUES.md`: open problems; `BACKLOG.md`:
   cleanups and additions nobody has asked for yet
 - `Vesica 3D Mobile Web App.html`: the original single-file game this was ported from (open it in a browser)

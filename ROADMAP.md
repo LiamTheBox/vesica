@@ -14,7 +14,9 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 - **M0–M9:** code done, automated gates passed, tagged `m0`–`m9`. Every **phone check is still open** (below).
 - **Tests:** `npm run check` green (260 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
   (your choice: it loads the CPU). Its specs follow the code but last ran before the 2026-10-21 changes (85 passed).
-- **Live:** https://liamthebox.github.io/vesica/, deployed by GitHub Actions on every push to `main`.
+- **Live:** https://liamthebox.github.io/vesica/, deployed by GitHub Actions on every push to `main`. From at
+  least 2026-10-21 until 2026-10-23 it showed only a blank screen (see KNOWN_ISSUES), so the phone checks below
+  couldn't have been done on it before then.
 - **Rules for everything new** (requested 2026-10-21): fully offline (nothing loaded from the network); every mode
   plays with one pointer, touch or mouse (tap, hold, drag; Space presses on a keyboard; pinch, wheel and right-drag
   only move the camera); the minigames are abstract sphincter-control challenges, and any story stays outside them,
@@ -93,8 +95,9 @@ On the live site (or `npm run preview:phone` for installing and offline). Tick t
 
 - ☑ README with real docs (run, test, deploy).
 - ◐ Static site over HTTPS: `.github/workflows/deploy.yml` builds on every push to `main` (lint, unit tests,
-  `vite build --base=/vesica/`) and publishes to GitHub Pages. Check that Settings → Pages → Source is "GitHub
-  Actions", or the old branch publish can overwrite the app.
+  `vite build --base=/vesica/`, then opens the build in a headless browser and stops unless the app starts) and
+  publishes to GitHub Pages. Check that Settings → Pages → Source is "GitHub Actions", or the old branch publish
+  can overwrite the app.
 - ☐ Only if an app-store build is wanted: a Capacitor wrapper (native haptics, and native speech on iOS).
 
 ## Reference

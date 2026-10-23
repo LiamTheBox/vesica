@@ -48,6 +48,11 @@ export default defineConfig(({ mode }) => {
       rolldownOptions: {
         output: {
           // Libraries in their own long-lived chunks: an app update re-downloads only the app.
+          // Chunks split by hand can import each other in a loop (three needs the bundler's
+          // helpers, which had landed in an app chunk that loads three first), and the live
+          // site then stopped on a blank screen; strict execution order runs every module in
+          // source order, with the helpers in a chunk of their own.
+          strictExecutionOrder: true,
           codeSplitting: {
             groups: [
               { name: 'three', test: /node_modules[\\/](three|three-stdlib)[\\/]/ },
