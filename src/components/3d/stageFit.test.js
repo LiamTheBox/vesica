@@ -41,7 +41,7 @@ describe('camera framing fits the organ inside the stage', () => {
 
   it('respects the distance limits', () => {
     const fullScreen = { fov: 45, viewport: { width: 1000, height: 1000 }, stage: { x: 0, y: 0, width: 1000, height: 1000 } }
-    expect(stageFit(fullScreen).distance).toBeCloseTo(4.1 / Math.tan(Math.PI / 8), 6) // ~9.9, height-bound
+    expect(stageFit(fullScreen).distance).toBeCloseTo(ORGAN_HALF_HEIGHT / Math.tan(Math.PI / 8), 6) // ~11.1, height-bound
     expect(stageFit({ ...fullScreen, minDistance: 12 }).distance).toBe(12)
     expect(stageFit({ ...fullScreen, stage: { x: 0, y: 0, width: 1000, height: 10 } }).distance).toBe(40)
   })

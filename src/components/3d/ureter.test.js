@@ -33,10 +33,15 @@ const widest = (ureter) => {
 }
 
 describe('ureter', () => {
-  it('flares into a root lying flat on the wall, its rim just under the surface', () => {
-    const { ureter, point, normal } = setup()
+  it('flares into a root that follows the wall, its rim just under the surface', () => {
+    const { ureter } = setup()
     const rim = ring(ureter, ringCount(ureter) - 1)
-    for (const p of rim) expect(p.clone().sub(point).dot(normal)).toBeCloseTo(-URETER_SINK, 6)
+    // Under the sphere's surface all round (a flat bell would stick out where it curves away).
+    for (const p of rim) {
+      const under = 2.4 - p.length()
+      expect(under).toBeGreaterThan(URETER_SINK * 0.99)
+      expect(under).toBeLessThan(URETER_SINK + 0.02)
+    }
     // Wide across: it comes in at a shallow angle, so the rim is pressed into an oval.
     const span = Math.max(...rim.flatMap((p) => rim.map((q) => p.distanceTo(q))))
     expect(span).toBeGreaterThan(2 * radius(ring(ureter, 10)) * 1.8)

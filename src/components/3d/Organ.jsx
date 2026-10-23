@@ -25,14 +25,63 @@ const FLUID_OPACITY = 0.9
 // Light through the urine turns amber with distance, so the far wall seen through it
 // reads as golden liquid rather than red muscle.
 const REFRACTIVE_URINE = { transmission: 0.55, ior: 1.333, thickness: 2.2, attenuationColor: 0xf59e0b, attenuationDistance: 1.2 }
-// Ureters: pale tan from vertex colours, with a warm glow of their own so they stay tan
-// under the blue back light too.
-const URETER_MATERIAL = { vertexColors: true, color: 0xffffff, emissive: 0x8a6a2e, emissiveIntensity: 0.55, roughness: 0.5, clearcoat: 0.3, clearcoatRoughness: 0.35 }
+// Ureters: the wall's tissue, tinted by vertex colours (amber where urine goes down them),
+// with a dim red glow so the blue back light doesn't turn them grey.
+// Both sides drawn, so a tube the cutaway slices shows its inside rather than a hole.
+const URETER_MATERIAL = {
+  vertexColors: true, color: 0xffffff, emissive: 0x3d0f14, emissiveIntensity: 0.45, roughness: 0.45, clearcoat: 0.35, clearcoatRoughness: 0.3,
+  side: THREE.DoubleSide,
+}
+
+// The urine reads as liquid, not jelly (requested): its surface is never still, so its
+// highlights shimmer, and thin bright lines of light drift across it, as through moving
+// water. Both move with the urine (they're in its own space), keep the cut face's time (so
+// they quicken while it's sloshed about) and cost a few sines a pixel.
+const LIQUID_PARS = /* glsl */ `
+  uniform float uTime;
+  varying vec3 vLiquid;
+  float causticLines(vec3 p, float t) {
+    vec3 q = p * 2.6;
+    float a = sin(q.x * 2.1 + sin(q.y * 1.7 + t * 0.9) * 1.3 + t * 0.6);
+    float b = sin(q.z * 2.3 + sin(q.x * 1.9 - t * 0.7) * 1.3 - t * 0.5);
+    float c = sin(q.y * 2.0 + sin(q.z * 1.6 + t * 0.8) * 1.3 + t * 0.4);
+    // Patchy: the light gathers here and there, and drifts.
+    float gather = 0.5 + 0.5 * sin(p.x * 1.1 + t * 0.3) * sin(p.y * 0.9 - p.z * 0.7 - t * 0.25);
+    return pow(1.0 - abs(a + b + c) / 3.0, 18.0) * gather * gather;
+  }
+`
+const LIQUID_RIPPLE = /* glsl */ `
+  {
+    vec3 lp = vLiquid * 1.4;
+    vec3 ripple = vec3(
+      sin(lp.y * 3.1 + uTime * 1.3) * cos(lp.z * 2.3 - uTime * 0.9),
+      sin(lp.z * 2.7 - uTime * 1.1) * cos(lp.x * 3.3 + uTime * 0.7),
+      sin(lp.x * 2.9 + uTime * 1.2) * cos(lp.y * 2.1 - uTime * 1.0));
+    normal = normalize(normal + (viewMatrix * vec4(ripple, 0.0)).xyz * 0.12);
+  }
+`
+const LIQUID_GLINT = /* glsl */ `
+  totalEmissiveRadiance += vec3(1.0, 0.92, 0.6) * causticLines(vLiquid, uTime) * 0.4;
+`
+function liquidShader(time) {
+  return (shader) => {
+    shader.uniforms.uTime = time
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vLiquid;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLiquid = position;')
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${LIQUID_PARS}`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${LIQUID_RIPPLE}`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n${LIQUID_GLINT}`)
+  }
+}
+const liquidCacheKey = () => 'liquid'
 
 export default function Organ() {
   const rig = useMemo(() => createOrganRig(), [])
   const textures = useMemo(() => createOrganTextures(), [])
   const cut = useMemo(() => createCutMaterials(), [])
+  const onLiquidCompile = useMemo(() => liquidShader(cut.urine.uniforms.uTime), [cut])
   const get = useThree((state) => state.get)
 
   const bodyRef = useRef()
@@ -194,47 +243,52 @@ export default function Organ() {
             doesn't (a bladder holds no air); in the cutaway it's the cut face of the wall. */}
         <mesh name="wallTissue" geometry={rig.bladderGeo} material={cut.tissue} renderOrder={2} />
 
-        {/* Urine: the lining's shape (the wall with the rugae folded in), scaled to the
-            volume held (rig.update sets the transform), so an empty bladder holds none.
-            Drawn first so the membrane blends over it. High quality refracts what's
-            behind it (transmission: a whole extra render pass); lower tiers let it
-            through with plain transparency, which looks nearly the same. */}
+        {/* Urine: the wall's smooth shape, scaled to the volume held (rig.update sets the
+            transform), so an empty bladder holds none. Drawn first so the membrane blends
+            over it. High quality refracts what's behind it (transmission: a whole extra
+            render pass); lower tiers let it through with plain transparency, which looks
+            nearly the same. */}
         <group ref={urineRef} name="urine">
-          <mesh geometry={rig.liningGeo} renderOrder={1}>
+          <mesh geometry={rig.urineGeo} renderOrder={1}>
             <meshPhysicalMaterial
               key={refractive ? 'refractive' : 'blended'}
               ref={fluidMatRef}
               color={0xfacc15}
               emissive={0xd97706}
               emissiveIntensity={0.22}
-              roughness={0.12}
+              roughness={0.06}
               metalness={0.0}
+              clearcoat={1}
+              clearcoatRoughness={0.04}
               {...(refractive ? REFRACTIVE_URINE : { transparent: true, opacity: FLUID_OPACITY })}
               clippingPlanes={clip}
               side={THREE.FrontSide}
+              onBeforeCompile={onLiquidCompile}
+              customProgramCacheKey={liquidCacheKey}
             />
           </mesh>
           {/* Cross-section of the urine, shown only where the cutaway opens it. */}
-          <mesh name="urineCut" geometry={rig.liningGeo} material={cut.urine} renderOrder={1} visible={isCutawayActive} />
+          <mesh name="urineCut" geometry={rig.urineGeo} material={cut.urine} renderOrder={1} visible={isCutawayActive} />
         </group>
 
         {/* Wall: one surface from the dome down through the sphincter ring and the urethra
-            to the opening. The bladder is a translucent membrane that thins out as it
-            stretches; the sphincter is solid muscle. Colour and opacity come per vertex. */}
+            to the opening, in the realistic model's creased red tissue. The bladder is a
+            translucent membrane that thins out as it stretches; the sphincter is solid
+            muscle. Opacity and the sphincter's colours come per vertex. */}
         <mesh ref={bladderRef} name="wall" geometry={rig.bladderGeo} renderOrder={10}>
           <meshPhysicalMaterial
             ref={wallMatRef}
             map={textures.diffTex}
             normalMap={textures.normTex}
-            normalScale={[0.8, 0.8]}
+            normalScale={[0.6, 0.6]}
             vertexColors
             color={0xffffff}
             emissive={WALL_EMISSIVE}
-            emissiveIntensity={0.28}
-            roughness={0.22}
-            metalness={0.05}
-            clearcoat={0.9}
-            clearcoatRoughness={0.12}
+            emissiveIntensity={0.15}
+            roughness={0.4}
+            metalness={0}
+            clearcoat={0.4}
+            clearcoatRoughness={0.3}
             transparent
             depthWrite={false}
             side={THREE.FrontSide}
@@ -242,14 +296,14 @@ export default function Organ() {
           />
         </mesh>
 
-        {/* Ureters (ureter.js): pale tan tubes, amber where urine is squeezed down them,
-            flaring into the wall. Cut with the wall so a tube never dangles in front of the
-            section. */}
+        {/* Ureters (ureter.js): tubes of the same tissue, amber where urine is squeezed down
+            them, flaring into the wall. Cut with the wall so a tube never dangles in front of
+            the section. */}
         <mesh geometry={rig.ureterGeoLeft} renderOrder={3}>
-          <meshPhysicalMaterial {...URETER_MATERIAL} clippingPlanes={clip} />
+          <meshPhysicalMaterial {...URETER_MATERIAL} map={textures.ureterDiff} normalMap={textures.ureterNorm} clippingPlanes={clip} />
         </mesh>
         <mesh geometry={rig.ureterGeoRight} renderOrder={3}>
-          <meshPhysicalMaterial {...URETER_MATERIAL} clippingPlanes={clip} />
+          <meshPhysicalMaterial {...URETER_MATERIAL} map={textures.ureterDiff} normalMap={textures.ureterNorm} clippingPlanes={clip} />
         </mesh>
       </group>
 

@@ -6,7 +6,7 @@ import { sim } from '../../sim/engine'
 import { createCameraWatch, watchCamera } from '../../feedback/camera'
 import { noticeCamera } from '../../feedback/feedback'
 import { overfillGrowth } from './organGeometry'
-import { stageFit } from './stageFit'
+import { FRAME_CENTER_Y, stageFit } from './stageFit'
 
 // The original's fog was tuned for a camera 12 units away; keep its look at any distance.
 const FOG_DENSITY_AT_12 = 0.038
@@ -18,7 +18,7 @@ const PAN_MAX = new THREE.Vector3(3, 3, 3)
 const ZOOM_IN = 0.25
 const ZOOM_OUT = 1.6
 
-const ORIGIN = new THREE.Vector3()
+const CENTER = new THREE.Vector3(0, FRAME_CENTER_Y, 0)
 const direction = new THREE.Vector3()
 const clamped = new THREE.Vector3()
 const panMin = new THREE.Vector3()
@@ -46,9 +46,9 @@ function frameStage({ camera, controls, scene, size, stage, growth }) {
   }
   camera.setViewOffset(size.width, size.height, fit.offsetX, fit.offsetY, size.width, size.height)
   // Keep the orbit angle, look at the organ again, and go back to the fitted distance.
-  direction.subVectors(camera.position, controls ? controls.target : ORIGIN).normalize()
-  if (controls) controls.target.set(0, 0, 0)
-  camera.position.copy(direction).multiplyScalar(fit.distance)
+  direction.subVectors(camera.position, controls ? controls.target : CENTER).normalize()
+  if (controls) controls.target.copy(CENTER)
+  camera.position.copy(CENTER).addScaledVector(direction, fit.distance)
   camera.updateProjectionMatrix()
   if (controls) {
     controls.minDistance = fit.distance * ZOOM_IN
@@ -107,7 +107,7 @@ export function StageFit() {
       }
       const distance = camera.position.distanceTo(controls.target)
       const zoom = distance / fitDistance.current
-      const moved = controls.target.lengthSq() > 0.09 || Math.abs(zoom - 1) > 0.15
+      const moved = controls.target.distanceToSquared(CENTER) > 0.09 || Math.abs(zoom - 1) > 0.15
       if (moved !== useUiStore.getState().viewMoved) useUiStore.setState({ viewMoved: moved })
       const noticed = watchCamera(watch.current, zoom, controls.getAzimuthalAngle(), performance.now() / 1000)
       if (noticed) noticeCamera(noticed)

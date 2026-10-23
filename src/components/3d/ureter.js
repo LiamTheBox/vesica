@@ -1,34 +1,42 @@
 import * as THREE from 'three'
 
-// A ureter: the tube from the kidney, down behind the bladder, into the low back of its
-// wall (the upper corners of the trigone). At the wall it flares into a bell pressed flat
-// against it, its rim tucked just under the surface, so it grows out of the wall instead
-// of poking into it. Urine comes down it in boluses, each pushed along by a squeeze of the
-// tube (peristalsis); `step` reports when one squirts into the bladder.
+// A ureter: the tube from the kidney, down beside the bladder and into the upper side of
+// its wall, as in the realistic model (requested). At the wall it flares into a bell that
+// follows the wall's curve, its rim tucked just under the surface, so it grows out of the
+// wall instead of poking into it. Urine comes down it in boluses, each pushed along by a
+// squeeze of the tube (peristalsis); `step` reports when one squirts into the bladder.
 
 const SEGMENTS = 64
 const RADIAL = 10
 export const URETER_RING = RADIAL + 1
-const RADIUS = 0.1
+const RADIUS = 0.11
 // The bell: its last rings, closely spaced over its own short length at the wall end.
 export const FLARE_RINGS = 10
 const FLARE_LENGTH = 0.32
 const FLARE_WIDTH = 2.2 // the rim, relative to the tube
 // How far the rim sits under the wall's surface: less than the full bladder's membrane, so
-// it never shows through into the urine.
+// it never shows through into the urine. The wall curves away from the opening, so the bell
+// sinks with it by the sag of a curve this much flatter than the wall's distance from the
+// middle.
 export const URETER_SINK = 0.02
+const WALL_CURVE = 0.8
 // Like a real ureter, the tube comes down along the wall and slips into it at a shallow
 // angle (the lead-in's angle off the wall's surface), rather than stabbing in square.
 const ENTRY = THREE.MathUtils.degToRad(25)
 // Ring orientation reference: the ureters run roughly in the x–y plane, never along z.
 const REF = new THREE.Vector3(0, 0, 1)
 const UP = new THREE.Vector3(0, 1, 0)
+// Where it comes from: this far out from where it enters and this far above it (more as an
+// overfilled bladder grows), via a bend just outside and above the opening.
+const KIDNEY = { out: 1.0, up: 3.6 }
+const BEND = { out: 0.85, up: 0.95 }
 // Arc-length table resolution, so rings and boluses are spaced evenly along the tube.
 const ARC_SAMPLES = 96
 
-// Pale tan like a real ureter, blending toward the wall at the rim; urine shows amber.
-const COLOR = new THREE.Color(0xe6d2a0)
-const RIM_COLOR = new THREE.Color(0xc0485a) // close to the wall's rose
+// The same tissue as the wall, a little paler, and the wall's own colour at the rim; urine
+// shows amber.
+const COLOR = new THREE.Color(0xc77b7b)
+const RIM_COLOR = new THREE.Color(0xa64848)
 const URINE_COLOR = new THREE.Color(0xe9a92a)
 
 // Peristalsis: a bolus swells the tube, with a squeeze close behind it that pushes it on.
@@ -68,7 +76,7 @@ function curveT(arc, u) {
 // `side` -1 is the left, 1 the right; `wallVertices` the bladder's rest shape, to find
 // where it enters.
 export function createUreter(side, wallVertices) {
-  const dir = new THREE.Vector3(0.5 * side, -0.4, -0.75).normalize()
+  const dir = new THREE.Vector3(side, 0.2, 0).normalize()
   let endIndex = 0
   let best = -Infinity
   const n = new THREE.Vector3()
@@ -77,14 +85,13 @@ export function createUreter(side, wallVertices) {
     if (d > best) { best = d; endIndex = i }
   })
 
-  // From behind and above, past a bend behind the bladder and a short lead-in, to the wall.
-  const start = new THREE.Vector3(3.0 * side, 4.4, -2.0)
-  const curve = new THREE.CatmullRomCurve3([start.clone(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()])
+  // From above, past a bend beside the bladder and a short lead-in, to the wall.
+  const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()])
   const rings = SEGMENTS + 1
   // Only the topology (index, uvs) is kept; the vertices are written by shape().
   const geo = new THREE.TubeGeometry(curve, SEGMENTS, RADIUS, RADIAL, false)
   geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(rings * URETER_RING * 3), 3))
-  const bounds = new THREE.Sphere(new THREE.Vector3(0, 1, -1), 6.5)
+  const bounds = new THREE.Sphere(new THREE.Vector3(0, 2, 0), 5.5)
   geo.boundingSphere = bounds.clone()
 
   const arc = new Float64Array(ARC_SAMPLES + 1)
@@ -93,32 +100,35 @@ export function createUreter(side, wallVertices) {
   const wallPoint = new THREE.Vector3()
   const wallNormal = new THREE.Vector3()
   const lastEnd = new THREE.Vector3(Infinity, 0, 0)
+  let wallRadius = 2.4
   let lastReach = 1
   const boluses = [] // arc-length fractions, 0 at the kidney end
   let timer = side < 0 ? 2 : 6.5 // the two sides take turns
   let dirty = true
 
   // The bend and the end of the tube for a wall point and its normal; then each ring's
-  // place and frame along it. `reach` moves the start out with an overfilled bladder (the
-  // arcade's grows without limit), so it never swallows the tube; the tube keeps its width.
+  // place and frame along it. `reach` moves the start further up with an overfilled bladder
+  // (the arcade's grows without limit), so the dome never swallows the tube; the tube keeps
+  // its width.
   function route(point, normal, reach = 1) {
     if (lastEnd.distanceToSquared(point) < 0.0004 && reach === lastReach) return
     lastEnd.copy(point)
     lastReach = reach
     wallPoint.copy(point)
     wallNormal.copy(normal)
+    wallRadius = Math.max(0.5, point.length())
     const [first, bend, leadIn, end] = curve.points
-    first.copy(start).multiplyScalar(reach)
+    first.set(point.x + side * KIDNEY.out * reach, point.y + KIDNEY.up * reach, point.z * 0.3)
     geo.boundingSphere.center.copy(bounds.center).multiplyScalar(reach)
     geo.boundingSphere.radius = bounds.radius * reach
     end.copy(point).addScaledVector(normal, -URETER_SINK)
     entry.copy(UP).addScaledVector(normal, -normal.y).normalize() // up, along the wall
     entry.multiplyScalar(Math.cos(ENTRY)).addScaledVector(normal, Math.sin(ENTRY))
     leadIn.copy(end).addScaledVector(entry, 0.5)
-    // The bend is behind and well above the opening, so the tube comes down onto the
+    // The bend is just outside and above the opening, so the tube comes down onto the
     // wall instead of dipping below it and hooking back up.
-    bend.copy(end).addScaledVector(normal, 1.1)
-    bend.y += 1.5
+    bend.copy(end).addScaledVector(normal, BEND.out)
+    bend.y += BEND.up
 
     curve.getPoint(0, arcPrev)
     arc[0] = 0
@@ -165,7 +175,8 @@ export function createUreter(side, wallVertices) {
       const f = Math.max(0, (i - (SEGMENTS - FLARE_RINGS)) / FLARE_RINGS)
       const flare = f * f * (3 - 2 * f)
       const radius = RADIUS * swell * (1 + (FLARE_WIDTH - 1) * flare * flare)
-      color.copy(COLOR).lerp(RIM_COLOR, flare).lerp(URINE_COLOR, urine * 0.85)
+      // Urine shows in the tube, not over the bell on the wall.
+      color.copy(COLOR).lerp(RIM_COLOR, flare).lerp(URINE_COLOR, urine * 0.85 * (1 - flare))
       const k = i * 9
       for (let j = 0; j <= RADIAL; j++) {
         const v = (j / RADIAL) * Math.PI * 2
@@ -178,10 +189,13 @@ export function createUreter(side, wallVertices) {
         let py = frames[k + 1] + radius * ny
         let pz = frames[k + 2] + radius * nz
         if (flare > 0) {
-          // Pressed onto the plane just under the wall early on, so the translucent wall
-          // covers most of the bell; facing out of the wall.
+          // Pressed just under the wall early on, following its curve, so the translucent
+          // wall covers most of the bell; facing out of the wall.
           const press = Math.sqrt(flare)
-          const h = (px - wallPoint.x) * wallNormal.x + (py - wallPoint.y) * wallNormal.y + (pz - wallPoint.z) * wallNormal.z + URETER_SINK
+          const ox = px - wallPoint.x, oy = py - wallPoint.y, oz = pz - wallPoint.z
+          const above = ox * wallNormal.x + oy * wallNormal.y + oz * wallNormal.z
+          const across = ox * ox + oy * oy + oz * oz - above * above
+          const h = above + URETER_SINK + across / (2 * WALL_CURVE * wallRadius)
           px -= wallNormal.x * h * press
           py -= wallNormal.y * h * press
           pz -= wallNormal.z * h * press

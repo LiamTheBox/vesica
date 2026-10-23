@@ -22,7 +22,7 @@ const STRAIN_SHAKE = { from: 0.3, amp: 0.02 }
 const DROOP = { height: 0.06, seconds: 2.5, sleepy: 0.35 }
 // With reduced motion asked for (the system setting), the shakes are this much as big.
 const REDUCED_SHAKE = 0.25
-export const WALL_EMISSIVE = new THREE.Color(0x881337)
+export const WALL_EMISSIVE = new THREE.Color(0x7a1822)
 export const BLUSH_COLOR = new THREE.Color(0xff2d75)
 
 // The springs and fading effects behind the moves. `scale` and `offset` are the body

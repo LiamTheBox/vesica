@@ -2,17 +2,33 @@ import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import { createOrganRig } from './organRig'
 import {
-  BLADDER_VERTICES, FLUID_INSET, NECK_ROW, ORGAN_CENTER, orientCutaway, overfillGrowth, RESIDUAL_ML, RING_VERTICES, urineScale,
+  BLADDER_VERTICES, createOrganGeometry, FLUID_INSET, NECK_GAP, NECK_ROW, ORGAN_CENTER, orientCutaway, overfillGrowth, RESIDUAL_ML,
+  RING_ROW, RING_VERTICES, urineScale,
 } from './organGeometry'
 import { WALL_EMISSIVE } from './bodyLanguage'
 import { emoteFor } from '../../feedback/emotes'
 import { computeNormals } from './normals'
-import { ORGAN_HALF_HEIGHT } from './stageFit'
+import { FRAME_CENTER_Y, ORGAN_HALF_HEIGHT } from './stageFit'
 import { FLARE_RINGS, URETER_RING } from './ureter'
 import { createSimState } from '../../sim/sim'
 
 // Three.js clips points whose signed distance to a clipping plane is negative.
 const isClipped = (plane, point) => plane.distanceToPoint(point) < 0
+
+// Whether `p` lies inside `geo`'s surface: closer to the centre than the surface is in its
+// direction (the shapes are all star-shaped about their centre). The ray is nudged a hair
+// off true, since one aimed exactly at a vertex can slip between its triangles.
+const raycaster = new THREE.Raycaster()
+const NUDGES = [new THREE.Vector3(1e-6, 2e-6, -1.5e-6), new THREE.Vector3(-3e-6, 1e-6, 2e-6)]
+const inside = (geo, p) => {
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }))
+  for (const nudge of NUDGES) {
+    raycaster.set(new THREE.Vector3(), p.clone().normalize().add(nudge).normalize())
+    const [hit] = raycaster.intersectObject(mesh)
+    if (hit) return p.length() < hit.distance
+  }
+  throw new Error(`no surface toward ${p.toArray()}`)
+}
 
 describe('cutaway faces the player', () => {
   const plane = new THREE.Plane()
@@ -110,37 +126,30 @@ describe('ureters', () => {
     }
     return points
   }
-  // Whether `p` lies inside `geo`'s surface: closer to the centre than the surface is in its
-  // direction (the shapes are all star-shaped about their centre).
-  const raycaster = new THREE.Raycaster()
-  const inside = (geo, p) => {
-    raycaster.set(new THREE.Vector3(), p.clone().normalize())
-    const [hit] = raycaster.intersectObject(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })))
-    return p.length() < hit.distance
-  }
-
   for (const ml of [120, 400, 750]) {
-    it(`enter low on the back, either side of the neck, from outside the wall (${ml} ml)`, () => {
+    it(`come down from above into the upper sides, as in the realistic model, from outside the wall (${ml} ml)`, () => {
       const { rig, urine } = settled(ml)
       const wall = rig.bladderGeo.attributes.position
-      let bottom = Infinity, back = Infinity
+      let top = -Infinity, widest = 0
       for (let i = 0; i < BLADDER_VERTICES; i++) {
-        bottom = Math.min(bottom, wall.getY(i))
-        back = Math.min(back, wall.getZ(i))
+        top = Math.max(top, wall.getY(i))
+        widest = Math.max(widest, Math.abs(wall.getX(i)))
       }
       for (const [geo, side] of [[rig.ureterGeoLeft, -1], [rig.ureterGeoRight, 1]]) {
         const line = centreline(geo)
         const end = line[line.length - 1]
-        expect(end.y).toBeLessThan(bottom * 0.25) // well below the middle
-        expect(end.z).toBeLessThan(back * 0.4) // on the back
-        expect(end.x * side).toBeGreaterThan(0.3) // beside the neck, not on it
+        expect(end.y).toBeGreaterThan(0) // above the middle...
+        expect(end.y).toBeLessThan(top * 0.6) // ...but well below the top of the dome
+        expect(end.x * side).toBeGreaterThan(widest * 0.85) // on its side
+        expect(Math.abs(end.z)).toBeLessThan(0.3)
+        expect(line[0].y).toBeGreaterThan(top) // from above
         // Outside the wall all the way down to the flare, which lies on it.
         for (const p of line.slice(0, -FLARE_RINGS - 1)) expect(inside(rig.bladderGeo, p)).toBe(false)
         // Its end stays in the wall: no part of the tube pokes into the urine.
         const pos = geo.attributes.position
         for (let i = 0; i < pos.count; i++) {
           const local = new THREE.Vector3().fromBufferAttribute(pos, i).sub(urine.position).divideScalar(urine.scale.x)
-          expect(inside(rig.liningGeo, local)).toBe(false)
+          expect(inside(rig.urineGeo, local)).toBe(false)
         }
       }
     })
@@ -153,6 +162,27 @@ describe('urine inside the wall', () => {
     expect(urineScale(RESIDUAL_ML, 750)).toBe(0)
     expect(urineScale(750, 750)).toBeCloseTo(FLUID_INSET, 9)
     expect(urineScale(900, 750)).toBeLessThanOrEqual(FLUID_INSET) // overfull: still inside the wall
+  })
+
+  it("never reaches past the wall, even as a squirt's ripple crosses it (it showed through as a yellow patch)", () => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    sim.volume = 750
+    const urine = { visible: true, scale: new THREE.Vector3(), position: new THREE.Vector3() }
+    const pos = rig.urineGeo.attributes.position
+    const wall = rig.bladderGeo.attributes.position
+    // The left ureter's first bolus arrives 4.5 s in; its ripple takes 1.6 s to fade.
+    let f = 0
+    for (const at of [4.55, 4.8, 5.2, 5.8]) {
+      for (; f < at * 60; f++) rig.update(sim, 1 / 60, f / 60, { urine })
+      for (let i = 0; i < BLADDER_VERTICES; i++) {
+        // The ripple only ever dips the urine below the wall's own shape...
+        const own = new THREE.Vector3().fromBufferAttribute(pos, i)
+        expect(own.length()).toBeLessThanOrEqual(new THREE.Vector3().fromBufferAttribute(wall, i).length() + 1e-9)
+        // ...so, scaled to what it holds, it stays inside the wall.
+        if (i % 9 === 0) expect(inside(rig.bladderGeo, own.multiply(urine.scale).add(urine.position))).toBe(true)
+      }
+    }
   })
 
   it('grows steadily with the volume, leaving a thick wall when nearly empty', () => {
@@ -190,16 +220,18 @@ const play = (rig, sim, seconds, from = 0) => {
 }
 
 describe('sphincter', () => {
-  const ring = (rig) => Math.max(...Array.from({ length: rowCount(rig) - NECK_ROW }, (_, r) => rowRadius(rig, NECK_ROW + r)))
+  const ring = (rig) => rowRadius(rig, RING_ROW)
   const outlet = (rig) => rowRadius(rig, rowCount(rig) - 1)
 
-  it('is a muscular ring above a narrower urethra', () => {
+  it('is a muscular ring where the funnel ends, above a narrower urethra', () => {
     const rig = createOrganRig()
     play(rig, createSimState(), 0.5)
     expect(ring(rig)).toBeGreaterThan(outlet(rig) * 2.5)
+    // It stands out from the tube just below it.
+    expect(ring(rig)).toBeGreaterThan(rowRadius(rig, RING_ROW + 4) * 1.3)
   })
 
-  it('hangs from the bladder neck, which sits forward of the middle, at any fill', () => {
+  it('hangs from the bladder neck, under the middle as in the realistic model, at any fill', () => {
     for (const ml of [20, 300, 750]) {
       const rig = createOrganRig()
       const sim = createSimState()
@@ -208,8 +240,8 @@ describe('sphincter', () => {
       const neck = rowCentre(rig, NECK_ROW - 1)
       const top = rowCentre(rig, NECK_ROW)
       expect(Math.hypot(top.x - neck.x, top.z - neck.z)).toBeLessThan(1e-3)
-      expect(neck.y - top.y).toBeCloseTo(0.12, 3)
-      expect(neck.z).toBeGreaterThan(0.2)
+      expect(neck.y - top.y).toBeCloseTo(NECK_GAP, 3)
+      expect(Math.hypot(neck.x, neck.z)).toBeLessThan(0.05)
       // The opening is the lowest point, under the neck.
       const bottom = rowCentre(rig, rowCount(rig) - 1)
       const pos = rig.bladderGeo.attributes.position
@@ -261,21 +293,19 @@ describe('bladder wall', () => {
     return sum / BLADDER_VERTICES
   }
 
-  it('contracts in an urge wave and while voiding, then relaxes', () => {
+  // (How the dome pushes in an urge wave: 'its shape' below.)
+  it('contracts while voiding, then relaxes', () => {
     const rig = createOrganRig()
     const sim = createSimState()
     sim.volume = 400
     play(rig, sim, 3)
     const rest = meanRadius(rig)
-    sim.detrusorSpasmIntensity = 1
+    sim.isActivelyVoiding = true
     play(rig, sim, 1, 3)
     expect(meanRadius(rig)).toBeLessThan(rest * 0.98)
-    sim.detrusorSpasmIntensity = 0
-    play(rig, sim, 3, 4)
+    sim.isActivelyVoiding = false
+    play(rig, sim, 4, 4)
     expect(meanRadius(rig)).toBeCloseTo(rest, 2)
-    sim.isActivelyVoiding = true
-    play(rig, sim, 1, 7)
-    expect(meanRadius(rig)).toBeLessThan(rest * 0.98)
   })
 
   // How sharply a ring of the wall bends anywhere around it: the largest second difference
@@ -351,6 +381,79 @@ describe('bladder wall', () => {
   })
 })
 
+describe('its shape, like the realistic model and the book (requested)', () => {
+  // The bladder's top, how wide it is and at what height, and how deep (not the sphincter).
+  const measure = (positions) => {
+    let top = -Infinity, widest = 0, widestY = 0, deepest = 0
+    for (let i = 0; i < BLADDER_VERTICES; i++) {
+      const x = Math.abs(positions.getX(i)), y = positions.getY(i)
+      top = Math.max(top, y)
+      if (x > widest) { widest = x; widestY = y }
+      deepest = Math.max(deepest, Math.abs(positions.getZ(i)))
+    }
+    return { top, widest, widestY, deepest }
+  }
+  const settle = (state) => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    Object.assign(sim, state)
+    play(rig, sim, 3)
+    return { rig, sim }
+  }
+  // The top seen from the front: how high it is in the middle, and at its shoulders.
+  const topLine = (rig) => {
+    const pos = rig.bladderGeo.attributes.position
+    let middle = -Infinity, shoulders = -Infinity
+    for (let i = 0; i < BLADDER_VERTICES; i++) {
+      const x = Math.abs(pos.getX(i)), y = pos.getY(i)
+      if (x < 0.25) middle = Math.max(middle, y)
+      else if (x > 1.2 && x < 1.8) shoulders = Math.max(shoulders, y)
+    }
+    return { middle, shoulders }
+  }
+
+  it("rests in the model's outline: a flattened dome, widest a third of the way down, flatter front to back", () => {
+    const rest = measure(createOrganGeometry().geometry.attributes.position)
+    expect(rest.top).toBeCloseTo(2.01, 2)
+    expect(rest.widest).toBeCloseTo(2.35, 2)
+    expect(rest.widestY).toBeGreaterThan(0.1)
+    expect(rest.widestY).toBeLessThan(0.6)
+    expect(rest.deepest / rest.widest).toBeCloseTo(0.82, 1)
+  })
+
+  it('rounds out as it fills, and flattens on top when nearly empty', () => {
+    const roundness = (ml) => {
+      const { top, widest } = measure(settle({ volume: ml }).rig.bladderGeo.attributes.position)
+      return top / widest
+    }
+    const third = roundness(250)
+    expect(roundness(750)).toBeGreaterThan(third * 1.1)
+    expect(roundness(30)).toBeLessThan(third)
+  })
+
+  it('pushes down from the top while voiding, into a hollow seen from the front; less in an urge wave; then comes back up', () => {
+    const { rig, sim } = settle({ volume: 450 })
+    const rest = topLine(rig)
+    const restWidth = measure(rig.bladderGeo.attributes.position).widest
+    expect(rest.middle).toBeGreaterThan(rest.shoulders)
+    sim.detrusorSpasmIntensity = 1
+    play(rig, sim, 2, 3)
+    const urge = topLine(rig)
+    expect(urge.middle).toBeLessThan(rest.middle - 0.2)
+    // Nothing can get out, so the sides make room.
+    expect(measure(rig.bladderGeo.attributes.position).widest).toBeGreaterThan(restWidth * 1.02)
+    sim.detrusorSpasmIntensity = 0
+    sim.isActivelyVoiding = true
+    play(rig, sim, 2, 5)
+    const voiding = topLine(rig)
+    expect(voiding.middle).toBeLessThan(voiding.shoulders)
+    expect(voiding.middle).toBeLessThan(urge.middle)
+    sim.isActivelyVoiding = false
+    play(rig, sim, 4, 7)
+    expect(topLine(rig).middle).toBeCloseTo(rest.middle, 1)
+  })
+})
+
 describe('overfilled (the arcade has no limit)', () => {
   const settle = (ml) => {
     const rig = createOrganRig()
@@ -371,7 +474,7 @@ describe('overfilled (the arcade has no limit)', () => {
     expect(overfillGrowth(1.25)).toBeCloseTo(1, 9)
     const sizes = [937, 2000, 4000, 20000].map((ml) => ({ ml, rig: settle(ml) }))
     for (let i = 1; i < sizes.length; i++) expect(highest(sizes[i].rig)).toBeGreaterThan(highest(sizes[i - 1].rig) + 0.3)
-    for (const { ml, rig } of sizes) expect(highest(rig)).toBeLessThan(ORGAN_HALF_HEIGHT * overfillGrowth(ml / 750))
+    for (const { ml, rig } of sizes) expect(highest(rig) - FRAME_CENTER_Y).toBeLessThan(ORGAN_HALF_HEIGHT * overfillGrowth(ml / 750))
     // The urine still fills it, however much there is.
     expect(urineScale(20000, 750)).toBe(FLUID_INSET)
   })
@@ -442,7 +545,7 @@ describe('feel (E)', () => {
 
 describe('body language (D)', () => {
   const DOME = RING_VERTICES * 2
-  const SIDE = BLADDER_VERTICES / 2
+  const SIDE = 21 * RING_VERTICES + 16 // the front, about the widest, away from the ureters' squirts
   // Where a vertex of the wall ends up, with the body's transform.
   const at = (rig, body, i) => new THREE.Vector3().fromBufferAttribute(rig.bladderGeo.attributes.position, i).multiply(body.scale).add(body.position)
   // Runs `seconds` from `from` and records `measure` every frame.

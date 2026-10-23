@@ -55,12 +55,6 @@ const cutPars = /* glsl */ `
     return fract((p.x + p.y) * p.z);
   }
 
-  vec2 hash22(vec2 p) {
-    vec3 q = fract(vec3(p.xyx) * vec3(0.1031, 0.103, 0.0973));
-    q += dot(q, q.yzx + 33.33);
-    return fract((q.xx + q.yz) * q.zy);
-  }
-
   float valueNoise(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
@@ -91,23 +85,13 @@ const urineFragment = /* glsl */ `
   uniform vec3 uDeep;
   uniform vec3 uLining;
 
-  // Light rippling through liquid: a network of thin bright lines along the borders of
-  // drifting cells (distance to the second-nearest point minus the nearest).
-  float causticNet(vec2 x, float t) {
-    vec2 cell = floor(x);
-    vec2 f = fract(x);
-    float d1 = 8.0;
-    float d2 = 8.0;
-    for (int j = -1; j <= 1; j++) {
-      for (int i = -1; i <= 1; i++) {
-        vec2 g = vec2(float(i), float(j));
-        vec2 o = 0.5 + 0.4 * sin(t + 6.2831 * hash22(cell + g));
-        float d = length(g + o - f);
-        if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
-      }
-    }
-    float edge = 1.0 - smoothstep(0.0, 0.2, d2 - d1);
-    return edge * edge;
+  // Light rippling through liquid: thin bright lines where three drifting waves cancel out,
+  // like those on the urine's surface (Organ.jsx).
+  float causticLines(vec2 x, float t) {
+    float a = sin(x.x * 2.1 + sin(x.y * 1.7 + t * 0.9) * 1.3 + t * 0.6);
+    float b = sin(x.y * 2.3 + sin(x.x * 1.9 - t * 0.7) * 1.3 - t * 0.5);
+    float c = sin((x.x + x.y) * 1.4 + sin(x.x * 1.6 + t * 0.8) * 1.3 + t * 0.4);
+    return pow(1.0 - abs(a + b + c) / 3.0, 10.0);
   }
 
   // Coordinates within the cut plane, so the pattern lies flat on the cut.
@@ -141,9 +125,9 @@ const urineFragment = /* glsl */ `
     // Bend the network into curves and let it fade in and out across the cut.
     vec2 uv = planeCoords(p) * 1.8;
     vec2 warp = vec2(valueNoise(vec3(uv * 0.6, uTime * 0.15)), valueNoise(vec3(uv * 0.6 + 5.2, uTime * 0.15))) - 0.5;
-    float light = causticNet(uv + warp * 1.6, uTime * 0.8);
-    light *= smoothstep(0.3, 0.75, valueNoise(vec3(uv * 0.35, uTime * 0.1 + 3.0)));
-    col += uShallow * light * (0.2 + 0.2 * (1.0 - absorbed));
+    float light = causticLines(uv * 0.8 + warp * 1.2, uTime * 0.8);
+    light *= smoothstep(0.25, 0.7, valueNoise(vec3(uv * 0.35, uTime * 0.1 + 3.0)));
+    col += uShallow * light * (0.18 + 0.18 * (1.0 - absorbed));
     col += vec3(1.0, 0.96, 0.82) * bubbles(p, uTime) * 0.5;
     // The lining (urothelium) where the urine meets the wall.
     col = mix(col, uLining, (1.0 - smoothstep(0.02, 0.14, depth)) * 0.75);

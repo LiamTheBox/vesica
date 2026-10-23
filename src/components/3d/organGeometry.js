@@ -21,8 +21,8 @@ export function orientCutaway(plane, cameraPosition, center = ORGAN_CENTER) {
   return plane
 }
 
-// Urine: Organ.jsx draws the lining's geometry, scaled to the volume held (see
-// urineScale). Full, it fills the sac just inside the membrane.
+// Urine: Organ.jsx draws the wall's shape, scaled to the volume held (see urineScale).
+// Full, it fills the sac just inside the membrane.
 export const FLUID_INSET = 0.965
 // What's left after voiding: the bladder counts as empty at or below this.
 export const RESIDUAL_ML = 10
@@ -49,46 +49,76 @@ export function urineScale(volume, maxCapacity) {
   return Math.min(FLUID_INSET, FLUID_INSET * wallGrowth * Math.cbrt(urine))
 }
 
+// The bladder's outline, measured from the front and side renders of the realistic model
+// (requested): from the top of the dome down to the neck, the height and the half-width seen
+// from the front (x). A flattened dome, widest a third of the way down, tapering into a
+// funnel. 2.35 across at the widest, the size the bladder always had; the origin is a little
+// below the widest point, near the middle of what it holds.
+const OUTLINE = [
+  [0, 2.01], [0.57, 1.965], [0.69, 1.931], [0.83, 1.898], [1.0, 1.842], [1.13, 1.786], [1.37, 1.675],
+  [1.56, 1.563], [1.8, 1.395], [1.99, 1.228], [2.16, 1.005], [2.27, 0.781], [2.32, 0.558], [2.35, 0.335],
+  [2.344, 0.167], [2.32, 0], [2.24, -0.223], [2.08, -0.558], [1.86, -0.893], [1.56, -1.228], [1.19, -1.563],
+  [0.876, -1.898], [0.7, -2.177], [0.642, -2.344], [0.592, -2.512],
+]
+// Its depth front to back, as a share of its width, by height: round at the top of the dome
+// and down the funnel, flatter (0.82) where it's widest.
+const DEPTH = [[2.01, 1], [1.9, 1], [1.786, 0.98], [1.563, 0.91], [1.228, 0.84], [1.005, 0.82], [0.335, 0.82], [-0.223, 0.85], [-1.228, 0.865], [-1.563, 0.885], [-1.898, 0.94], [-2.344, 1]]
+export const DOME_TOP_Y = OUTLINE[0][1]
+// The dome is the part above this height, where the bladder is widest.
+export const DOME_BASE_Y = 0.3
+export const depthAt = (y) => {
+  if (y >= DEPTH[0][0]) return DEPTH[0][1]
+  for (let k = 1; k < DEPTH.length; k++) {
+    const [y1, d1] = DEPTH[k]
+    const [y0, d0] = DEPTH[k - 1]
+    if (y >= y1) return THREE.MathUtils.lerp(d1, d0, THREE.MathUtils.smoothstep(y, y1, y0))
+  }
+  return DEPTH[DEPTH.length - 1][1]
+}
+
 // The organ is one surface: the bladder from its dome down to the neck, then the
 // sphincter ring and the urethra down to the opening, so there's no seam between them,
 // they move together and the cutaway sections them together. Rings of RADIAL segments
-// (plus a seam vertex for the UVs) from the top down, like a SphereGeometry: the bladder's
-// rows are the first BLADDER_ROWS + 1 rings of a 48-row sphere, the rest follow the
+// (plus a seam vertex for the UVs) from the top down: the bladder's rings evenly spaced
+// along its outline (the first is the single point at the top), the rest along the
 // sphincter's profile, hanging from the centre of the bladder's last ring.
 export const RADIAL = 64
 export const RING_VERTICES = RADIAL + 1
-const SPHERE_ROWS = 48
-const BLADDER_ROWS = 41 // the neck opens 26° up from the bottom of the sphere
+const BLADDER_ROWS = 41
 export const BLADDER_VERTICES = (BLADDER_ROWS + 1) * RING_VERTICES
 export const NECK_ROW = BLADDER_ROWS + 1 // the first row of the sphincter
 export const NECK_ROWS = 18
-// The neck sits forward (anterior, +z) with the bladder's base bulging behind it, as in
-// the body, rather than hanging from the middle.
-const NECK_FORWARD = 0.5
-export const NECK_GAP = 0.12 // from the bladder's last ring down to the top of the profile
-// The neck doesn't stretch with the dome (the pelvic floor holds it): the lowest rows keep
-// about their resting width, so the bladder funnels into the sphincter at any fill.
-export const NECK_WIDTH = 0.9
-export const forwardOf = (sy) => NECK_FORWARD * THREE.MathUtils.smoothstep(-sy, 0.1, 1)
+export const NECK_GAP = 0.1 // from the bladder's last ring down to the top of the profile
+// The neck doesn't stretch with the dome (the pelvic floor holds it): the funnel's lowest
+// rings keep their resting width, so the bladder narrows into the sphincter at any fill.
+export const NECK_WIDTH = 1
 
 // The sphincter's profile, (radius, height) from the bottom up: a lip around the single
-// small opening, the urethra up from it, then the thick muscular ring at the bladder neck.
-export const OUTLET_Y = -0.62
-export const NECK_TOP_Y = 0.19
+// small opening, the urethra up from it (the model's long tube, shortened), the thick
+// muscular ring where it leaves the funnel, then the bottom of the funnel, as wide as the
+// bladder's last ring.
+export const OUTLET_Y = -2.4
+export const NECK_TOP_Y = 0
 const SPHINCTER_PROFILE = [
-  [0.075, OUTLET_Y], [0.1, -0.6], [0.11, -0.48], [0.125, -0.34], [0.15, -0.25],
-  [0.26, -0.17], [0.38, -0.09], [0.43, 0.01], [0.42, 0.1], [0.35, NECK_TOP_Y],
+  [0.11, OUTLET_Y], [0.17, -2.36], [0.205, -2.26], [0.21, -1.95], [0.215, -1.65], [0.225, -1.38], [0.25, -1.17],
+  [0.3, -1.02], [0.44, -0.88], [0.53, -0.74], [0.54, -0.6], [0.48, -0.46], [0.48, -0.32], [0.53, -0.15], [0.58, NECK_TOP_Y],
 ]
 // Puckered folds around the ring, like a drawstring.
 export const SPHINCTER_FOLDS = 14
-const WALL_COLOR = 0xf43f5e
-const SPHINCTER_COLORS = { neck: 0xe11d48, ring: 0xa30f33, urethra: 0xfb7185 }
+const WALL_COLOR = 0xffffff // the tissue texture carries the colour
+const SPHINCTER_COLORS = { neck: 0xffffff, ring: 0x9b2335, urethra: 0xe8a0a0 }
 
 // How much a height on the profile belongs to the muscle ring, or to the urethra (0..1).
-export const ringWeight = (y) => THREE.MathUtils.smoothstep(y, -0.27, -0.15) * (1 - THREE.MathUtils.smoothstep(y, 0.16, 0.28))
-export const urethraWeight = (y) => 1 - THREE.MathUtils.smoothstep(y, -0.3, -0.18)
+export const ringWeight = (y) => THREE.MathUtils.smoothstep(y, -0.95, -0.8) * (1 - THREE.MathUtils.smoothstep(y, -0.5, -0.38))
+export const urethraWeight = (y) => 1 - THREE.MathUtils.smoothstep(y, -1.05, -0.9)
 
-export const BOUNDS_RADIUS = 5
+// The sphincter's rows, evenly spaced along its profile from the top down, and the row
+// where the muscle ring is.
+const PROFILE = new THREE.SplineCurve(SPHINCTER_PROFILE.map(([r, y]) => new THREE.Vector2(r, y))).getSpacedPoints(NECK_ROWS - 1).reverse()
+export const RING_ROW = NECK_ROW + PROFILE.reduce((best, p, k) => (ringWeight(p.y) > ringWeight(PROFILE[best].y) ? k : best), 0)
+
+export const BOUNDS_RADIUS = 5.2
+const BOUNDS_CENTER = new THREE.Vector3(0, -1.2, 0)
 
 // Each ring's first and last vertex are the same point (two for the UVs), and so are all
 // of the dome's top row. Each copy gets its normal from its own triangles only, which
@@ -110,10 +140,12 @@ export function weldSeam(geometry) {
 }
 
 // Vertex colours carry the wall's opacity (alpha), so the membrane can be see-through
-// while the sphincter stays solid.
+// while the sphincter stays solid. `rings`: each bladder ring's place along the outline
+// (0 at the top, 1 at the neck), for the rig.
 export function createOrganGeometry() {
-  const curve = new THREE.SplineCurve(SPHINCTER_PROFILE.map(([r, y]) => new THREE.Vector2(r, y)))
-  const profile = curve.getSpacedPoints(NECK_ROWS - 1).reverse() // top down
+  const outline = new THREE.SplineCurve(OUTLINE.map(([r, y]) => new THREE.Vector2(r, y))).getSpacedPoints(BLADDER_ROWS)
+  outline[0].x = 0 // the top is a single point
+  const profile = PROFILE.map((p) => p.clone())
   const rows = NECK_ROW + NECK_ROWS
   const count = rows * RING_VERTICES
   const position = new Float32Array(count * 3)
@@ -124,9 +156,8 @@ export function createOrganGeometry() {
   const ring = new THREE.Color(SPHINCTER_COLORS.ring)
   const urethra = new THREE.Color(SPHINCTER_COLORS.urethra)
   const c = new THREE.Color()
-  const neckTheta = (BLADDER_ROWS / SPHERE_ROWS) * Math.PI
-  const neckTop = 2.35 * Math.cos(neckTheta) * 1.12 - NECK_GAP
-  const neckZ = forwardOf(Math.cos(neckTheta))
+  const neckTop = outline[BLADDER_ROWS].y - NECK_GAP
+  const rings = outline.map((_, iy) => iy / BLADDER_ROWS)
 
   for (let iy = 0; iy < rows; iy++) {
     for (let ix = 0; ix <= RADIAL; ix++) {
@@ -135,22 +166,17 @@ export function createOrganGeometry() {
       const dx = -Math.cos(phi)
       const dz = Math.sin(phi)
       if (iy < NECK_ROW) {
-        const theta = (iy / SPHERE_ROWS) * Math.PI
-        const sy = Math.cos(theta)
-        const r = 2.35 * Math.sin(theta)
-        // Narrows toward the neck, easing in gently below the equator so the outline has
-        // no crease or shoulder there.
-        const neckFactor = sy < 0 ? 1.0 - THREE.MathUtils.smootherstep(-sy, 0, 1) * 0.6 : 1.0
-        position[i * 3] = dx * r * neckFactor
-        position[i * 3 + 1] = 2.35 * sy * 1.12
-        position[i * 3 + 2] = dz * r * neckFactor * 0.94 + forwardOf(sy)
+        const { x: r, y } = outline[iy]
+        position[i * 3] = dx * r
+        position[i * 3 + 1] = y
+        position[i * 3 + 2] = dz * r * depthAt(y)
         c.copy(wallColor)
       } else {
         const { x: r, y } = profile[iy - NECK_ROW]
         position[i * 3] = dx * r
         position[i * 3 + 1] = neckTop + y - NECK_TOP_Y
-        position[i * 3 + 2] = neckZ + dz * r
-        // Colour by part: deep red muscle ring, pinker urethra.
+        position[i * 3 + 2] = dz * r
+        // Colour by part: deep red muscle ring, paler urethra.
         c.copy(neck).lerp(ring, ringWeight(y)).lerp(urethra, urethraWeight(y))
       }
       color.set([c.r, c.g, c.b, iy < NECK_ROW ? 0.6 : 1], i * 4)
@@ -180,6 +206,6 @@ export function createOrganGeometry() {
   weldSeam(geometry)
   // The wall inflates up to ~1.4x in the sandbox, so give raycasting/culling a sphere that
   // always fits, down to the opening; it grows with an overfilled bladder (update).
-  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, -0.5, 0.3), BOUNDS_RADIUS)
-  return { geometry, profile, neckZ }
+  geometry.boundingSphere = new THREE.Sphere(BOUNDS_CENTER.clone(), BOUNDS_RADIUS)
+  return { geometry, profile, rings }
 }

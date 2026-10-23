@@ -5,11 +5,13 @@
 // extent fits the stage, and a projection offset (camera.setViewOffset) that moves the
 // image centre from the screen centre to the stage centre.
 
-// Half-extent of the scene worth framing, in world units: the bladder at full
-// inflation (~1.3x its 2.35 radius) plus the sphincter below it. An overfilled arcade
-// bladder grows past this; StageFit backs the camera off by as much (overfillGrowth).
-export const ORGAN_HALF_HEIGHT = 4.1
+// Half-extent of the scene worth framing, in world units, about FRAME_CENTER_Y: the
+// bladder at its fullest in the sandbox, from the top of its dome down to the end of the
+// urethra below it. An overfilled arcade bladder grows past this; StageFit backs the camera
+// off by as much (overfillGrowth).
+export const ORGAN_HALF_HEIGHT = 4.6
 export const ORGAN_HALF_WIDTH = 3.4
+export const FRAME_CENTER_Y = -1.15
 // Side rails sit over the stage's left and right edges.
 export const RAIL_ALLOWANCE_PX = 56
 
