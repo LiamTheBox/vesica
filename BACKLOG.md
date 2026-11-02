@@ -25,4 +25,4 @@ Effort: **S** = under an hour, **M** = an afternoon, **L** = a day or more.
 
 | # | What | Where | Why | Effort |
 |---|---|---|---|---|
-| A15 | **A second language**, when wanted. The groundwork is in (A14): a translated copy of `src/i18n/en.js` in `LANGUAGES`, lines for each personality, the stories, and a voice that speaks it. A language switch in Settings would come with it. | [src/i18n/](src/i18n), [lines.js](src/audio/lines.js) | Reach | L |
+| A15 | **A second language**, when wanted. The groundwork is in (A14): a translated copy of `src/i18n/en.js` in `LANGUAGES`, lines for each personality, and a voice that speaks it. A language switch in Settings would come with it. | [src/i18n/](src/i18n), [lines.js](src/audio/lines.js) | Reach | L |

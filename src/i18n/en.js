@@ -1,7 +1,7 @@
 // The interface's words in English (A14), by key: where they're shown, then what. {name}
 // marks a value filled in, `.one` / `.other` a word that changes with a count (see
 // i18n/index.js). Another language is a copy of this file, translated, plus its own lines
-// (audio/lines*.js) and stories. English is the only one for now.
+// (audio/lines*.js). English is the only one for now.
 
 export default {
   // The start screen.
@@ -171,7 +171,6 @@ export default {
   'nav.sim': 'Sim',
   'nav.telemetry': 'Telemetry',
   'nav.challenges': 'Challenges',
-  'nav.stories': 'Stories',
   'nav.settings': 'Settings',
   'sheet.close': 'Close',
 
@@ -247,21 +246,6 @@ export default {
   'chart.moods.label': 'Moods, oldest first: {moods}',
   'chart.lines': 'Said lately',
   'chart.lines.none': 'Nothing yet.',
-
-  // The Stories sheet (the chapters themselves are src/stories/*.md).
-  'stories.title': 'Stories',
-  'stories.subtitle': 'Optional reading, whenever you like',
-  'stories.read': 'Read ✓',
-  'stories.continue': 'Continue',
-  'stories.chapter': 'Chapter {n}',
-  'stories.chapterOf': 'Chapter {n} of {total}',
-  'stories.minutes': '{n} min read',
-  'stories.back': '‹ Chapters',
-  'stories.smaller': 'Smaller text',
-  'stories.larger': 'Larger text',
-  'stories.previous': '‹ Previous',
-  'stories.next': 'Next chapter ›',
-  'stories.all': 'All chapters',
 
   // The Settings sheet.
   'settings.title': 'Settings',

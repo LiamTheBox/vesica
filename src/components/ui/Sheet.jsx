@@ -2,19 +2,16 @@ import { t } from '../../i18n'
 
 // A panel that slides up from the bottom on phones (centred on wider screens). It
 // scrolls inside itself on short screens; the rest of the page blocks touch
-// scrolling, so the sheet opts back in with `touch-action: pan-y`. `scrollRef` and
-// `onScroll` reach that scrolling panel (the stories reader keeps your place with them).
+// scrolling, so the sheet opts back in with `touch-action: pan-y`.
 // `fullHeight` lets it use all of the screen's height, for what's meant to fit without
 // scrolling.
-export default function Sheet({ title, subtitle, titleTone = 'text-slate-200', onClose, children, width = 'max-w-2xl', scrollRef, onScroll, fullHeight = false }) {
+export default function Sheet({ title, subtitle, titleTone = 'text-slate-200', onClose, children, width = 'max-w-2xl', fullHeight = false }) {
   return (
     <div
       className={`absolute inset-0 z-30 pointer-events-auto flex flex-col justify-end sm:justify-center items-center bg-slate-950/70 backdrop-blur-md ${fullHeight ? 'sm:p-1' : 'sm:p-4'}`}
       onClick={onClose}
     >
       <div
-        ref={scrollRef}
-        onScroll={onScroll}
         role="dialog"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}

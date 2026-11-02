@@ -60,7 +60,6 @@ Pushing to `main` deploys the app to GitHub Pages.
 - `src/components/3d/`: the bladder (`organGeometry.js` its shape, `organRig.js` its movement each frame,
   `bodyLanguage.js` its moves), the ureters and the stream; `src/components/micro/`: the microgames' drawing
 - `src/components/ui/`: the HUD, buttons and menus
-- `src/stories/`: the optional stories, one Markdown file per chapter
 - `tools/`: `arcade-bots.mjs` plays the arcade with scripted players to check its balance after a rule change
   (`node tools/arcade-bots.mjs`), and `micro-bots.mjs` does the same for the microgames; `smoke-build.mjs` opens the production build in a headless browser and fails
   unless the app starts (the deploy runs it); `make-icons.mjs` renders the app icons

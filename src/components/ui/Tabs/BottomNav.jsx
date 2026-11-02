@@ -5,7 +5,6 @@ const NAV = [
   { id: 'sim', icon: '🫁' },
   { id: 'telemetry', icon: '📈' },
   { id: 'challenges', icon: '🏆' },
-  { id: 'stories', icon: '📖' },
   { id: 'settings', icon: '⚙️' },
 ]
 

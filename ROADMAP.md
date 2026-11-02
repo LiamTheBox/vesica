@@ -19,8 +19,8 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
   couldn't have been done on it before then.
 - **Rules for everything new** (requested 2026-10-21): fully offline (nothing loaded from the network); every mode
   plays with one pointer, touch or mouse (tap, hold, drag; Space presses on a keyboard; pinch, wheel and right-drag
-  only move the camera); the minigames are abstract sphincter-control challenges, and any story stays outside them,
-  optional to read. Safe for work: adults, no nudity or sexual framing.
+  only move the camera); the minigames are abstract sphincter-control challenges, and there's no story in the app:
+  stories are outside the simulator (2026-11-02). Safe for work: adults, no nudity or sexual framing.
 - **Next:** the phone checks.
 
 ## Done
@@ -36,7 +36,7 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 | M6 | Mobile layout grid, camera framed to the stage, bottom sheets, installable PWA | `m6` |
 | M7 | Quality tiers (Auto), per-frame work cut, pause in the background, code split | `m7` |
 | M8 | Microgames: eleven one-pointer games about sphincter control | `m8` |
-| M9 | Stories: six optional chapters in their own sheet | `m9` |
+| M9 | Stories: six optional chapters in their own sheet (removed on 2026-11-02, as outside the simulator; they're at this tag) | `m9` |
 
 Requested along the way, each in its own commits:
 
@@ -102,7 +102,6 @@ On the live site (or `npm run preview:phone` for installing and offline). Tick t
 - ☐ **M7:** play 5 minutes: smooth, not hot, acceptable battery drain. See which tier Settings → Graphics Quality
   chose.
 - ☐ **M8:** a 10-game microgames run with a finger, and one with a mouse.
-- ☐ **M9:** read a chapter: comfortable text size and scrolling.
 - ☐ **2026-10-21:** a few arcade runs; pan to the sphincter with two fingers; watch a void and a leak.
 - ☐ **Backlog work (2026-10-21):** Settings → Voice lists the phone's voices and the chosen one talks offline;
   each Wall Feel feels different; opening the cutaway gets a line and a blush; the Pressure Chart's mood strip

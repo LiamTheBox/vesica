@@ -32,7 +32,7 @@ const built = [
   ...Object.keys(MOOD_FACES).map((mood) => `mood.${mood}`),
   ...['poke', 'squeeze', 'slap', 'orbit'].map((tool) => `tools.${tool}`),
   ...['cutaway', 'cough', 'shake', 'flush'].map((action) => `actions.${action}`),
-  ...['sim', 'telemetry', 'challenges', 'stories', 'settings'].map((tab) => `nav.${tab}`),
+  ...['sim', 'telemetry', 'challenges', 'settings'].map((tab) => `nav.${tab}`),
   ...['commute', 'precision', 'arcade', 'micro'].map((challenge) => `result.title.${challenge}`),
   ...withHints('personality', Object.keys(PERSONALITIES)),
   ...withHints('wallFeel', WALL_FEELS),

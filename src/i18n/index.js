@@ -2,7 +2,7 @@ import en from './en'
 
 // The interface's words, looked up by key (A14). English is the only language for now (the
 // player's choice); adding one means a translated copy of en.js in LANGUAGES, lines for each
-// personality, the stories, and a voice that speaks it (audio/voice.js picks voices by
+// personality, and a voice that speaks it (audio/voice.js picks voices by
 // LANGUAGE). Missing words fall back to English, then to the key itself.
 const LANGUAGES = { en }
 export const LANGUAGE = 'en'
