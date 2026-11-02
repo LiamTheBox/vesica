@@ -22,6 +22,7 @@ const TELEMETRY_LENGTH = 120
 export const CAPACITY_ML = 2000
 
 const lerp = (a, b, t) => a + (b - a) * t
+const clamp = (v, most) => Math.min(most, Math.max(-most, v))
 
 // What the bladder holds when voiding stops on its own.
 const EMPTY_ML = 10
@@ -197,15 +198,20 @@ export function touchJolt(sim, share) {
   sim.touchPressure = Math.max(sim.touchPressure, TOUCH_PRESSURE * fill * fill * Math.min(1, share))
 }
 
+// However many hits land at once, the urine only sloshes so fast and so far.
+const MOST_SLOSH_SPEED = 20
+const MOST_CORE_SPEED = 10
+const MOST_CORE_OFFSET = 1.2
+
 export function impartSloshForce(sim, fx, fz) {
   const dot = sim.sloshVelX * fx + sim.sloshVelZ * fz
   const boost = dot > 0 ? 1.35 : 0.85
 
-  sim.sloshVelX += fx * boost
-  sim.sloshVelZ += fz * boost
+  sim.sloshVelX = clamp(sim.sloshVelX + fx * boost, MOST_SLOSH_SPEED)
+  sim.sloshVelZ = clamp(sim.sloshVelZ + fz * boost, MOST_SLOSH_SPEED)
 
-  sim.fluidCoreVelocity.x += -fx * 0.45
-  sim.fluidCoreVelocity.z += -fz * 0.45
+  sim.fluidCoreVelocity.x = clamp(sim.fluidCoreVelocity.x - fx * 0.45, MOST_CORE_SPEED)
+  sim.fluidCoreVelocity.z = clamp(sim.fluidCoreVelocity.z - fz * 0.45, MOST_CORE_SPEED)
 }
 
 // At most this many ripples run at once (a swipe adds one on every move, a hard shake one
@@ -612,8 +618,8 @@ export function stepSim(sim, dt, out, rng = Math.random) {
   core.y *= 0.92
   core.z *= 0.92
 
-  sim.fluidCoreOffset.x += core.x * dt
-  sim.fluidCoreOffset.z += core.z * dt
+  sim.fluidCoreOffset.x = clamp(sim.fluidCoreOffset.x + core.x * dt, MOST_CORE_OFFSET)
+  sim.fluidCoreOffset.z = clamp(sim.fluidCoreOffset.z + core.z * dt, MOST_CORE_OFFSET)
 
   for (let r = sim.ripples.length - 1; r >= 0; r--) {
     const rip = sim.ripples[r]

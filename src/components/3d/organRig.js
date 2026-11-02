@@ -16,8 +16,24 @@ import { createUreter } from './ureter'
 // precomputed, and allocate nothing (M7).
 
 // Impact profiles from the original pokeBladder() / slapBladder().
-const POKE = { radius: 1.4, powerScale: 1.0, velScale: 1.6, dentGain: 0.35, dentCap: 0.6 }
-const SLAP = { radius: 1.8, powerScale: 2.2, velScale: 1.0, dentGain: 0.4, dentCap: 0.8 }
+const POKE = { radius: 1.4, powerScale: 1.0, velScale: 1.6, dentGain: 0.35, dentCap: 0.3 }
+const SLAP = { radius: 1.8, powerScale: 2.2, velScale: 1.0, dentGain: 0.4, dentCap: 0.35 }
+
+// The wall's force limit (requested: a flurry of hits crumpled it, a swipe landing one on
+// every move). Ripples, wobbles and dents together change its size as they ask to up to
+// SIZE_KNEE of it, then ease toward their most, in and out. After a hit (for STRUCK_SECONDS)
+// it strays no further than MOST_STRAY from that, as a share of its distance from the middle.
+const SIZE_KNEE = 0.1
+const MOST_SIZE_IN = 0.35
+const MOST_SIZE_OUT = 0.18
+const MOST_STRAY = 0.2
+const STRUCK_SECONDS = 1.5
+const eased = (over, knee, most) => knee + over / (1 + over / (most - knee))
+const limitSize = (change) => {
+  if (change > SIZE_KNEE) return eased(change - SIZE_KNEE, SIZE_KNEE, MOST_SIZE_OUT)
+  if (change < -SIZE_KNEE) return -eased(-change - SIZE_KNEE, SIZE_KNEE, MOST_SIZE_IN)
+  return change
+}
 
 // How the wall feels with fill, from slack to full: slack it's soft (deep dents, slow
 // springs, a floppy wobble, ripples that die out), full it's taut (shallow dents that
@@ -154,6 +170,7 @@ export function createOrganRig() {
   let pushPhase = 0
   let wallAlpha = -1
   let lastFill = 0.16 // for impacts, which come between frames
+  let struck = 0 // seconds of the wall's force limit left, since the last hit
   const body = createBodyLanguage()
 
   const stream = createStream()
@@ -177,6 +194,7 @@ export function createOrganRig() {
   // Pushes vertices near `local` inward and leaves a slowly recovering dent: deeper the
   // slacker the wall.
   function impact(local, strength, profile) {
+    struck = STRUCK_SECONDS
     const give = feel('dent', lastFill)
     for (let i = 0; i < count; i++) {
       const vx = wall[i * 3], vy = wall[i * 3 + 1], vz = wall[i * 3 + 2]
@@ -218,6 +236,7 @@ export function createOrganRig() {
 
     const fillRatio = Math.max(0.01, sim.volume / sim.maxCapacity)
     lastFill = fillRatio
+    struck = Math.max(0, struck - dt)
     const compY = sim.squeezeAmountY || 0
     const scaleY = 1.0 - compY
     const inflationScale = inflationOf(fillRatio)
@@ -348,7 +367,7 @@ export function createOrganRig() {
         }
       }
 
-      const totalRadMod = Math.max(0.2, (1.0 + jiggleWobble + rippleDisp - dentMemory[i] + deflated * balloon[i])) * balloonBulge * contract
+      const totalRadMod = (1.0 + limitSize(jiggleWobble + rippleDisp - dentMemory[i] + deflated * balloon[i])) * balloonBulge * contract
 
       // Width around the neck's axis: the lower body fills out when full and bulges while the
       // dome pushes against a closed outlet; the funnel keeps the neck's width.
@@ -366,6 +385,20 @@ export function createOrganRig() {
       wall[o] = cx + vx * dt
       wall[o + 1] = cy + vy * dt
       wall[o + 2] = cz + vz * dt
+      if (struck > 0) {
+        const ox = wall[o] - tx, oy = wall[o + 1] - ty, oz = wall[o + 2] - tz
+        const stray = ox * ox + oy * oy + oz * oz
+        const most = MOST_STRAY * MOST_STRAY * (tx * tx + ty * ty + tz * tz)
+        if (stray > most) {
+          const k = Math.sqrt(most / stray)
+          wall[o] = tx + ox * k
+          wall[o + 1] = ty + oy * k
+          wall[o + 2] = tz + oz * k
+          velocity[o] = vx * k
+          velocity[o + 1] = vy * k
+          velocity[o + 2] = vz * k
+        }
+      }
       // The urine: the wall's own smooth shape, dipping where a squirt's ripple passes.
       const fold = 1.0 - ripple
       urinePos[o] = wall[o] * fold

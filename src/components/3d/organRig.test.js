@@ -10,7 +10,8 @@ import { emoteFor } from '../../feedback/emotes'
 import { computeNormals } from './normals'
 import { FRAME_CENTER_Y, ORGAN_HALF_HEIGHT } from './stageFit'
 import { FLARE_RINGS, URETER_RING } from './ureter'
-import { createSimState as newSimState } from '../../sim/sim'
+import { pokeAt, POKE_LIMIT, slapAt, SLAP_LIMIT } from '../../sim/interactions'
+import { createSimState as newSimState, stepSim } from '../../sim/sim'
 
 // The organ goes by how full it is, so these keep to a round 750 ml bladder.
 const createSimState = () => Object.assign(newSimState(), { maxCapacity: 750 })
@@ -554,6 +555,86 @@ describe('its shape, like the realistic model and the book (requested)', () => {
   })
 })
 
+describe('a force limit on pokes and slaps (requested: a flurry crumpled the wall)', () => {
+  // A settled bladder hammered for `seconds` on every frame, as a wild swipe does, wandering
+  // over its front. Returns how far any part of the wall got from where it was, as a share of
+  // its distance from the middle: the least and the most, and whether any passed the middle.
+  const hammer = (ml, strike, seconds = 2) => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    sim.volume = ml
+    sim.baseDrip = 0
+    play(rig, sim, 3)
+    const pos = rig.bladderGeo.attributes.position
+    const rest = Array.from({ length: BLADDER_VERTICES }, (_, i) => new THREE.Vector3().fromBufferAttribute(pos, i))
+    let least = Infinity, most = 0, through = false
+    const p = new THREE.Vector3()
+    for (let f = 0; f < seconds * 60; f++) {
+      const out = []
+      const local = rest[24 * RING_VERTICES + (f * 3) % RADIAL]
+      strike(sim, out, { x: local.x, y: local.y, z: local.z })
+      for (const e of out) {
+        if (e.type === 'poke') rig.poke(e.local, e.strength)
+        else if (e.type === 'slap') rig.slap(e.local, e.strength)
+      }
+      stepSim(sim, 1 / 60, [], () => 0.5)
+      sim.sphincterToneStrain = 0 // it isn't the leak being tested
+      sim.volume = ml
+      rig.update(sim, 1 / 60, 3 + f / 60, {})
+      for (let i = 0; i < BLADDER_VERTICES; i++) {
+        p.fromBufferAttribute(pos, i)
+        const share = p.length() / rest[i].length()
+        least = Math.min(least, share)
+        most = Math.max(most, share)
+        if (p.dot(rest[i]) < 0) through = true
+      }
+    }
+    return { least, most, through }
+  }
+  const slaps = (sim, out, local) => slapAt(sim, out, local, 3)
+  const pokes = (sim, out, local) => pokeAt(sim, out, local, 2.2)
+
+  for (const [name, ml] of [['slack', 60], ['half full', 400], ['full', 750], ['overfilled', 8000]]) {
+    for (const [hit, strike] of [['slapped', slaps], ['poked', pokes]]) {
+      it(`never crumples, however fast it's ${hit} (${name})`, () => {
+        const { least, most, through } = hammer(ml, strike)
+        expect(through).toBe(false)
+        expect(least).toBeGreaterThan(0.5)
+        // Slack, it's small, so the urine's slosh moves it more for its size.
+        expect(most).toBeLessThan(ml < 100 ? 1.6 : 1.3)
+      })
+    }
+  }
+
+  it('takes no more force than the limit from one hit', () => {
+    const sim = createSimState()
+    const out = []
+    pokeAt(sim, out, { x: 0, y: 0, z: 2 }, 50)
+    slapAt(sim, out, { x: 0, y: 0, z: 2 }, 50)
+    expect(out.map((e) => e.strength)).toEqual([POKE_LIMIT, SLAP_LIMIT])
+    expect(sim.ripples[0].amplitude).toBeCloseTo(0.65 * SLAP_LIMIT, 9)
+  })
+
+  it('still lets a single hit dent it properly', () => {
+    const { least } = hammer(400, slaps, 1 / 60)
+    const rig = createOrganRig()
+    const sim = createSimState()
+    sim.volume = 400
+    play(rig, sim, 3)
+    const pos = rig.bladderGeo.attributes.position
+    const i = 24 * RING_VERTICES
+    const rest = new THREE.Vector3().fromBufferAttribute(pos, i)
+    rig.slap(rest, 2)
+    let deepest = 1
+    for (let f = 0; f < 30; f++) {
+      rig.update(sim, 1 / 60, 3 + f / 60, {})
+      deepest = Math.min(deepest, new THREE.Vector3().fromBufferAttribute(pos, i).length() / rest.length())
+    }
+    expect(deepest).toBeLessThan(0.9)
+    expect(least).toBeGreaterThan(0.5)
+  })
+})
+
 describe('overfilled (the arcade has no limit)', () => {
   const settle = (ml) => {
     const rig = createOrganRig()
@@ -800,6 +881,18 @@ describe('body language (D)', () => {
     expect(glow(0.5, 6)).toBeLessThan(1e-3)
     expect(glow(0.99, 6.5)).toBeLessThan(1e-3)
     expect(glow(1, 7)).toBeGreaterThan(0.5)
+  })
+
+  it("doesn't balloon when a flurry of hits has it huffing on every one", () => {
+    const { rig, sim, body } = settled()
+    const size = track(rig, sim, 2, 6, { body }, () => {
+      rig.emote('huff')
+      return body.scale.x
+    })
+    expect(Math.max(...size)).toBeLessThan(1.1)
+    play(rig, sim, 3, 8)
+    rig.update(sim, 1 / 60, 11, { body })
+    expect(body.scale.x).toBeCloseTo(1, 2)
   })
 
   it('knows what to do when things happen, and huffs at a poke only when annoyed', () => {

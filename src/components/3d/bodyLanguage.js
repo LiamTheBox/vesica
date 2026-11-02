@@ -15,6 +15,10 @@ const STILL = [0, 0]
 // targets, anything quicker than a breath would be smoothed away.
 const HOP = { omega: 13, damping: 0.25, kick: 1.0 }
 const PUFF = { omega: 5, damping: 0.5, sigh: 0.22, huff: 0.35, creak: 0.12 }
+// Moves that land together add up to no more than this, as a share of its size (a flurry
+// of hits huffing at once ballooned it).
+const MOST_HOP = 0.12
+const MOST_PUFF = 0.08
 const SHUDDER = { amp: 0.06, seconds: 0.8 }
 const NERVOUS_SHAKE = 0.015 // while a warned urge or sneeze is on its way
 // A strained sphincter trembles: from 30 % strain, up to this at 100 %.
@@ -60,8 +64,16 @@ export function createBodyLanguage() {
     breathPhase = (breathPhase + Math.PI * 2 * breathRate * dt) % (Math.PI * 2)
     hopV -= (HOP.omega * HOP.omega * hop + 2 * HOP.damping * HOP.omega * hopV) * dt
     hop += hopV * dt
+    if (hop > MOST_HOP) {
+      hop = MOST_HOP
+      hopV = Math.min(0, hopV)
+    }
     puffV -= (PUFF.omega * PUFF.omega * puff + 2 * PUFF.damping * PUFF.omega * puffV) * dt
     puff += puffV * dt
+    if (puff > MOST_PUFF) {
+      puff = MOST_PUFF
+      puffV = Math.min(0, puffV)
+    }
     shudder = Math.max(0, shudder - dt / SHUDDER.seconds)
     droop = Math.max(0, droop - dt / DROOP.seconds)
     state.flash = Math.max(0, state.flash - dt * 2.5)

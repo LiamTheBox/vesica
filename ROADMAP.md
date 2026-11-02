@@ -81,7 +81,9 @@ Requested along the way, each in its own commits:
 - **2026-11-02, requested:** the bladder holds 2000 ml, and the rest keeps its share of that: what runs start with,
   the commute's 1550 ml, a precision void of 500 ml from 1000. Drinks are the same size, so the sandbox takes longer
   to fill; the arcade serves drinks more often, so its balance is as it was. Voiding pushes harder the fuller it is:
-  full, it empties in about half a minute, and even tens of litres in about a minute.
+  full, it empties in about half a minute, and even tens of litres in about a minute. Pokes and slaps have a force
+  limit: however many land, the wall dents and swells only so far and springs back. Subtitles are off unless turned
+  on in Settings.
 
 ## Open: phone checks
 
