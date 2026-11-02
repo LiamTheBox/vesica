@@ -3,7 +3,7 @@ import { personalityOf } from './personalities'
 import { LANGUAGE } from '../i18n'
 
 // The bladder's voice: which line it says when, through the browser's speech engine, and
-// the subtitle for each line (shown with the voice off too). What it says, and how, is its
+// the subtitle for each line (shown, if asked for, with the voice off too). What it says, and how, is its
 // personality's (personalities.js).
 
 // Who gets to speak. Chatter used to share one 10 s cooldown with everything, so a poke, a

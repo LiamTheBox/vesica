@@ -17,9 +17,11 @@ const SUBTITLE_ICONS = {
 // beat to read it, 3–8 s.
 const subtitleSeconds = (spoken = 3) => Math.min(8, Math.max(3, 1.5 + 1.5 * spoken))
 
-// What the bladder just said. Sits in the stage's top stack; a newer line replaces it.
-// Screen readers hear it from a hidden live region, as it's said.
+// What the bladder just said, if the player wants subtitles (Settings). Sits in the stage's
+// top stack; a newer line replaces it. Screen readers hear it from a hidden live region, as
+// it's said, either way.
 export function Subtitles() {
+  const shown = useUiStore((s) => s.settings.subtitles)
   const subtitle = useUiStore((s) => s.currentSubtitle)
   const name = useUiStore((s) => s.settings.bladderName.trim() || 'Vesica')
   const [expiredId, setExpiredId] = useState(null)
@@ -34,7 +36,7 @@ export function Subtitles() {
   return (
     <>
       <p aria-live="polite" className="sr-only">{visible ? subtitle.text : ''}</p>
-      {subtitle && (
+      {shown && subtitle && (
         <div aria-hidden="true" className={`pointer-events-none w-full max-w-lg flex justify-center transition-opacity duration-200 ${visible ? 'opacity-100 bubble-animate' : 'opacity-0'}`}>
           <div className="glass-hud px-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2.5 border border-amber-400/40 max-w-full">
             <div className="text-lg flex-shrink-0">{SUBTITLE_ICONS[subtitle.category] ?? MOOD_FACES[subtitle.mood] ?? '🗣️'}</div>

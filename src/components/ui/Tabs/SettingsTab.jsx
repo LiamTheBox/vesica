@@ -192,6 +192,12 @@ export default function SettingsTab() {
           onChange={(v) => updateSettings({ chatGap: v })}
         />
         <p className="text-[10px] text-slate-500 font-mono">{t('settings.voice.about')}</p>
+        <Toggle
+          label={t('settings.subtitles')}
+          hint={t('settings.subtitles.hint')}
+          checked={settings.subtitles}
+          onChange={(v) => updateSettings({ subtitles: v })}
+        />
       </div>
 
       <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">

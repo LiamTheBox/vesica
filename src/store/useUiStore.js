@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS = {
   voiceName: '', // an installed voice's name; '' picks one (on the device first)
   personality: 'dramatic', // audio/personalities.js
   bladderName: 'Vesica', // shown on its subtitles
+  subtitles: false, // show what it says on screen (requested: off unless asked for)
   chatGap: 30, // seconds between the bladder's own chatter, at least (reactions don't wait for it)
   sfxEnabled: true,
   sfxVolume: 0.8,
