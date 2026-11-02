@@ -64,11 +64,11 @@ describe('stickers (A12)', () => {
     expect(kept.tasted).toHaveLength(10)
   })
 
-  it('holds 700 ml, and more than full', () => {
+  it('holds 1900 ml, and more than full', () => {
     const kept = EMPTY_STICKERS
-    expect(stickersFromTick(kept, createStickerProgress(), at({ volume: 650 }), 1 / 60)).toEqual([])
-    expect(stickersFromTick(kept, createStickerProgress(), at({ volume: 700 }), 1 / 60)).toEqual(['held700'])
-    expect(stickersFromTick(kept, createStickerProgress(), at({ volume: 760 }), 1 / 60)).toEqual(['held700', 'beyond'])
+    expect(stickersFromTick(kept, createStickerProgress(), at({ volume: 1800 }), 1 / 60)).toEqual([])
+    expect(stickersFromTick(kept, createStickerProgress(), at({ volume: 1900 }), 1 / 60)).toEqual(['held700'])
+    expect(stickersFromTick(kept, createStickerProgress(), at({ volume: 2030 }), 1 / 60)).toEqual(['held700', 'beyond'])
   })
 
   it('survives a pitcher: a minute after it without a leak', () => {

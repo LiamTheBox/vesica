@@ -68,7 +68,7 @@ describe('slap (original slapBladder)', () => {
 
   it('twenty slaps on a full bladder end in total failure, once the leak countdown runs out', () => {
     const sim = createSimState()
-    sim.volume = 700
+    sim.volume = 1870
     for (let i = 0; i < 19; i++) slapAt(sim, [], { x: 0, y: 0, z: 2.2 }, 2.4)
     stepSim(sim, 1 / 60, [], () => 0.5)
     expect(sim.sphincterToneStrain).toBeLessThan(1)
@@ -119,6 +119,7 @@ describe('a full bladder is taut (E)', () => {
   const settled = (volume) => {
     const sim = createSimState()
     sim.baseDrip = 0
+    sim.maxCapacity = 750 // it's taut by how full it is
     sim.volume = volume
     stepSim(sim, DT, [])
     return sim

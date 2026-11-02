@@ -65,7 +65,7 @@ test('a full bladder is framed inside the stage', async ({ page }, testInfo) => 
   // settle on one shape (they run on frame time, so how long that takes varies).
   await page.evaluate(() => {
     window.__vesica.pause()
-    window.__vesica.setState({ volume: 750, jiggleIntensity: 0, sphincterToneStrain: 0, sloshAngleX: 0, sloshAngleZ: 0 })
+    window.__vesica.setState({ volume: 2000, jiggleIntensity: 0, sphincterToneStrain: 0, sloshAngleX: 0, sloshAngleZ: 0 })
   })
 
   const measure = () => page.evaluate(() => {

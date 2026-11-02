@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { createSimState } from '../sim/sim'
 import { createMood, feel, moodOf, SLEEPY_AFTER, stepMood } from './mood'
 
-const at = (volume, state = {}) => Object.assign(createSimState(), { volume }, state)
+// Mood goes by how full it is, so these keep to a round 750 ml bladder.
+const at = (volume, state = {}) => Object.assign(createSimState(), { maxCapacity: 750, volume }, state)
 const pass = (mood, seconds) => {
   for (let t = 0; t < seconds - 1e-9; t += 0.1) stepMood(mood, 0.1)
 }

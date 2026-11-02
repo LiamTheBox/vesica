@@ -60,7 +60,7 @@ export default function TelemetryBar() {
 
       <div className="grid grid-cols-[auto_auto_minmax(0,1fr)] gap-3">
         <Reading label={t('bar.pressure')} testId="pressure" className={pressureTone}>{t('unit.cmH2O', { n: pressure.toFixed(1) })}</Reading>
-        <Reading label={t('bar.flow')} className="text-amber-300">{t('unit.mlPerS', { n: flowRate.toFixed(1) })}</Reading>
+        <Reading label={t('bar.flow')} className="text-amber-300">{t('unit.mlPerS', { n: flowRate >= 100 ? Math.round(flowRate) : flowRate.toFixed(1) })}</Reading>
         <div className="text-right min-w-0">
           <Reading label={t('bar.sphincter')} testId="sphincter-readout" className={sphincterTone}>{sphincterText}</Reading>
         </div>

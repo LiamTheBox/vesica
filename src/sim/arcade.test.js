@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  createSimState, ingestBeverage, LEAK_COUNTDOWN, resetOrgan, SANDBOX_RULES, SHAKY_RECOVERY, startClench, startVoidAttempt, stepSim,
+  CAPACITY_ML, createSimState, ingestBeverage, LEAK_COUNTDOWN, resetOrgan, SANDBOX_RULES, SHAKY_RECOVERY, startClench, startVoidAttempt, stepSim,
   stopClench,
 } from './sim'
 import { ARCADE_RULES, fillMultiplier, nextServe, quitArcadeRun, scoreArcade, startArcadeRun, stepGame } from './arcade'
@@ -31,7 +31,7 @@ const types = (events) => events.map((e) => e.type)
 const points = (events, reason) => events.filter((e) => e.type === 'arcadePoints' && e.reason === reason)
 
 // A run with its drinks and sneezes held off, so a test controls what happens.
-function quietRun(volume = 600) {
+function quietRun(volume = 1600) {
   const sim = createSimState()
   startArcadeRun(sim, [], fixed(0.5))
   sim.baseDrip = 0
@@ -47,7 +47,7 @@ describe('starting a run', () => {
     sim.sphincterToneStrain = 0.7
     const out = []
     startArcadeRun(sim, out, fixed(0.5))
-    expect(sim).toMatchObject({ volume: 300, sphincterToneStrain: 0, activeChallenge: 'arcade', ...ARCADE_RULES })
+    expect(sim).toMatchObject({ volume: 800, sphincterToneStrain: 0, activeChallenge: 'arcade', ...ARCADE_RULES })
     expect(sim.arcade).toMatchObject({ score: 0, level: 1, combo: 0 })
     expect(out).toContainEqual({ type: 'challengeStart', challenge: 'arcade' })
   })
@@ -67,17 +67,17 @@ describe('starting a run', () => {
 
 describe('no limit to what it holds (requested)', () => {
   it('keeps filling past full, and past full feels no fuller: pressure and urge waves hold', () => {
-    const sim = quietRun(750)
+    const sim = quietRun(2000)
     run(sim, DT)
     const full = sim.pressure
-    sim.volume = 3000
+    sim.volume = 8000
     sim.urgeWaveTimer = 999
     run(sim, DT)
     expect(sim.pressure).toBeCloseTo(full, 6)
 
     ingestBeverage(sim, [], 'pitcher')
     run(sim, 30)
-    expect(sim.volume).toBeCloseTo(3600, 0)
+    expect(sim.volume).toBeCloseTo(8600, 0)
     // Urge waves come no faster than when full (7 s apart, at this level's pace).
     sim.urgeWaveTimer = 0
     const events = run(sim, 2, { until: (_, e) => types(e).includes('urgeStart') })
@@ -88,7 +88,7 @@ describe('no limit to what it holds (requested)', () => {
   })
 
   it('still feels no fuller than full after a run ends overfilled, until it is back down to full', () => {
-    const sim = quietRun(3000)
+    const sim = quietRun(8000)
     run(sim, DT)
     const full = sim.pressure
     startVoidAttempt(sim, [])
@@ -100,23 +100,23 @@ describe('no limit to what it holds (requested)', () => {
 
     // Emptied to below full, it's the sandbox's bladder again, with no jump on the way.
     let highest = 0
-    run(sim, 200, { until: (s) => { highest = Math.max(highest, s.pressure); return s.volume < 700 } })
+    run(sim, 200, { until: (s) => { highest = Math.max(highest, s.pressure); return s.volume < 1800 } })
     expect(highest).toBeLessThanOrEqual(full + 1e-9)
     expect(sim.fullAt).toBe(SANDBOX_RULES.fullAt)
   })
 
   it("keeps what it holds when the run ends, but the sandbox's bladder fills no further than 125 %", () => {
-    const sim = quietRun(3000)
+    const sim = quietRun(8000)
     quitArcadeRun(sim, [])
     sim.baseDrip = 1
     run(sim, 1)
-    expect(sim.volume).toBe(3000)
+    expect(sim.volume).toBe(8000)
 
     resetOrgan(sim, [], fixed(0.5))
-    sim.volume = 930
+    sim.volume = 2480
     sim.baseDrip = 5
     run(sim, 5)
-    expect(sim.volume).toBeCloseTo(937.5, 6)
+    expect(sim.volume).toBeCloseTo(2500, 6)
   })
 })
 
@@ -170,7 +170,7 @@ describe('urge waves', () => {
   })
 
   it('get stronger, closer together and slower to calm as the levels go up', () => {
-    const sim = quietRun(300) // below the urge threshold, so nothing ends the run
+    const sim = quietRun(800) // below the urge threshold, so nothing ends the run
     const level1 = { strength: sim.urgeStrength, interval: sim.urgeIntervalScale, calm: sim.urgeSuppressRate, relief: sim.kegelReliefRate }
     const events = run(sim, 90.1)
     expect(events.filter((e) => e.type === 'arcadeLevel').map((e) => e.level)).toEqual([2, 3, 4])
@@ -183,7 +183,7 @@ describe('urge waves', () => {
 
 describe('clench economy', () => {
   it('costs 3x and eases no strain with nothing to hold back', () => {
-    const sim = quietRun(300)
+    const sim = quietRun(800)
     sim.sphincterToneStrain = 0.5
     play(sim, startClench)
     run(sim, 1)
@@ -192,7 +192,7 @@ describe('clench economy', () => {
   })
 
   it('needs 30 % stamina back after giving out, and the shaky grip gets it back slowly', () => {
-    const sim = quietRun(300)
+    const sim = quietRun(800)
     play(sim, startClench)
     run(sim, 4, { until: (s) => s.clenchExhausted })
     expect(sim.clenchExhausted).toBe(true)
@@ -216,7 +216,7 @@ describe('clench economy', () => {
 
 describe('leaks', () => {
   it('wait 5 s at 100 % strain, unannounced: a clench before then is a save, and scores', () => {
-    const sim = quietRun(450)
+    const sim = quietRun(1200)
     sim.sphincterToneStrain = 1
     expect(types(run(sim, LEAK_COUNTDOWN - 0.1))).not.toContain('leakStart')
     const events = play(sim, startClench)
@@ -225,7 +225,7 @@ describe('leaks', () => {
   })
 
   it('a clench stops the countdown without easing the strain; letting go picks it up where it was', () => {
-    const sim = quietRun(450)
+    const sim = quietRun(1200)
     sim.urgeWaveTimer = 999
     sim.sphincterToneStrain = 1
     run(sim, 3)
@@ -238,7 +238,7 @@ describe('leaks', () => {
   })
 
   it('a save costs stamina and leaves the grip shaky: stamina comes back slowly for a while', () => {
-    const sim = quietRun(450)
+    const sim = quietRun(1200)
     sim.sphincterToneStrain = 1
     run(sim, 0.3)
     const before = sim.kegelStamina
@@ -259,7 +259,7 @@ describe('leaks', () => {
   })
 
   it('cost points and the combo when the countdown runs out', () => {
-    const sim = quietRun(450)
+    const sim = quietRun(1200)
     sim.arcade.score = 500
     sim.arcade.combo = 3
     sim.sphincterToneStrain = 1
@@ -271,7 +271,7 @@ describe('leaks', () => {
   })
 
   it('a total failure ends the run, unbanked', () => {
-    const sim = quietRun(720)
+    const sim = quietRun(1920)
     sim.arcade.score = 1234
     sim.sphincterToneStrain = 1
     const events = run(sim, LEAK_COUNTDOWN + 0.1)
@@ -285,9 +285,9 @@ describe('leaks', () => {
 describe('scoring', () => {
   it('pays for holding, more the fuller the bladder', () => {
     expect([0.3, 0.5, 0.8, 1.0, 1.2].map(fillMultiplier)).toEqual([1, 2, 3, 5, 5])
-    const half = quietRun(300)
+    const half = quietRun(800)
     run(half, 2)
-    const full = quietRun(760)
+    const full = quietRun(2030)
     full.urgeWaveTimer = 999
     run(full, 2)
     expect(half.arcade.score).toBeCloseTo(20, 0)
@@ -295,7 +295,7 @@ describe('scoring', () => {
   })
 
   it('serves drinks on its own; choosing to drink earns a bonus', () => {
-    const sim = quietRun(300)
+    const sim = quietRun(800)
     sim.arcade.serveTimer = 0.01
     const served = run(sim, DT)
     expect(served.find((e) => e.type === 'ingest')).toMatchObject({ served: true })
@@ -309,7 +309,7 @@ describe('scoring', () => {
   })
 
   it('announces sneezes from level 2; bracing for one scores', () => {
-    const sim = quietRun(300)
+    const sim = quietRun(800)
     sim.arcade.time = 30
     sim.arcade.sneezeTimer = 1.2
     const warned = run(sim, 0.3)
@@ -323,7 +323,7 @@ describe('scoring', () => {
   })
 
   it('emptying banks the score: volume times the fill multiplier, then the run ends', () => {
-    const sim = quietRun(600)
+    const sim = quietRun(1600)
     sim.arcade.score = 1000
     play(sim, startVoidAttempt)
     const events = run(sim, 1.1)
@@ -359,9 +359,11 @@ describe('drinks served from the whole menu (A10)', () => {
 
   it('waits longer after a bigger drink, so a run fills as fast as with the shelf alone', () => {
     expect(nextServe(1, 300)).toBeCloseTo(2 * nextServe(1, 150), 6)
-    // The old menus' ml a second, by level: their average serving every 26 - 1.5 (level - 1) s, at least 12.
+    // The old menus' ml a second for a 750 ml bladder, by level: their average serving every
+    // 26 - 1.5 (level - 1) s, at least 12. It fills the same share of itself a second now.
     const old = { 1: 150 / 26, 3: 205 / 23, 5: 275 / 20, 9: 275 / 14 }
-    for (const [level, rate] of Object.entries(old)) {
+    for (const [level, rate750] of Object.entries(old)) {
+      const rate = (rate750 * CAPACITY_ML) / 750
       const menu = SERVED_TIERS[Math.min(2, Math.floor((level - 1) / 2))]
       const ml = menu.reduce((sum, key) => sum + DRINKS[key].vol, 0)
       const seconds = menu.reduce((sum, key) => sum + nextServe(Number(level), DRINKS[key].vol), 0)

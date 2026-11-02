@@ -10,7 +10,10 @@ import { emoteFor } from '../../feedback/emotes'
 import { computeNormals } from './normals'
 import { FRAME_CENTER_Y, ORGAN_HALF_HEIGHT } from './stageFit'
 import { FLARE_RINGS, URETER_RING } from './ureter'
-import { createSimState } from '../../sim/sim'
+import { createSimState as newSimState } from '../../sim/sim'
+
+// The organ goes by how full it is, so these keep to a round 750 ml bladder.
+const createSimState = () => Object.assign(newSimState(), { maxCapacity: 750 })
 
 // Three.js clips points whose signed distance to a clipping plane is negative.
 const isClipped = (plane, point) => plane.distanceToPoint(point) < 0

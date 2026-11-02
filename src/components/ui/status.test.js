@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { initialHud } from '../../store/useUiStore'
 import { organStatus, sphincterReadout } from './status'
 
-const hud = (over) => ({ ...initialHud, ...over })
+// The badge goes by how full it is, so these keep to a round 750 ml bladder.
+const hud = (over) => ({ ...initialHud, maxCapacity: 750, ...over })
 
 describe('sphincter readout (original updateUI priority order)', () => {
   it.each([

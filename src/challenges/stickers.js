@@ -22,6 +22,7 @@ export const STICKERS = [
 
 const TASTER_DRINKS = 10
 const PITCHER_SECONDS = 60
+const HELD_ML = 1900
 const SAVES = 3
 
 // What's kept on the device: the stickers earned (id -> when) and the drinks tried.
@@ -87,7 +88,7 @@ export function stickersFromEvent(kept, progress, event, sim) {
 // The stickers earned by holding on over `dt` seconds.
 export function stickersFromTick(kept, progress, sim, dt) {
   const earned = []
-  if (sim.volume >= 700) earned.push('held700')
+  if (sim.volume >= HELD_ML) earned.push('held700') // named when it held 750 ml in all
   if (sim.volume > sim.maxCapacity) earned.push('beyond')
   if (progress.pitcher !== null) {
     progress.pitcher += dt

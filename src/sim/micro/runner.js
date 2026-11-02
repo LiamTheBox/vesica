@@ -20,9 +20,9 @@ const BOSS_INTRO_SECONDS = 1.3
 const SUB_PROMPT_SECONDS = 0.9 // each verb within a boss
 export const RESULT_SECONDS = 1.1
 export const MIN_PLAY_SECONDS = 1.8
-export const START_ML = 300
-export const FILL_PER_GAME = 20
-const LEAK_ML = 10 // a lost game's leak, up to half as much again
+export const START_ML = 800
+export const FILL_PER_GAME = 50
+const LEAK_ML = 25 // a lost game's leak, up to half as much again
 export const MICRO_RULES = { urgeIntervalScale: Infinity, volumeCap: Infinity, fullAt: 1 }
 
 export const speedAt = (level) => Math.min(MAX_SPEED, 1 + SPEED_STEP * (level - 1))

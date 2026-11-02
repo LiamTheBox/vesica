@@ -11,7 +11,7 @@ const POINTS_LINES = { perfect: 'proud', braced: 'proud' }
 // Full enough that another drink is a problem.
 const TOO_FULL_TO_DRINK = 0.72
 // Emptied enough, after a void, to say so.
-const EMPTIED_ML = 150
+const EMPTIED_ML = 400
 
 // The same touch reads differently empty (it tickles) and full (it hurts), and a run of
 // them wears thin.

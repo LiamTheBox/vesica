@@ -21,7 +21,7 @@ test('a tap on the start screen starts an arcade run; the Sandbox button skips i
   await expect(banner(page)).toContainText('ARCADE')
   const run = await portState(page)
   expect(run.activeChallenge).toBe('arcade')
-  expect(run.volume).toBeGreaterThanOrEqual(300)
+  expect(run.volume).toBeGreaterThanOrEqual(800)
 
   await startApp(page)
   expect((await portState(page)).activeChallenge).toBe(null)
@@ -32,7 +32,7 @@ test('an announced urge, clenched on time, scores a perfect', async ({ page }) =
   await startApp(page, { mode: 'arcade' })
   await v(page, () => {
     window.__vesica.pause()
-    window.__vesica.setState({ volume: 560, urgeWaveTimer: 1 })
+    window.__vesica.setState({ volume: 1490, urgeWaveTimer: 1 })
   })
   await step(page, 6)
   await expect(page.getByText('URGE INCOMING: CLENCH AS IT LANDS')).toBeVisible()
@@ -46,7 +46,7 @@ test('emptying banks the score, and the best shows on the Challenges card', asyn
   await startApp(page, { mode: 'arcade' })
   await v(page, () => {
     window.__vesica.pause()
-    window.__vesica.setState({ volume: 600 })
+    window.__vesica.setState({ volume: 1600 })
   })
   await hold(page, /EMPTY \(HOLD\)/)
   await step(page, 70) // 1 s to relax the valve, then it flows and the run banks

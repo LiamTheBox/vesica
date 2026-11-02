@@ -54,8 +54,9 @@ test('parity harness reads the original and the port', async ({ page }, testInfo
   await page.waitForFunction(() => window.__vesica?.getState().telemetryLength > 10)
   const port = await portState(page)
 
-  // Both start from the same resting state (a few seconds of drip apart).
-  expect(Math.abs(original.volume - port.volume)).toBeLessThan(10)
+  // Both start from the same resting state (a few seconds of drip apart): as full as each
+  // other, the port's bladder holding 2000 ml (requested) and the original's 750.
+  expect(Math.abs(original.volume / 750 - port.volume / 2000)).toBeLessThan(0.02)
   expect(Math.abs(original.pressure - port.pressure)).toBeLessThan(1)
   expect(port.kegelStamina).toBe(original.kegelStamina)
   expect(port.sphincterToneStrain).toBe(original.sphincterToneStrain)

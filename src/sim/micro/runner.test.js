@@ -49,12 +49,12 @@ function run(sim, seconds, { wins = () => true, until } = {}) {
 }
 
 describe('microgames run (M8)', () => {
-  it('starts with four lives at 300 ml, with no urges, sneezes or drinks of its own', () => {
+  it('starts with four lives at 40 % full, with no urges, sneezes or drinks of its own', () => {
     const { sim, out } = newRun()
     expect(types(out)).toEqual(expect.arrayContaining(['challengeStart', 'microPrompt']))
     expect(sim.micro).toMatchObject({ lives: MAX_LIVES, score: 0, level: 1, phase: 'prompt' })
     expect(sim).toMatchObject({ activeChallenge: 'micro', volume: START_ML, volumeCap: Infinity, fullAt: 1 })
-    sim.volume = 700
+    sim.volume = 1900
     const events = run(sim, 60)
     expect(types(events)).not.toContain('urgeStart')
     expect(types(events)).not.toContain('urgeWarning')
@@ -92,10 +92,10 @@ describe('microgames run (M8)', () => {
     expect(sim.micro.lives).toBe(MAX_LIVES - 1)
     expect(sim.sphincterToneStrain).toBeCloseTo(0.25, 9)
     expect(sim.isStressLeaking).toBe(true)
-    const after = run(sim, 2, { wins: () => false, until: (s, e) => types(e).includes('leakEnd') })
+    const after = run(sim, 4, { wins: () => false, until: (s, e) => types(e).includes('leakEnd') })
     expect(types(after)).toContain('leakEnd')
-    expect(sim.totalLeakedVolume).toBeGreaterThanOrEqual(10)
-    expect(sim.totalLeakedVolume).toBeLessThanOrEqual(15.5)
+    expect(sim.totalLeakedVolume).toBeGreaterThanOrEqual(25)
+    expect(sim.totalLeakedVolume).toBeLessThanOrEqual(38)
   })
 
   it('out of lives, the sphincter gives way and the run ends with its score', () => {

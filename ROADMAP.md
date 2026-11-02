@@ -78,6 +78,10 @@ Requested along the way, each in its own commits:
 - **2026-11-02, requested:** the bladder empties with less force. Its dome eases down into a shallow dip about half
   as deep, in slower pushes, and it flushes much less, so the urine keeps its colour; an urge wave's dip is halved
   too. The wall no longer folds over itself.
+- **2026-11-02, requested:** the bladder holds 2000 ml, and the rest keeps its share of that: what runs start with,
+  the commute's 1550 ml, a precision void of 500 ml from 1000. Drinks are the same size, so the sandbox takes longer
+  to fill; the arcade serves drinks more often, so its balance is as it was. Voiding pushes harder the fuller it is:
+  full, it empties in about half a minute, and even tens of litres in about a minute.
 
 ## Open: phone checks
 

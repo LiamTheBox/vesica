@@ -54,16 +54,16 @@ test('precision: hold to void, result card, retry', async ({ page }) => {
   const box = await empty.boundingBox()
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
   await page.mouse.down()
-  // Step until ~200 ml has left, then let go.
+  // Step until ~500 ml has left, then let go.
   await v(page, () => {
     const s = () => window.__vesica.getState()
-    for (let i = 0; i < 3000 && s().precisionStartVolume - s().volume < 197; i++) window.__vesica.step(1)
+    for (let i = 0; i < 3000 && s().precisionStartVolume - s().volume < 497; i++) window.__vesica.step(1)
   })
   await page.mouse.up()
 
-  await expect(resultCard(page)).toContainText(/SUCCESS \((19[0-9]|20[0-9]|210)ml\)/)
+  await expect(resultCard(page)).toContainText(/SUCCESS \((47[5-9]|4[89][0-9]|5[01][0-9]|52[0-5])ml\)/)
   await resultCard(page).getByRole('button', { name: 'Retry' }).click()
   await expect(resultCard(page)).toBeHidden()
   await expect(banner(page)).toContainText('PRECISION')
-  expect((await portState(page)).volume).toBe(520)
+  expect((await portState(page)).volume).toBe(1000)
 })

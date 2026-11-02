@@ -159,7 +159,7 @@ test('the urine grows with the volume held, and an empty bladder holds none', as
 
   expect((await urineAt(10)).visible).toBe(false) // what's left after voiding
   const sizes = []
-  for (const volume of [20, 120, 375, 750]) {
+  for (const volume of [50, 320, 1000, 2000]) {
     const urine = await urineAt(volume)
     expect(urine.visible).toBe(true)
     sizes.push(urine.scale)

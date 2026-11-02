@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ALCOHOL, CAFFEINE, cough, createSimState, FAILURE_PRESSURE, ingestBeverage, LEAK_COUNTDOWN, LEAK_FLOW, PEAK_FLOW, resetOrgan,
-  RESEAL_STRAIN, SANDBOX_RULES, soothe, startClench, startCommuteChallenge, startPrecisionChallenge, startVoidAttempt,
-  stepSim, stopClench, stopVoidAttempt, voidFlow,
+  ALCOHOL, CAFFEINE, CAPACITY_ML, cough, createSimState, EMPTYING_SECONDS, FAILURE_PRESSURE, ingestBeverage,
+  LEAK_COUNTDOWN, LEAK_FLOW, PRECISION, RESEAL_STRAIN, resetOrgan, SANDBOX_RULES, soothe, startClench,
+  startCommuteChallenge, startPrecisionChallenge, startVoidAttempt, STEADY_FLOW, stepSim, stopClench,
+  stopVoidAttempt, voidFlow,
 } from './sim'
 import { extractOriginalConst } from '../test/original'
 
@@ -22,10 +23,12 @@ function run(sim, seconds, { dt = DT, rng = fixed(0.5), until } = {}) {
 const types = (events) => events.map((e) => e.type)
 const expectedPressure = (fill) => 4.0 + Math.pow(fill, 3.0) * 80.0
 
-// A quiet bladder: no kidney drip, so volume only changes when the test says so.
+// A quiet bladder: no kidney drip, so volume only changes when the test says so. Pressure
+// and urgency go by how full it is, so these keep to a round 750 ml bladder.
 function quietSim(volume) {
   const sim = createSimState()
   sim.baseDrip = 0
+  sim.maxCapacity = 750
   sim.volume = volume
   return sim
 }
@@ -35,6 +38,8 @@ const CHANGED_FROM_ORIGINAL = {
   kegelRecoverRate: 0.64, // the original's 0.16, made 4x faster
   kegelFatigueRate: 0.11, // the original's 0.22, drains 2x slower
   baseDrip: 1 / 30, // the original's 1 ml/s: 1 ml every 30 s
+  maxCapacity: 2000, // the original's 750
+  volume: 320, // the original's 120: the same share of it
 }
 
 describe('initial state', () => {
@@ -157,18 +162,37 @@ describe('voiding', () => {
     expect(types(events)).toContain('voidStop')
   })
 
-  it('peaks at 20 ml/s and slows over the last ~150 ml (requested)', () => {
-    expect(voidFlow(500, 1)).toBe(PEAK_FLOW)
-    expect(voidFlow(160, 1)).toBe(PEAK_FLOW)
-    expect(voidFlow(85, 1)).toBeCloseTo(PEAK_FLOW * Math.sqrt(0.5), 9)
-    expect(voidFlow(20, 1)).toBeLessThan(6)
+  it('pushes harder the fuller it is, holds steady below that, and slows over the last ~150 ml', () => {
+    expect(voidFlow(2000, 1)).toBeCloseTo(2000 / EMPTYING_SECONDS, 9)
+    expect(voidFlow(1000, 1)).toBeCloseTo(1000 / EMPTYING_SECONDS, 9)
+    expect(voidFlow(STEADY_FLOW * EMPTYING_SECONDS, 1)).toBeCloseTo(STEADY_FLOW, 9)
+    expect(voidFlow(300, 1)).toBe(STEADY_FLOW)
+    expect(voidFlow(160, 1)).toBe(STEADY_FLOW)
+    expect(voidFlow(85, 1)).toBeCloseTo(STEADY_FLOW * Math.sqrt(0.5), 9)
+    expect(voidFlow(20, 1)).toBeLessThan(12)
     expect(voidFlow(10, 1)).toBeGreaterThan(0) // a last dribble, never stuck
+    expect(voidFlow(1000, 0.5)).toBeCloseTo(0.5 * voidFlow(1000, 1), 9) // no faster than the sphincter opens
+  })
 
-    const sim = quietSim(500)
-    startVoidAttempt(sim, [])
-    let peak = 0
-    run(sim, 60, { until: (s) => { peak = Math.max(peak, s.flowRate); return !s.isAttemptingVoid } })
-    expect(peak).toBeCloseTo(PEAK_FLOW, 1)
+  // Seconds from `volume` until voiding stops on its own.
+  const timeToEmpty = (volume, start = startVoidAttempt) => {
+    const sim = quietSim(volume)
+    sim.maxCapacity = CAPACITY_ML
+    start(sim, [])
+    let seconds = 0
+    while ((sim.isAttemptingVoid || sim.involuntaryVoiding) && seconds < 3600) {
+      stepSim(sim, DT, [], fixed(0.5))
+      seconds += DT
+    }
+    return seconds
+  }
+
+  it('empties a full bladder in about half a minute, and a hugely overfilled one in about a minute (requested)', () => {
+    expect(timeToEmpty(CAPACITY_ML)).toBeGreaterThan(25)
+    expect(timeToEmpty(CAPACITY_ML)).toBeLessThan(45)
+    expect(timeToEmpty(38910)).toBeLessThan(90)
+    const givesWay = (sim) => { sim.involuntaryVoiding = true }
+    expect(timeToEmpty(38910, givesWay)).toBeLessThan(90)
   })
 
   it('eases the sphincter strain while it flows', () => {
@@ -314,7 +338,7 @@ describe('total sphincter failure', () => {
     expect(types(first)).not.toContain('leakStart')
 
     run(sim, DT)
-    expect(sim.flowRate).toBeCloseTo(PEAK_FLOW, 6)
+    expect(sim.flowRate).toBeCloseTo(voidFlow(sim.volume + sim.flowRate * DT, 1), 6)
 
     const events = run(sim, 60, { until: (s) => !s.involuntaryVoiding })
     expect(types(events)).toContain('failureEnd')
@@ -391,10 +415,10 @@ describe('drinks', () => {
     const sim = createSimState()
     ingestBeverage(sim, [], 'water', fixed(0.5))
     run(sim, 10)
-    expect(sim.volume).toBeCloseTo(120 + 80 + 10 / 30, 3)
+    expect(sim.volume).toBeCloseTo(320 + 80 + 10 / 30, 3)
     run(sim, 20)
     expect(sim.activeBeverages).toHaveLength(0)
-    expect(sim.volume).toBeCloseTo(120 + 180 + 1, 3)
+    expect(sim.volume).toBeCloseTo(320 + 180 + 1, 3)
   })
 })
 
@@ -429,7 +453,7 @@ describe('reset', () => {
     const out = []
     resetOrgan(sim, out, fixed(0.5))
     expect(sim).toMatchObject({
-      volume: 40, sphincterToneStrain: 0, totalLeakedVolume: 0, isUrgeWaveActive: false, activeChallenge: null,
+      volume: 100, sphincterToneStrain: 0, totalLeakedVolume: 0, isUrgeWaveActive: false, activeChallenge: null,
       arcade: null, urgeWarned: false, ...SANDBOX_RULES,
     })
     expect(types(out)).toEqual(['reset', 'agitation'])
@@ -451,7 +475,7 @@ describe('commute challenge', () => {
   it('fails when the potholes force leaks', () => {
     const sim = createSimState()
     startCommuteChallenge(sim, [], fixed(0.5))
-    expect(sim.volume).toBe(580)
+    expect(sim.volume).toBe(1550)
     const events = run(sim, 61)
     const result = events.find((e) => e.type === 'challengeResult')
     expect(result).toMatchObject({ challenge: 'commute', success: false })
@@ -478,20 +502,23 @@ describe('precision challenge', () => {
     return out.find((e) => e.type === 'challengeResult')
   }
 
-  it('succeeds within ±10 ml of 200 ml', () => {
+  it('succeeds within ±25 ml of 500 ml, half a second or so either side of the moment', () => {
     const sim = createSimState()
     startPrecisionChallenge(sim, [], fixed(0.5))
     sim.baseDrip = 0
-    const result = voidUntil(sim, 200)
+    const result = voidUntil(sim, PRECISION.target)
     expect(result).toMatchObject({ challenge: 'precision', success: true })
-    expect(Math.abs(result.voided - 200)).toBeLessThanOrEqual(10)
+    expect(Math.abs(result.voided - PRECISION.target)).toBeLessThanOrEqual(PRECISION.tolerance)
+    // As fair as it was at 200 ± 10 ml and 20 ml/s: time to let go, either side.
+    const window = PRECISION.tolerance / voidFlow(PRECISION.start - PRECISION.target, 1)
+    expect(window).toBeGreaterThan(0.5)
   })
 
   it('fails when stopped too early', () => {
     const sim = createSimState()
     startPrecisionChallenge(sim, [], fixed(0.5))
     sim.baseDrip = 0
-    expect(voidUntil(sim, 100)).toMatchObject({ challenge: 'precision', success: false })
+    expect(voidUntil(sim, 300)).toMatchObject({ challenge: 'precision', success: false })
   })
 })
 

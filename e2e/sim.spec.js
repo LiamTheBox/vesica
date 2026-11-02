@@ -34,7 +34,7 @@ test('a cough strains the sphincter; at 100 % it leaks', async ({ page }) => {
   await pause(page)
   await vesica(page, () => {
     window.__vesica.clearEvents()
-    window.__vesica.setState({ volume: 600 })
+    window.__vesica.setState({ volume: 1600 })
     window.__vesica.act('cough')
   })
   await step(page, 60)
@@ -61,7 +61,7 @@ test.describe('same scenario in the original and the port', () => {
 
     await startApp(page)
     await pause(page)
-    await vesica(page, () => window.__vesica.setState({ volume: 400, urgeWaveTimer: 0 }))
+    await vesica(page, () => window.__vesica.setState({ volume: 1070, urgeWaveTimer: 0 })) // as full as the original's 400 of 750
     await step(page, 1)
     await expect(page.getByText('URGE WAVE! CLENCH TO CALM IT')).toBeVisible()
     await step(page, 30)
@@ -116,7 +116,7 @@ test.describe('controls drive the simulation', () => {
 
   test('holding Empty starts voiding after the 1 s latency', async ({ page }) => {
     await pause(page)
-    await vesica(page, () => window.__vesica.setState({ volume: 400 }))
+    await vesica(page, () => window.__vesica.setState({ volume: 1070 }))
     // The label changes while held, so find the button by all three of its labels.
     const button = page.getByRole('button', { name: /EMPTY \(HOLD\)|RELAXING|VOIDING/ })
     await hold(page, button)
@@ -137,7 +137,7 @@ test.describe('controls drive the simulation', () => {
     const ui = await portUi(page)
     expect(ui.currentTab).toBe('sim')
     expect(ui.hud.activeChallenge).toBe('commute')
-    expect((await portState(page)).volume).toBeGreaterThan(570)
+    expect((await portState(page)).volume).toBeGreaterThan(1500)
 
     // Fast-forward to the end of the run.
     await vesica(page, () => {

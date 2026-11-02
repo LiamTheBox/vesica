@@ -23,7 +23,8 @@ const EVENTS = [
   { type: 'cutaway' }, { type: 'tooClose' }, { type: 'dizzy' },
 ]
 
-const at = (volume, state = {}) => Object.assign(createSimState(), { volume }, state)
+// What it says goes by how full it is, so these keep to a round 750 ml bladder.
+const at = (volume, state = {}) => Object.assign(createSimState(), { maxCapacity: 750, volume }, state)
 const said = (event, sim = at(300), mood = createMood()) => reactionLine(event, sim, mood)
 const annoyed = () => {
   const mood = createMood()
@@ -118,8 +119,8 @@ describe('what it says depends on how full it is and how it feels (C)', () => {
 
 describe('lines the simulation used to choose (C2)', () => {
   it('says it is emptied after a void under 150 ml or a reset', () => {
-    expect(said({ type: 'voidStop' }, at(149))).toBe('emptied')
-    expect(said({ type: 'voidStop' }, at(300))).toBe(null)
+    expect(said({ type: 'voidStop' }, at(399))).toBe('emptied')
+    expect(said({ type: 'voidStop' }, at(500))).toBe(null)
     expect(said({ type: 'reset' }, at(40))).toBe('emptied')
   })
 

@@ -13,9 +13,13 @@ import { DRINKS, hasAlcohol, hasCaffeine } from './drinks'
 // 1 ml / 30 s; the filling pressure rises more steeply; the sphincter tone (strain) is
 // the leak gauge: urge waves, coughs, squeezes, pokes and slaps push it up, and leaks
 // only start once it reaches 100 %; a held clench calms an urge wave by reflex
-// ("freeze and squeeze"); voiding peaks at 20 ml/s and slows as the bladder empties.
+// ("freeze and squeeze"); voiding slows as the bladder empties. On 2026-11-02 the bladder
+// grew to hold 2000 ml (the original's held 750), and voiding got much stronger.
 
 const TELEMETRY_LENGTH = 120
+
+// How much it holds. Pressure and urgency go by how full it is, not by the ml.
+export const CAPACITY_ML = 2000
 
 const lerp = (a, b, t) => a + (b - a) * t
 
@@ -64,12 +68,20 @@ const TOUCH_FADE = 6.0 // per second
 export const CAFFEINE = { dose: 0.5, most: 1.5, fade: 1 / 90, urge: 1.5 }
 export const ALCOHOL = { dose: 0.4, most: 1.5, fade: 1 / 120, fatigue: 1.6 }
 
-// Voiding: a typical adult's peak flow, tapering over the last ~150 ml as the emptying
-// bladder's contraction weakens. Voiding eases the strain.
-export const PEAK_FLOW = 20.0
+// Voiding (requested: with the strength of a hose, and no long wait to empty): the fuller
+// it is the harder it pushes, the flow being the volume over EMPTYING_SECONDS, so a full
+// bladder empties in about half a minute and a hugely overfilled one in about a minute.
+// Below that it holds at STEADY_FLOW, tapering over the last ~150 ml as the contraction
+// weakens. Voiding eases the strain.
+export const STEADY_FLOW = 40.0
+export const EMPTYING_SECONDS = 12.5
 const FLOW_TAPER_ML = 150.0
 const MIN_FLOW_SHARE = 0.08
 export const VOID_RELIEF_RATE = 0.25
+
+// The precision challenge: start with this much, and let go with `target` gone, give or
+// take `tolerance`.
+export const PRECISION = { start: 1000, target: 500, tolerance: 25 }
 
 // Game rules the arcade changes (see arcade.js); these values leave the simulation as
 // the sandbox has it.
@@ -92,8 +104,8 @@ export const SANDBOX_RULES = {
 
 export function createSimState() {
   return {
-    volume: 120,
-    maxCapacity: 750,
+    volume: 320,
+    maxCapacity: CAPACITY_ML,
     baseDrip: 1 / 30, // ml/s: 1 ml every 30 s (the original's 1 ml/s; requested)
     activeBeverages: [],
 
@@ -174,7 +186,7 @@ export const fillPressure = (fillRatio) => 4.0 + Math.pow(fillRatio, 3.0) * 80.0
 // Voiding flow (ml/s) for the volume left and how far the sphincter has opened.
 export function voidFlow(volume, dilation) {
   const left = Math.min(1, Math.max(0, volume - EMPTY_ML) / FLOW_TAPER_ML)
-  return PEAK_FLOW * dilation * Math.max(MIN_FLOW_SHARE, Math.sqrt(left))
+  return dilation * Math.max(volume / EMPTYING_SECONDS, STEADY_FLOW * Math.max(MIN_FLOW_SHARE, Math.sqrt(left)))
 }
 
 // --- Actions ---------------------------------------------------------------
@@ -267,7 +279,7 @@ export function stopVoidAttempt(sim, out) {
 
     if (sim.activeChallenge === 'precision') {
       const voided = Math.round(sim.precisionStartVolume - sim.volume)
-      out.push({ type: 'challengeResult', challenge: 'precision', success: Math.abs(voided - 200) <= 10, voided })
+      out.push({ type: 'challengeResult', challenge: 'precision', success: Math.abs(voided - PRECISION.target) <= PRECISION.tolerance, voided })
       sim.activeChallenge = null
     }
   }
@@ -291,7 +303,7 @@ export function cough(sim, out, rng = Math.random) {
 
 // A reset also ends an arcade run and goes back to the sandbox rules.
 export function resetOrgan(sim, out, rng = Math.random) {
-  sim.volume = 40
+  sim.volume = 100
   sim.activeBeverages = []
   sim.caffeine = 0
   sim.alcohol = 0
@@ -339,7 +351,7 @@ export function restoreSandboxRules(sim) {
 
 export function startCommuteChallenge(sim, out, rng = Math.random) {
   resetOrgan(sim, out, rng)
-  sim.volume = 580
+  sim.volume = 1550
   sim.totalLeakedVolume = 0
   sim.activeChallenge = 'commute'
   sim.challengeTimer = 60.0
@@ -350,9 +362,9 @@ export function startCommuteChallenge(sim, out, rng = Math.random) {
 
 export function startPrecisionChallenge(sim, out, rng = Math.random) {
   resetOrgan(sim, out, rng)
-  sim.volume = 520
+  sim.volume = PRECISION.start
   sim.activeChallenge = 'precision'
-  sim.precisionStartVolume = 520
+  sim.precisionStartVolume = PRECISION.start
   out.push({ type: 'challengeStart', challenge: 'precision' })
 }
 

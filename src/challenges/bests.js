@@ -1,8 +1,9 @@
 // Best results. Commute: fewest ml lost on a winning run. Precision: the void closest to
-// 200 ml on a successful run. Arcade: the highest score, banked or not. Microgames: the most
+// its target on a successful run. Arcade: the highest score, banked or not. Microgames: the most
 // games cleared in a run.
 
 import { formatNumber, t } from '../i18n'
+import { PRECISION } from '../sim/sim'
 
 export const EMPTY_BESTS = { commute: null, precision: null, arcade: null, micro: null }
 
@@ -23,8 +24,8 @@ export function recordResult(bests, result) {
       return { ...bests, commute: { leaked: result.leaked } }
     }
   } else if (result.challenge === 'precision') {
-    const offBy = Math.abs(result.voided - 200)
-    if (bests.precision === null || offBy < Math.abs(bests.precision.voided - 200)) {
+    const offBy = Math.abs(result.voided - PRECISION.target)
+    if (bests.precision === null || offBy < Math.abs(bests.precision.voided - PRECISION.target)) {
       return { ...bests, precision: { voided: result.voided } }
     }
   }
@@ -39,6 +40,6 @@ export function describeBest(challenge, best) {
   if (challenge === 'arcade') return t('best.arcade', { score: formatNumber(best.score), clock: clock(best.seconds) })
   if (challenge === 'micro') return t('best.micro', best)
   if (challenge === 'commute') return t('best.commute', best)
-  const offBy = best.voided - 200
+  const offBy = best.voided - PRECISION.target
   return t('best.precision', { voided: best.voided, off: offBy === 0 ? t('best.perfect') : t('best.offBy', { n: `${offBy > 0 ? '+' : ''}${offBy}` }) })
 }

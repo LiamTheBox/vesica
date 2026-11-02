@@ -28,7 +28,7 @@ export const ARCADE_RULES = {
   fullAt: 1, // ...and past full, pressure and urgency hold at full's
 }
 
-const START_ML = 300
+const START_ML = 800
 const LEVEL_SECONDS = 30
 const HOLD_POINTS = 10 // per second, times the fill multiplier
 // A clench pressed during the warning, or this soon after the wave lands, is on time.
@@ -41,6 +41,7 @@ const BRACED_POINTS = 40 // times the combo
 const SAVED_POINTS = 30 // clenched with the leak countdown running
 const LEAK_PENALTY = 100
 const DRINK_BONUS = 0.5 // points per ml the player chooses to drink
+const BANK_POINTS = 0.375 // points per ml banked, times the fill multiplier
 const SNEEZE_WARNING = 1.0
 const FIRST_SNEEZE_LEVEL = 2
 
@@ -48,11 +49,12 @@ export const fillMultiplier = (fillRatio) => (fillRatio >= 1 ? 5 : fillRatio >= 
 
 // Served from the whole menu (A10): hydrating drinks at levels 1-2, caffeine and sweet ones
 // from 3 (urges come sooner), alcohol and the big ones from 5 (the clench tires). The wait
-// for the next scales with the drink's volume, so a run fills as fast as when it served the
-// shelf's four: on average SERVED_ML a serving every serveInterval.
+// for the next scales with the drink's volume, so a run fills at the same steady pace: on
+// average SERVED_ML a serving every serveInterval. That's what keeps the balance as it was
+// with a 750 ml bladder: it fills the same share of itself a second.
 const tierFor = (level) => Math.min(SERVED_TIERS.length - 1, Math.floor((level - 1) / 2))
-const SERVED_ML = [150, 205, 275]
-const MIN_SERVE_GAP = 6
+const SERVED_ML = [400, 547, 733]
+const MIN_SERVE_GAP = 3
 const serveInterval = (level) => Math.max(12, 26 - 1.5 * (level - 1))
 export const nextServe = (level, ml) => Math.max(MIN_SERVE_GAP, (serveInterval(level) * ml) / SERVED_ML[tierFor(level)])
 const sneezeInterval = (level, rng) => (12 + rng() * 10) * Math.max(0.6, 1 - 0.05 * (level - FIRST_SNEEZE_LEVEL))
@@ -195,7 +197,7 @@ export function scoreArcade(sim, out, from = 0) {
         if (!e.served) award(sim, out, 'drink', Math.round(DRINKS[e.beverage].vol * DRINK_BONUS))
         break
       case 'voidStart':
-        award(sim, out, 'bank', Math.round(sim.volume * fillMultiplier(fillRatioOf(sim))))
+        award(sim, out, 'bank', Math.round(sim.volume * BANK_POINTS * fillMultiplier(fillRatioOf(sim))))
         endRun(sim, out, true)
         break
       case 'failureStart':

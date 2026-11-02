@@ -27,8 +27,8 @@ export const DEFAULT_SETTINGS = {
 const savedAutoQuality = loadJson('quality', { tier: 'high' }).tier
 
 export const initialHud = {
-  volume: 120,
-  maxCapacity: 750,
+  volume: 320,
+  maxCapacity: 2000,
   endless: false, // no limit to what it holds (the arcade)
   staminaPct: 100,
   pressure: 7.2,
