@@ -2,12 +2,9 @@ import { useEffect } from 'react'
 import { useHud, useUiStore } from '../../store/useUiStore'
 import { DRINK_COUNT, DRINKS, SHELF } from '../../sim/drinks'
 import { act } from '../../sim/engine'
-import { ingestBeverage, soothe, startClench, startVoidAttempt, stopClench, stopVoidAttempt } from '../../sim/sim'
-import { slapRandom } from '../../sim/interactions'
+import { ingestBeverage, startClench, startVoidAttempt, stopClench, stopVoidAttempt } from '../../sim/sim'
 import { t } from '../../i18n'
-
-// The colour of each shelf drink's note (i18n's shelf.<key>) under its name.
-const SHELF_TONES = { water: 'text-cyan-400', coffee: 'text-amber-400', soda: 'text-rose-400', beer: 'text-yellow-400' }
+import { toneOf } from './drinkTones'
 
 // Hold buttons capture their finger, so a thumb drifting off the edge keeps holding,
 // and each finger holds independently (Clench with one thumb, poke with the other).
@@ -51,7 +48,6 @@ export default function ActionButtons() {
   const isActivelyVoiding = useHud((h) => h.isActivelyVoiding)
   const voidProgress = useHud((h) => h.voidProgress)
   const voidSecondsLeft = useHud((h) => h.voidSecondsLeft)
-  const sootheSeconds = useHud((h) => h.sootheSeconds)
   // An announced threat (arcade): the Clench button calls for the thumb.
   const clenchCue = useHud((h) => h.urgeWarned || h.coughWarned)
   const setTab = useUiStore((s) => s.setTab)
@@ -67,21 +63,21 @@ export default function ActionButtons() {
       {/* Fluid Ingestion */}
       <div className="glass-hud p-1.5 rounded-2xl flex items-center justify-between gap-1 sm:gap-2">
         {SHELF.map((key) => (
-          <button key={key} onClick={() => act(ingestBeverage, key)} className="flex-1 py-1.5 px-1 bg-slate-800/70 hover:bg-cyan-950/70 active:scale-95 border border-slate-700 hover:border-cyan-500/80 rounded-xl flex flex-col items-center transition">
+          <button key={key} onClick={() => act(ingestBeverage, key)} className={`flex-1 min-w-0 py-1.5 px-1 active:scale-95 border rounded-xl flex flex-col items-center transition ${toneOf(key).tile}`}>
             <span className="text-sm sm:text-base">{DRINKS[key].icon}</span>
             <span className="text-[10px] sm:text-[11px] font-bold text-slate-200">{t(`drink.${key}`)}</span>
-            <span className={`text-[8px] sm:text-[9px] font-mono ${SHELF_TONES[key]}`}>{t(`shelf.${key}`)}</span>
+            <span className={`text-[9px] font-mono whitespace-nowrap ${toneOf(key).ml}`}>{t('drinks.ml', { ml: DRINKS[key].vol })}</span>
           </button>
         ))}
         {/* The rest of the drinks, in a menu. */}
-        <button onClick={() => setTab('drinks')} aria-haspopup="dialog" className="flex-1 py-1.5 px-1 bg-fuchsia-950/50 hover:bg-fuchsia-900/50 active:scale-95 border border-fuchsia-700/70 hover:border-fuchsia-400/80 rounded-xl flex flex-col items-center transition">
+        <button onClick={() => setTab('drinks')} aria-haspopup="dialog" className="flex-1 min-w-0 py-1.5 px-1 bg-fuchsia-950/50 hover:bg-fuchsia-900/50 active:scale-95 border border-fuchsia-700/70 hover:border-fuchsia-400/80 rounded-xl flex flex-col items-center transition">
           <span className="text-sm sm:text-base">🍹</span>
           <span className="text-[10px] sm:text-[11px] font-bold text-slate-200">{t('shelf.menu')}</span>
-          <span className="text-[8px] sm:text-[9px] font-mono text-fuchsia-300 whitespace-nowrap">{t('shelf.count', { n: DRINK_COUNT })}</span>
+          <span className="text-[9px] font-mono text-fuchsia-300 whitespace-nowrap">{t('shelf.count', { n: DRINK_COUNT })}</span>
         </button>
       </div>
 
-      {/* Main Actions */}
+      {/* What holds: one thumb on each. */}
       <div className="flex items-stretch gap-1.5 sm:gap-2">
         <button
           {...holdProps(startClench, stopClench)}
@@ -110,27 +106,6 @@ export default function ActionButtons() {
           </button>
           <div className="absolute bottom-0 left-0 h-1.5 bg-rose-600 z-20 transition-all duration-75" style={{ width: `${voidProgress * 100}%` }}></div>
         </div>
-
-        {/* In the arcade Soothe needs 25 s to come back; the button counts down. */}
-        <button
-          onClick={() => act(soothe)}
-          disabled={sootheSeconds > 0}
-          aria-label={t('soothe.label')}
-          className="min-w-12 px-2.5 py-3 rounded-2xl glass-hud hover:border-emerald-400/80 text-emerald-300 font-bold text-xs uppercase active:scale-95 transition flex flex-col items-center justify-center flex-shrink-0 disabled:opacity-45 disabled:active:scale-100"
-          title={t('soothe.title')}
-        >
-          <span className="text-sm">🧘</span>
-          <span className="text-[9px] font-mono mt-0.5">{sootheSeconds > 0 ? t('unit.seconds', { n: sootheSeconds }) : t('soothe.label')}</span>
-        </button>
-
-        <button
-          onClick={() => act(slapRandom)}
-          className="min-w-12 px-2.5 py-3 rounded-2xl glass-hud hover:border-amber-400/80 text-amber-300 font-bold text-xs uppercase active:scale-95 transition flex flex-col items-center justify-center flex-shrink-0"
-          title={t('slap.title')}
-        >
-          <span className="text-sm">👋</span>
-          <span className="text-[9px] font-mono mt-0.5">{t('slap.label')}</span>
-        </button>
       </div>
     </div>
   )

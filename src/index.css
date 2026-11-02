@@ -149,9 +149,11 @@ input[type="range"] {
   .hud-controls { align-self: center; }
 }
 
-/* Short screens: the hold buttons drop their hint lines to give the stage room. */
+/* Short screens: the hold buttons drop their hint lines to give the stage room, and the
+   rails their gaps, to fit it. */
 @media (max-height: 640px) {
   .hold-hint { display: none; }
+  .stage-rail, .stage-rail > [role="radiogroup"] { gap: 0; }
 }
 
 /* Side rails never spill out of the stage; if it's very short they scroll. */

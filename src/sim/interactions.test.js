@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createSimState, fillPressure, LEAK_COUNTDOWN, MAX_RIPPLES, stepSim, TOUCH_PRESSURE } from './sim'
-import { orbitDrag, pokeAt, slapAt, slapRandom, squeezeCancel, squeezeDrag, squeezeRelease, squeezeStart } from './interactions'
+import { orbitDrag, pokeAt, slapAt, squeezeCancel, squeezeDrag, squeezeRelease, squeezeStart } from './interactions'
 import { extractOriginalConst } from '../test/original'
 
 const SQUISH_FORCE = extractOriginalConst('PHYSICS_CONFIGS').jello.squishForce // 2.2
@@ -46,16 +46,6 @@ describe('slap (original slapBladder)', () => {
     expect(sim.sloshVelX).toBeCloseTo(2 * 4.0 * 2.0 * 0.85, 9)
     expect(sim.jiggleIntensity).toBe(1)
     expect(out[0]).toMatchObject({ type: 'slap', strength: 2.0, haptic: true })
-  })
-
-  it('the Slap button hits the equator at strength 2.4 without vibrating', () => {
-    const sim = createSimState()
-    const out = []
-    slapRandom(sim, out, () => 0.25)
-    expect(out[0].local.x).toBeCloseTo(0, 9)
-    expect(out[0].local.z).toBeCloseTo(2.2, 9)
-    expect(out[0].local.y).toBeCloseTo(-0.2, 9)
-    expect(out[0]).toMatchObject({ strength: 2.4, haptic: false })
   })
 
   it('keeps at most a dozen ripples running, the newest (C12)', () => {

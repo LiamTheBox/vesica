@@ -236,7 +236,7 @@ const EMOTE_SOUNDS = {
 }
 
 // How the bladder feels (mood.js); the HUD shows it as `mood` in the store, and the
-// Pressure Chart sheet a strip of the last few minutes' (moodLog) and what it said (lineLog).
+// Telemetry sheet a strip of the last few minutes' (moodLog) and what it said (lineLog).
 const mood = createMood()
 const MOOD_EVERY = 10 // s
 const MOOD_LOG = 18

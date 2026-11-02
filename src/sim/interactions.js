@@ -25,7 +25,7 @@ export function pokeAt(sim, out, local, strength, { touch = false, strain = POKE
   out.push({ type: 'poke', local: point(local), strength: force, touch })
 }
 
-// strength: 2.0 for a tap in slap mode, 2.4 for the Slap button, up to 3.0 for a swipe.
+// strength: 2.0 for a tap in slap mode, up to 3.0 for a swipe.
 export function slapAt(sim, out, local, strength = 1.8, { haptic = false, strain = SLAP_STRAIN } = {}) {
   const force = Math.min(strength, SLAP_LIMIT)
   const phys = physicsOf(sim)
@@ -42,13 +42,6 @@ export function slapAt(sim, out, local, strength = 1.8, { haptic = false, strain
   sim.sphincterToneStrain = Math.min(1.0, sim.sphincterToneStrain + strain)
   touchJolt(sim, force / 2.4)
   out.push({ type: 'slap', local: point(local), strength: force, haptic })
-}
-
-// The Slap button: a hit at a random point around the bladder's equator.
-export function slapRandom(sim, out, rng = Math.random) {
-  const angle = rng() * Math.PI * 2
-  const local = { x: Math.cos(angle) * 2.2, y: (rng() - 0.5) * 0.8, z: Math.sin(angle) * 2.2 }
-  slapAt(sim, out, local, 2.4)
 }
 
 export function squeezeStart(sim, out) {

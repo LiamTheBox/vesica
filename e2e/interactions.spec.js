@@ -114,14 +114,8 @@ test.describe('gestures on the bladder', () => {
     expect(Math.abs(s.sloshVelX) + Math.abs(s.sloshVelZ)).toBeGreaterThan(0)
   })
 
-  test('the Slap button slaps at 2.4 without the touch vibration', async ({ page }) => {
-    await page.getByRole('button', { name: /Slap/ }).click()
-    expect((await eventsOf(page, 'slap'))[0]).toMatchObject({ strength: 2.4, haptic: false })
-    expect((await portState(page)).sphincterToneStrain).toBeCloseTo(0.05, 6)
-  })
-
   test('cutaway opens the side facing the camera, even from behind', async ({ page }) => {
-    await page.locator('button[title*="Cutaway"]').click() // label text is hidden at phone width
+    await page.getByRole('button', { name: 'Cutaway' }).click()
     // Orbit the camera behind the bladder, then let a frame re-aim the cut.
     await page.evaluate(() => {
       const { camera, controls } = window.__vesica.three()
@@ -146,7 +140,7 @@ test('the urine grows with the volume held, and an empty bladder holds none', as
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()) })
   await startApp(page)
   await page.evaluate(() => window.__vesica.pause())
-  await page.locator('button[title*="Cutaway"]').click() // compiles the cut-face shaders
+  await page.getByRole('button', { name: 'Cutaway' }).click() // compiles the cut-face shaders
   const urineAt = async (volume) => {
     await page.evaluate((volume) => window.__vesica.setState({ volume }), volume)
     await page.waitForTimeout(300) // a few frames

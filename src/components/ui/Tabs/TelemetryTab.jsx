@@ -5,15 +5,14 @@ import { WALL_FEELS } from '../../../settings/settings'
 import { MOOD_FACES } from '../../../feedback/mood'
 import { t } from '../../../i18n'
 import Sheet from '../Sheet'
-
-const PANEL = 'bg-slate-900/60 p-2 rounded-xl border border-slate-800'
+import { SMALL_CARD, SMALL_LABEL } from '../styles'
 
 // The bladder's face every 10 s for the last 3 minutes, newest on the right (A7).
 function MoodStrip() {
   const moods = useUiStore((s) => s.moodLog)
   return (
-    <div className={PANEL}>
-      <div className="text-[9px] text-slate-400 uppercase font-mono mb-1">{t('chart.moods')}</div>
+    <div className={SMALL_CARD}>
+      <div className={`${SMALL_LABEL} mb-1`}>{t('chart.moods')}</div>
       {moods.length === 0
         ? <p className="text-[11px] text-slate-500">{t('chart.moods.none')}</p>
         : (
@@ -29,8 +28,8 @@ function MoodStrip() {
 function LineLog() {
   const lines = useUiStore((s) => s.lineLog)
   return (
-    <div className={PANEL}>
-      <div className="text-[9px] text-slate-400 uppercase font-mono mb-1">{t('chart.lines')}</div>
+    <div className={SMALL_CARD}>
+      <div className={`${SMALL_LABEL} mb-1`}>{t('chart.lines')}</div>
       {lines.length === 0
         ? <p className="text-[11px] text-slate-500">{t('chart.lines.none')}</p>
         : (
@@ -127,22 +126,22 @@ export default function TelemetryTab() {
   if (currentTab !== 'telemetry') return null
 
   return (
-    <Sheet title={t('chart.title')} subtitle={t('chart.subtitle')} titleTone="text-amber-400" onClose={() => setTab('sim')}>
+    <Sheet title={t('chart.title')} subtitle={t('chart.subtitle')} onClose={() => setTab('sim')}>
       <div className="relative w-full h-56 bg-slate-950/90 rounded-2xl border border-slate-800 p-2 overflow-hidden flex flex-col justify-between">
         <canvas ref={canvasRef} className="w-full h-full block"></canvas>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-center font-mono">
-        <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-          <div className="text-[9px] text-slate-400 uppercase">{t('chart.wallFeel')}</div>
+        <div className={SMALL_CARD}>
+          <div className={SMALL_LABEL}>{t('chart.wallFeel')}</div>
           <div className="text-xs font-bold text-cyan-400">{t(`wallFeel.${wallFeel}`)}</div>
         </div>
-        <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-          <div className="text-[9px] text-slate-400 uppercase">{t('chart.leaked')}</div>
+        <div className={SMALL_CARD}>
+          <div className={SMALL_LABEL}>{t('chart.leaked')}</div>
           <div className="text-xs font-bold text-rose-400">{t('unit.ml', { n: totalLeaked })}</div>
         </div>
-        <div className="bg-slate-900/60 p-2 rounded-xl border border-slate-800">
-          <div className="text-[9px] text-slate-400 uppercase">{t('chart.peak')}</div>
+        <div className={SMALL_CARD}>
+          <div className={SMALL_LABEL}>{t('chart.peak')}</div>
           <div className="text-xs font-bold text-amber-400">{t('unit.cmH2O', { n: maxPressure.toFixed(1) })}</div>
         </div>
       </div>

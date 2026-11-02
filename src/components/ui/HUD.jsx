@@ -50,14 +50,15 @@ function useStageRect(ref) {
   }, [ref])
 }
 
-// Shown once the player has panned or zoomed the view: puts the bladder back in frame.
+// Shown once the player has panned or zoomed the view: puts the bladder back in frame. Up
+// here with the other buttons for the view, it covers nothing on the stage.
 function RecenterButton() {
   const moved = useUiStore((s) => s.viewMoved)
   const recenter = useUiStore((s) => s.recenterView)
   if (!moved) return null
   return (
-    <button onClick={recenter} className="glass-hud pointer-events-auto min-h-11 px-3 rounded-full text-[11px] font-bold text-sky-300 active:scale-95 transition">
-      {t('hud.recenter')}
+    <button onClick={recenter} aria-label={t('hud.recenter')} title={t('hud.recenter')} className={`${TOP_BUTTON} text-sky-300`}>
+      <span aria-hidden="true">⌖</span><span className="hidden sm:inline text-[11px]">{t('hud.recenter')}</span>
     </button>
   )
 }
@@ -130,6 +131,7 @@ export default function HUD() {
         <header className="hud-top w-full max-w-4xl mx-auto flex items-center justify-between gap-2 pointer-events-auto">
           <StatusCard />
           <div className="flex items-center gap-1.5 flex-shrink-0">
+            {!micro && <RecenterButton />}
             {deferredPrompt && (
               <button onClick={installPwa} className={`${TOP_BUTTON} text-amber-400 border border-amber-400/40 hover:bg-amber-500/10`}>
                 <span>📲</span><span className="text-[11px]">{t('hud.install')}</span>
@@ -160,13 +162,10 @@ export default function HUD() {
           {!micro && (
             <>
               <div className="absolute left-0 inset-y-0 flex items-center">
-                <ActionRail />
-              </div>
-              <div className="absolute right-0 inset-y-0 flex items-center">
                 <ToolRail />
               </div>
-              <div className="absolute inset-x-0 bottom-1 flex justify-center pointer-events-none">
-                <RecenterButton />
+              <div className="absolute right-0 inset-y-0 flex items-center">
+                <ActionRail />
               </div>
             </>
           )}

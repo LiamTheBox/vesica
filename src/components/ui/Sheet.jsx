@@ -5,7 +5,7 @@ import { t } from '../../i18n'
 // scrolling, so the sheet opts back in with `touch-action: pan-y`.
 // `fullHeight` lets it use all of the screen's height, for what's meant to fit without
 // scrolling.
-export default function Sheet({ title, subtitle, titleTone = 'text-slate-200', onClose, children, width = 'max-w-2xl', fullHeight = false }) {
+export default function Sheet({ title, subtitle, onClose, children, width = 'max-w-2xl', fullHeight = false }) {
   return (
     <div
       className={`absolute inset-0 z-30 pointer-events-auto flex flex-col justify-end sm:justify-center items-center bg-slate-950/70 backdrop-blur-md ${fullHeight ? 'sm:p-1' : 'sm:p-4'}`}
@@ -23,7 +23,7 @@ export default function Sheet({ title, subtitle, titleTone = 'text-slate-200', o
             shows through above it. */}
         <div className={`sticky -top-5 z-10 -mt-5 bg-[rgb(11,19,38)] flex justify-between items-center gap-2 border-b border-slate-700/60 ${fullHeight ? 'pt-3 pb-1' : 'pt-5 pb-2'}`}>
           <div className="min-w-0">
-            <h2 className={`text-sm sm:text-base font-extrabold font-mono uppercase tracking-wider ${titleTone}`}>{title}</h2>
+            <h2 className={`text-sm sm:text-base font-extrabold font-mono uppercase tracking-wider text-amber-300`}>{title}</h2>
             {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
           </div>
           <button onClick={onClose} aria-label={t('sheet.close')} className="text-slate-400 hover:text-white text-lg font-bold min-w-11 min-h-11 flex-shrink-0">✕</button>

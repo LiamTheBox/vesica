@@ -6,12 +6,13 @@ import { PERSONALITIES } from '../../../audio/personalities'
 import { t } from '../../../i18n'
 import { TIER_ORDER } from '../../../settings/quality'
 import Sheet from '../Sheet'
+import { CARD, CARD_TITLE, choiceTone } from '../styles'
 
 function Toggle({ label, hint, checked, onChange }) {
   return (
     <label className="flex items-center justify-between gap-3 cursor-pointer min-h-11">
       <span>
-        <span className="block text-xs font-bold text-slate-300">{label}</span>
+        <span className={`block ${CARD_TITLE}`}>{label}</span>
         {hint && <span className="block text-[10px] text-slate-500">{hint}</span>}
       </span>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-5 h-5 accent-amber-500" />
@@ -74,8 +75,8 @@ function PersonalityPicker() {
     voice.sample()
   }
   return (
-    <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
-      <span className="text-xs font-bold text-slate-300">{t('settings.personality')}</span>
+    <div className={CARD}>
+      <span className={CARD_TITLE}>{t('settings.personality')}</span>
       <div role="radiogroup" aria-label={t('settings.personality.label')} className="grid grid-cols-3 gap-1.5">
         {Object.keys(PERSONALITIES).map((key) => (
           <button
@@ -83,7 +84,7 @@ function PersonalityPicker() {
             role="radio"
             aria-checked={chosen === key}
             onClick={() => choose(key)}
-            className={`min-h-11 rounded-xl text-xs font-bold transition active:scale-95 ${chosen === key ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+            className={choiceTone(chosen === key)}
           >
             {t(`personality.${key}`)}
           </button>
@@ -109,7 +110,7 @@ function WallFeelPicker() {
   const wallFeel = useUiStore((s) => s.settings.wallFeel)
   const chosen = WALL_FEELS.includes(wallFeel) ? wallFeel : WALL_FEELS[0]
   return (
-    <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+    <div className={CARD}>
       <span className="text-xs font-bold text-slate-300">{t('settings.wallFeel')}</span>
       <div role="radiogroup" aria-label={t('settings.wallFeel.label')} className="grid grid-cols-4 gap-1.5">
         {WALL_FEELS.map((feel) => (
@@ -133,8 +134,8 @@ function GraphicsPicker() {
   const graphics = useUiStore((s) => s.settings.graphics)
   const autoQuality = useUiStore((s) => s.autoQuality)
   return (
-    <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
-      <span className="text-xs font-bold text-slate-300">{t('settings.graphics')}</span>
+    <div className={CARD}>
+      <span className={CARD_TITLE}>{t('settings.graphics')}</span>
       <div role="radiogroup" aria-label={t('settings.graphics.label')} className="grid grid-cols-4 gap-1.5">
         {GRAPHICS_OPTIONS.map((option) => (
           <button
@@ -142,7 +143,7 @@ function GraphicsPicker() {
             role="radio"
             aria-checked={graphics === option.key}
             onClick={() => setGraphics(option.key)}
-            className={`min-h-11 rounded-xl text-xs font-bold transition active:scale-95 ${graphics === option.key ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-400' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+            className={choiceTone(graphics === option.key)}
           >
             {option.label}
           </button>
@@ -165,20 +166,17 @@ export default function SettingsTab() {
   if (currentTab !== 'settings') return null
 
   return (
-    <Sheet title={t('settings.title')} subtitle={t('settings.subtitle')} titleTone="text-slate-200" width="max-w-lg" onClose={() => setTab('sim')}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-300">{t('settings.sound')}</span>
-        <button
-          onClick={() => updateSettings({ masterMuted: !settings.masterMuted })}
-          className="text-xs font-bold px-3 min-h-11 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700"
-        >
+    <Sheet title={t('settings.title')} subtitle={t('settings.subtitle')} width="max-w-lg" onClose={() => setTab('sim')}>
+      <div className={`${CARD} flex-row items-center justify-between`}>
+        <span className={CARD_TITLE}>{t('settings.sound')}</span>
+        <button onClick={() => updateSettings({ masterMuted: !settings.masterMuted })} className={`${choiceTone(false)} px-3`}>
           {t(settings.masterMuted ? 'settings.sound.muted' : 'settings.sound.on')}
         </button>
       </div>
 
       <PersonalityPicker />
 
-      <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+      <div className={CARD}>
         <Toggle label={t('settings.voice')} checked={settings.voiceEnabled} onChange={(v) => updateSettings({ voiceEnabled: v })} />
         <VoicePicker />
         <Slider label={t('settings.voice.volume')} value={settings.voiceVolume} display={percent(settings.voiceVolume)} min={0} max={1} step={0.05} onChange={(v) => updateSettings({ voiceVolume: v })} />
@@ -200,12 +198,12 @@ export default function SettingsTab() {
         />
       </div>
 
-      <div className="flex flex-col gap-2 p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+      <div className={CARD}>
         <Toggle label={t('settings.effects')} checked={settings.sfxEnabled} onChange={(v) => updateSettings({ sfxEnabled: v })} />
         <Slider label={t('settings.effects.volume')} value={settings.sfxVolume} display={percent(settings.sfxVolume)} min={0} max={1} step={0.05} onChange={(v) => updateSettings({ sfxVolume: v })} />
       </div>
 
-      <div className="p-3 bg-slate-900/60 rounded-2xl border border-slate-800">
+      <div className={CARD}>
         <Toggle
           label={t('settings.vibration')}
           hint={t('settings.vibration.hint')}

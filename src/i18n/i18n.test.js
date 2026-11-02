@@ -8,7 +8,7 @@ import { PERSONALITIES } from '../audio/personalities'
 import { WALL_FEELS } from '../settings/settings'
 import { TIER_ORDER } from '../settings/quality'
 import { STICKERS } from '../challenges/stickers'
-import { DRINK_GROUPS, DRINKS, SHELF } from '../sim/drinks'
+import { DRINK_GROUPS, DRINKS } from '../sim/drinks'
 import { GAMES } from '../sim/micro/games'
 
 const SRC = new URL('..', import.meta.url).pathname
@@ -30,17 +30,15 @@ const named = [
 const withHints = (prefix, ids) => ids.flatMap((id) => [`${prefix}.${id}`, `${prefix}.${id}.hint`])
 const built = [
   ...Object.keys(MOOD_FACES).map((mood) => `mood.${mood}`),
-  ...['poke', 'squeeze', 'slap', 'orbit'].map((tool) => `tools.${tool}`),
-  ...['cutaway', 'cough', 'shake', 'flush'].map((action) => `actions.${action}`),
+  ...['poke', 'squeeze', 'slap', 'orbit'].flatMap((tool) => [`tools.${tool}`, `tools.${tool}.title`]),
   ...['sim', 'telemetry', 'challenges', 'settings'].map((tab) => `nav.${tab}`),
-  ...['commute', 'precision', 'arcade', 'micro'].map((challenge) => `result.title.${challenge}`),
+  ...['commute', 'precision', 'arcade', 'micro'].flatMap((challenge) => [`result.title.${challenge}`, `challenges.${challenge}`, `challenges.${challenge}.about`]),
   ...withHints('personality', Object.keys(PERSONALITIES)),
   ...withHints('wallFeel', WALL_FEELS),
   ...TIER_ORDER.map((tier) => `quality.${tier}`),
   ...withHints('sticker', STICKERS.map((sticker) => sticker.id)),
   ...Object.keys(DRINKS).map((key) => `drink.${key}`),
   ...DRINK_GROUPS.map((group) => `drinkGroup.${group.id}`),
-  ...SHELF.map((key) => `shelf.${key}`),
   ...GAMES.map((game) => `verb.${game.id}`),
 ]
 

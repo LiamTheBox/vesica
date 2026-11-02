@@ -15,7 +15,7 @@ export default {
   'hud.feeling': 'Feeling {mood}',
   'hud.install': 'Install',
   'hud.fullscreen': 'Toggle fullscreen',
-  'hud.recenter': '⌖ Recenter',
+  'hud.recenter': 'Recenter',
 
   // Its moods, as the face's label says them.
   'mood.sleepy': 'sleepy',
@@ -65,10 +65,6 @@ export default {
   'unit.seconds': '{n}s',
 
   // The drinks shelf and the buttons under the bladder.
-  'shelf.water': '+180ml',
-  'shelf.coffee': 'Diuretic',
-  'shelf.soda': '+320ml',
-  'shelf.beer': '+480ml',
   'shelf.menu': 'Menu',
   'shelf.count': '{n} drinks',
   'clench.hold': 'CLENCH (HOLD)',
@@ -82,23 +78,28 @@ export default {
   'empty.hint': 'Hold 1 s to start',
   'empty.startingIn': 'Starting in {s}s',
   'empty.flowing': 'Letting it all out',
-  'soothe.label': 'Soothe',
-  'soothe.title': 'Soothe: calms the bladder down',
-  'slap.label': 'Slap',
-  'slap.title': 'Slap Bladder',
 
   // The rails beside the stage.
   'actions.label': 'Organ actions',
-  'actions.cutaway': 'Cutaway',
-  'actions.cutaway.title': 'Cut away the near half to see inside',
+  'actions.soothe': 'Soothe',
+  'actions.soothe.title': 'Soothe: calms the bladder down',
   'actions.cough': 'Cough',
+  'actions.cough.title': 'Cough: a sudden jolt of pressure',
   'actions.shake': 'Shake',
+  'actions.shake.title': 'Shake it about',
   'actions.flush': 'Flush',
+  'actions.flush.title': 'Flush: start over, nearly empty (ends a run)',
   'tools.label': 'Touch tool',
   'tools.poke': 'Poke',
+  'tools.poke.title': 'Poke: tap or drag on the bladder',
   'tools.squeeze': 'Squeeze',
+  'tools.squeeze.title': 'Squeeze: hold and drag on the bladder',
   'tools.slap': 'Slap',
+  'tools.slap.title': 'Slap: tap or swipe on the bladder',
   'tools.orbit': 'Orbit',
+  'tools.orbit.title': 'Orbit: drag to look around it',
+  'tools.cutaway': 'Cutaway',
+  'tools.cutaway.title': 'Cut away the near half to see inside',
 
   // Banners at the top of the stage, and the subtitles.
   'alert.urgeIncoming': '⚡ URGE INCOMING: CLENCH AS IT LANDS',
@@ -236,7 +237,7 @@ export default {
   'sticker.boss.hint': 'Beat a microgames boss',
 
   // The Pressure Chart sheet.
-  'chart.title': 'Pressure Chart',
+  'chart.title': 'Telemetry',
   'chart.subtitle': 'Pressure (cmH₂O) and volume (ml), live',
   'chart.wallFeel': 'Wall Feel',
   'chart.leaked': 'Total Leaked',

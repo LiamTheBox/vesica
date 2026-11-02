@@ -12,7 +12,7 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 ## Where things stand (2026-11-02)
 
 - **M0–M9:** code done, automated gates passed, tagged `m0`–`m9`. Every **phone check is still open** (below).
-- **Tests:** `npm run check` green (277 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
+- **Tests:** `npm run check` green (300 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
   (your choice: it loads the CPU). Its specs follow the code but last ran before the 2026-10-21 changes (85 passed).
 - **Live:** https://liamthebox.github.io/vesica/, deployed by GitHub Actions on every push to `main`. From at
   least 2026-10-21 until 2026-10-23 it showed only a blank screen (see KNOWN_ISSUES), so the phone checks below
@@ -85,7 +85,10 @@ Requested along the way, each in its own commits:
   limit: however many land, the wall dents and swells only so far and springs back. Subtitles are off unless turned
   on in Settings. The stream has the strength of a hose: a fast golden jet from inside the opening, streaked with light
   that races down it, fraying into a spray; a weak one still wanders and dribbles. The drinks menu is a block of
-  same-sized squares, one colour to a group, that fits the screen without scrolling.
+  same-sized squares, one colour to a group, that fits the screen without scrolling. The stories are gone: they're
+  outside the simulator. The controls are regrouped: what stays on (Poke, Squeeze, Slap, Orbit, Cutaway) on the left,
+  what happens once on a tap (Flush, Shake, Cough, Soothe) on the right, Clench and Empty across the bottom, Recenter
+  up top; the second Slap button is gone. The sheets share one look: the same cards, buttons and title colour.
 
 ## Open: phone checks
 
@@ -104,7 +107,7 @@ On the live site (or `npm run preview:phone` for installing and offline). Tick t
 - ☐ **M8:** a 10-game microgames run with a finger, and one with a mouse.
 - ☐ **2026-10-21:** a few arcade runs; pan to the sphincter with two fingers; watch a void and a leak.
 - ☐ **Backlog work (2026-10-21):** Settings → Voice lists the phone's voices and the chosen one talks offline;
-  each Wall Feel feels different; opening the cutaway gets a line and a blush; the Pressure Chart's mood strip
+  each Wall Feel feels different; opening the cutaway gets a line and a blush; Telemetry's mood strip
   fills in.
 - ☐ **Backlog work (2026-10-22):** each personality sounds right on the phone (shy quieter, deadpan flat); the
   name field takes typing on an iPhone and shows on the subtitles; a sticker shows when earned and in the
@@ -119,6 +122,9 @@ On the live site (or `npm run preview:phone` for installing and offline). Tick t
   without looking glossy; the ureters are see-through and blend into its upper sides, with no yellow patch after a squirt; it
   throbs red only at 100 % strain; the whole organ fits the stage in portrait and landscape.
 
+- ☐ **The bigger bladder and the new controls (2026-11-02):** a void from full takes about half a minute and looks
+  like a hose; a wild flurry of slaps keeps the bladder's shape; all 40 drinks fit the screen as squares, in both
+  orientations; while one thumb holds Clench the other reaches Soothe; subtitles stay off until turned on.
 - ☐ **Easier microgames (2026-11-02):** a first run reaches the first boss, with time to read each word; BALANCE,
   HOLD, MATCH, STEADY and PULSE feel fair with a finger at the start, and it's hard by the time speed tops out.
 
