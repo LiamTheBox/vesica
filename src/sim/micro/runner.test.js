@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createSimState, SANDBOX_RULES } from '../sim'
 import { stepGame } from '../arcade'
 import {
-  BOSS_EVERY, BOSS_GAMES, FILL_PER_GAME, LEVEL_EVERY, MAX_LIVES, microPointer, PROMPT_SECONDS, quitMicroRun,
+  BOSS_EVERY, BOSS_GAMES, FILL_PER_GAME, LEVEL_EVERY, MAX_LIVES, microPointer, MIN_PLAY_SECONDS, PROMPT_SECONDS, quitMicroRun,
   RESULT_SECONDS, speedAt, START_ML, startMicroRun,
 } from './runner'
 import { DT, seeded } from '../../test/micro'
@@ -81,7 +81,7 @@ describe('microgames run (M8)', () => {
   it("doesn't count a press made before play starts", () => {
     const { sim } = newRun()
     microPointer(sim, true) // held down through the verb...
-    const events = run(sim, 3, { wins: () => false, until: (s, e) => types(e).includes('microLose') })
+    const events = run(sim, 4, { wins: () => false, until: (s, e) => types(e).includes('microLose') })
     expect(types(events)).toContain('microLose') // ...is no press during play
   })
 
@@ -112,9 +112,9 @@ describe('microgames run (M8)', () => {
     const events = run(sim, 120, { until: (s) => s.micro.played >= 2 * LEVEL_EVERY })
     expect(sim.volume).toBeCloseTo(START_ML + 2 * LEVEL_EVERY * FILL_PER_GAME, 6)
     expect(events.filter((e) => e.type === 'microLevel').map((e) => e.level)).toEqual([2, 3])
-    run(sim, 2, { until: (s) => s.micro.phase === 'play' })
+    run(sim, 4, { until: (s) => s.micro.phase === 'play' })
     expect(sim.micro.speed).toBeCloseTo(speedAt(3), 9)
-    expect(sim.micro.duration).toBeCloseTo(2 / speedAt(3) < 1.8 ? 1.8 : 2 / speedAt(3), 6)
+    expect(sim.micro.duration).toBeCloseTo(Math.max(MIN_PLAY_SECONDS, 2 / speedAt(3)), 6)
   })
 
   it('every 15th game is a boss: three games back to back; winning it gives a life back', () => {

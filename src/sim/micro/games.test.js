@@ -4,9 +4,11 @@ import {
   SEAL, STEADY, STOP, STOP_CLOSE,
 } from './games'
 import { DT, play } from '../../test/micro'
+import { PEOPLE, playRun, winRate } from '../../test/microPlayers'
+import { BOSS_EVERY, MAX_SPEED } from './runner'
 import { t } from '../../i18n'
 
-const SPEEDS = [1, 1.6, 2.2]
+const SPEEDS = [1, 1.6, 2.3] // the fastest is a boss at the top speed
 const SEEDS = [1, 2, 3, 4, 5]
 
 // Every game, at every speed, with every set of rolls.
@@ -71,6 +73,15 @@ describe('the microgames (M8)', () => {
       // Dragging is only felt while pressed.
       expect(play(BALANCE, { speed, seed, control: (g) => ({ ...steady(g), down: false }) })).toBe('lose')
     })
+    // A third of the play area from the middle is as hard as it pulls.
+    const round = BALANCE.start(() => 0.5, 1)
+    const drag = (x) => {
+      BALANCE.step(round, { down: true, x, y: 0.5, presses: [], releases: 0 }, DT)
+      return round.pull
+    }
+    expect(drag(0.5 + 1 / 6)).toBeCloseTo(0.5, 9)
+    expect(drag(0.5 - 1 / 3)).toBeCloseTo(-1, 9)
+    expect(drag(1)).toBe(1)
   })
 
   it('HOLD!: squeezing just enough keeps the needle in the band; none, or all the way, loses', () => {
@@ -137,6 +148,9 @@ describe('the microgames (M8)', () => {
       expect(play(STEADY, { speed, seed })).toBe('lose')
       expect(play(STEADY, { speed, seed, control: (g) => ({ down: g.t > 0.2, x: 0.5, y: 0.5 }) })).toBe('lose') // stayed put
       expect(play(STEADY, { speed, seed, control: (g) => ({ ...follow(g), down: g.since === null ? g.t > 0.2 : g.t - g.since < 0.5 }) })).toBe('lose') // let go
+      // A brief slip out of it is forgiven: a finger hides what it's holding.
+      const slip = (g) => (g.since !== null && g.t - g.since > 0.5 && g.t - g.since < 0.7 ? { down: true, x: g.x + g.radius * 1.5, y: g.y } : follow(g))
+      expect(play(STEADY, { speed, seed, control: slip })).toBe('win')
     })
   })
 
@@ -159,5 +173,27 @@ describe('the microgames (M8)', () => {
       expect(play(DODGE, { speed, seed, control: clear })).toBe('win')
       expect(play(DODGE, { speed, seed })).toBe('lose')
     })
+  })
+})
+
+// How hard they are, for people who react late and aim wide (requested: they were too hard).
+describe('the microgames, for scripted people', () => {
+  it('are forgiving at first: even a casual player wins most rounds of every game', () => {
+    for (const game of GAMES) expect(winRate(game, PEOPLE.casual, 1), game.id).toBeGreaterThan(0.75)
+    for (const game of GAMES) expect(winRate(game, PEOPLE.typical, 1), game.id).toBeGreaterThan(0.85)
+  })
+
+  it('get hard with speed', () => {
+    const average = (person, speed) => GAMES.reduce((sum, game) => sum + winRate(game, person, speed, 100), 0) / GAMES.length
+    expect(average(PEOPLE.casual, 1)).toBeGreaterThan(0.9)
+    expect(average(PEOPLE.casual, MAX_SPEED)).toBeLessThan(0.6)
+    expect(average(PEOPLE.typical, MAX_SPEED)).toBeLessThan(0.9)
+  })
+
+  it('let a casual player see the first boss, and still end a typical run', () => {
+    const runs = (person) => Array.from({ length: 12 }, (_, i) => playRun(person, 5000 + i * 13, 900).cleared)
+    const casual = runs(PEOPLE.casual)
+    expect(casual.filter((cleared) => cleared >= BOSS_EVERY).length).toBeGreaterThanOrEqual(10)
+    for (const cleared of runs(PEOPLE.typical)) expect(cleared).toBeLessThan(300) // 15 minutes would be over 150 games
   })
 })

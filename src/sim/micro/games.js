@@ -5,7 +5,8 @@
 // A game is { id, seconds, start, step, timeout } (its one-word prompt is i18n's verb.<id>):
 // - seconds: how long it lasts at speed 1 (the runner divides by the speed);
 // - start(rng, speed): a fresh round at `speed` (1 at first, up to MAX_SPEED), with
-//   anything random drawn from `rng` up front, so a round plays the same for the same rolls;
+//   anything random drawn from `rng` up front, so a round plays the same for the same rolls.
+//   Speed 1 is forgiving and speed is what makes it hard (tools/micro-bots.mjs measures it);
 // - step(g, input, dt): one frame; returns 'win', 'lose' or null (still going);
 // - timeout: the result when the fuse runs out first.
 // The play area is the unit square, y down. `input` is one pointer (a finger or the left
@@ -20,14 +21,14 @@ export const CLENCH = {
   id: 'clench',
   seconds: 4.5,
   start(rng, speed) {
-    const count = speed < 1.35 ? 1 : speed < 1.75 ? 2 : 3
+    const count = speed < 1.4 ? 1 : speed < 1.8 ? 2 : 3
     const duration = this.seconds / speed
     // Spread over the middle of the round, each a little off the beat.
     const pulses = Array.from({ length: count }, (_, i) => ({
       arrive: duration * (0.4 + (0.45 * (i + 0.2 + 0.6 * rng())) / count),
       caught: false,
     }))
-    return { t: 0, pulses, travel: 1.6 / speed, window: 0.17 / Math.sqrt(speed) }
+    return { t: 0, pulses, travel: 2 / speed, window: 0.22 / Math.pow(speed, 0.7) }
   },
   step(g, input, dt) {
     g.t += dt
@@ -48,7 +49,7 @@ export const PUSH = {
   id: 'push',
   seconds: 4,
   start(rng, speed) {
-    return { level: 0.35, rate: (0.38 + 0.06 * rng()) * speed, knock: 0.09, knocked: 0 }
+    return { level: 0.35, rate: (0.32 + 0.05 * rng()) * speed, knock: 0.1, knocked: 0 }
   },
   step(g, input, dt) {
     g.level = Math.max(0, g.level + g.rate * dt - g.knock * input.presses.length)
@@ -60,14 +61,14 @@ export const PUSH = {
 
 // SEAL!: cracks open around the ring one after another; tap each before it opens.
 export const SEAL_RADIUS = 0.3
-const SEAL_REACH = 0.12 // how close to a crack a tap must land
+const SEAL_REACH = 0.15 // how close to a crack a tap must land
 export const SEAL = {
   id: 'seal',
   seconds: 4.5,
   start(rng, speed) {
-    const count = Math.min(6, 3 + Math.floor((speed - 1) * 3))
+    const count = Math.min(5, 3 + Math.floor((speed - 1) * 2.5))
     const duration = this.seconds / speed
-    const open = 1.5 / Math.pow(speed, 0.6) // how long a crack takes to open
+    const open = 1.9 / Math.pow(speed, 0.7) // how long a crack takes to open
     const span = duration - open - 0.2
     const turn = rng() * Math.PI * 2
     // Around the ring in a shuffled order, so the next one could be anywhere.
@@ -110,25 +111,26 @@ export const SEAL = {
 
 // BALANCE!: the full bladder stands on a point and tips over unless held; spikes shove it.
 // Holding and dragging to one side pulls its top that way.
-export const BALANCE_FALLEN = 0.9 // radians from upright
-const TIP = 6 // how fast it tips, 1/s²
-const DAMP = 1.2
-const PULL = 12 // the pull at full drag, rad/s²
+export const BALANCE_FALLEN = 1.05 // radians from upright
+const TIP = 4 // how fast it tips, 1/s²
+const DAMP = 1.8
+const PULL = 10 // the pull at full drag, rad/s²
+const DRAG = 3 // a drag a third of the play area from its middle is a full pull
 export const BALANCE = {
   id: 'balance',
   seconds: 5,
   start(rng, speed) {
     const duration = this.seconds / speed
     const shoves = []
-    for (let t = 0.6 / speed; t < duration; t += (0.7 + 0.5 * rng()) / speed) {
-      shoves.push({ t, kick: (rng() < 0.5 ? -1 : 1) * (0.9 + 0.6 * rng()) * Math.sqrt(speed) })
+    for (let t = 0.9 / Math.sqrt(speed); t < duration; t += (1 + 0.6 * rng()) / speed) {
+      shoves.push({ t, kick: (rng() < 0.5 ? -1 : 1) * (0.4 + 0.3 * rng()) * speed })
     }
     return { t: 0, angle: (rng() < 0.5 ? -1 : 1) * 0.1, spin: 0, shoves, next: 0, pull: 0 }
   },
   step(g, input, dt) {
     g.t += dt
     while (g.next < g.shoves.length && g.shoves[g.next].t <= g.t) g.spin += g.shoves[g.next++].kick
-    g.pull = input.down ? clamp((input.x - 0.5) * 2, -1, 1) : 0
+    g.pull = input.down ? clamp((input.x - 0.5) * DRAG, -1, 1) : 0
     g.spin += (TIP * Math.sin(g.angle) - DAMP * g.spin + PULL * g.pull) * dt
     g.angle += g.spin * dt
     return Math.abs(g.angle) > BALANCE_FALLEN ? 'lose' : null
@@ -148,7 +150,7 @@ export const heightFor = (squeeze) => SQUEEZE_BOTTOM - squeeze * (SQUEEZE_BOTTOM
 // They come faster as the game speeds up, but never too fast to answer.
 function surges(rng, speed, duration, size) {
   const list = []
-  for (let t = (0.5 + 0.4 * rng()) / speed; t < duration - 0.3; t += (0.8 + 0.5 * rng()) / Math.sqrt(speed)) {
+  for (let t = (0.8 + 0.4 * rng()) / Math.sqrt(speed); t < duration - 0.3; t += (1 + 0.6 * rng()) / Math.sqrt(speed)) {
     list.push([t, t + 0.25, size * (0.8 + 0.4 * rng())])
   }
   return list
@@ -159,17 +161,17 @@ const surgeAt = (list, t) => list.reduce((sum, [from, to, rise]) => sum + (t >= 
 // Out of the band (too loose or too tight) for long in all, and it's lost.
 export const HOLD_BAND = 0.5 // the band's middle
 export const HOLD_SQUEEZE = 1.4 // how fast a full squeeze lowers the needle, per second
-const OUT_ALLOWANCE = 0.6 // seconds out of the band, in all
+const OUT_ALLOWANCE = 1.2 // seconds out of the band, in all (less as it speeds up)
 export const HOLD = {
   id: 'hold',
   seconds: 5,
   start(rng, speed) {
-    const lift = Math.pow(speed, 0.4)
+    const lift = Math.pow(speed, 0.7)
     return {
-      t: 0, needle: HOLD_BAND, out: 0,
-      half: Math.max(0.09, 0.15 / Math.sqrt(speed)),
-      rise: 0.35 * lift,
-      surges: surges(rng, speed, this.seconds / speed, 0.8 * lift),
+      t: 0, needle: HOLD_BAND, out: 0, allowance: OUT_ALLOWANCE / Math.pow(speed, 0.7),
+      half: 0.2 / Math.pow(speed, 0.6),
+      rise: 0.25 * lift,
+      surges: surges(rng, speed, this.seconds / speed, 0.55 * lift),
       squeeze: 0,
     }
   },
@@ -178,7 +180,7 @@ export const HOLD = {
     g.squeeze = squeezeOf(input)
     g.needle = clamp(g.needle + (g.rise + surgeAt(g.surges, g.t) - HOLD_SQUEEZE * g.squeeze) * dt, 0, 1)
     if (Math.abs(g.needle - HOLD_BAND) > g.half) g.out += dt
-    return g.out > OUT_ALLOWANCE ? 'lose' : null
+    return g.out > g.allowance ? 'lose' : null
   },
   timeout: 'win',
 }
@@ -193,11 +195,11 @@ export const MATCH = {
   start(rng, speed) {
     return {
       t: 0, off: 0, ring: MATCH_OPEN,
-      tolerance: 0.05 / Math.pow(speed, 0.3),
-      allowance: 0.9 / Math.sqrt(speed),
+      tolerance: 0.08 / Math.pow(speed, 0.6),
+      allowance: 1.4 / Math.pow(speed, 0.7),
       waves: [
-        [0.1, 1.6 * speed, rng() * Math.PI * 2],
-        [0.05, 3.1 * speed, rng() * Math.PI * 2],
+        [0.1, 1.3 * Math.pow(speed, 1.2), rng() * Math.PI * 2],
+        [0.04, 2.4 * Math.pow(speed, 1.2), rng() * Math.PI * 2],
       ],
     }
   },
@@ -208,7 +210,7 @@ export const MATCH = {
     g.t += dt
     g.ring = ringFor(squeezeOf(input))
     // A moment to get a finger on it.
-    if (g.t > 0.4 && Math.abs(g.ring - this.target(g)) > g.tolerance) g.off += dt
+    if (g.t > 0.7 && Math.abs(g.ring - this.target(g)) > g.tolerance) g.off += dt
     return g.off > g.allowance ? 'lose' : null
   },
   timeout: 'win',
@@ -221,8 +223,8 @@ export const STOP = {
   id: 'stop',
   seconds: 4.5,
   start(rng, speed) {
-    const width = 0.13 / Math.pow(speed, 0.35)
-    return { t: 0, level: 0, flow: 0.3 * speed, open: 1, closing: false, low: 0.5 + 0.25 * rng(), width }
+    const width = 0.16 / Math.pow(speed, 0.4)
+    return { t: 0, level: 0, flow: 0.26 * speed, open: 1, closing: false, low: 0.5 + 0.25 * rng(), width }
   },
   step(g, input, dt) {
     g.t += dt
@@ -244,11 +246,11 @@ export const RELEASE = {
   id: 'release',
   seconds: 5,
   start(rng, speed) {
-    const begin = (0.5 + 0.6 * rng()) / speed
+    const begin = (0.8 + 0.5 * rng()) / Math.sqrt(speed)
     const rise = 0.5 / speed
     const stay = (0.4 + 0.5 * rng()) / speed
     const fall = 0.4 / speed
-    return { t: 0, begin, rise, stay, fall, end: begin + rise + stay + fall, window: 0.55 / Math.sqrt(speed), held: false }
+    return { t: 0, begin, rise, stay, fall, end: begin + rise + stay + fall, window: 0.7 / Math.sqrt(speed), held: false }
   },
   // The spike's size, 0..1, at time t.
   spike(g, t = g.t) {
@@ -273,14 +275,14 @@ export const RELEASE = {
 export const PULSE_BEATS = 5
 export const PULSE = {
   id: 'pulse',
-  seconds: 4.5,
+  seconds: 5.5,
   start(rng, speed) {
-    const gap = 0.55 / Math.pow(speed, 0.6)
-    const first = (0.7 + 0.2 * rng()) / speed
+    const gap = 0.7 / Math.pow(speed, 0.7)
+    const first = (0.9 + 0.2 * rng()) / Math.sqrt(speed)
     return {
       t: 0, gap,
       beats: Array.from({ length: PULSE_BEATS }, (_, i) => ({ at: first + i * gap, hit: false, hitAt: 0 })),
-      window: 0.13 / Math.sqrt(speed),
+      window: 0.22 / Math.pow(speed, 0.7),
     }
   },
   step(g, input, dt) {
@@ -297,23 +299,24 @@ export const PULSE = {
   timeout: 'lose',
 }
 
-// STEADY!: press inside the circle and hold there as it drifts and jolts; slip out of it or
-// let go and it's lost. It waits a moment for the press, then moves.
+// STEADY!: press inside the circle and hold there as it drifts and jolts; slip out of it for
+// long in all, or let go, and it's lost. It waits a moment for the press, then moves.
+const SLIP_ALLOWANCE = 0.5 // seconds out of the circle, in all (less as it speeds up)
 export const STEADY = {
   id: 'steady',
   seconds: 4.5,
   start(rng, speed) {
     const jolts = []
-    for (let t = (0.6 + 0.4 * rng()) / speed; t < this.seconds / speed; t += (0.7 + 0.6 * rng()) / speed) {
+    for (let t = (0.9 + 0.4 * rng()) / Math.sqrt(speed); t < this.seconds / speed; t += (1.1 + 0.7 * rng()) / speed) {
       const angle = rng() * Math.PI * 2
-      jolts.push([t, 0.07 * Math.cos(angle), 0.07 * Math.sin(angle)])
+      jolts.push([t, 0.05 * Math.sqrt(speed) * Math.cos(angle), 0.05 * Math.sqrt(speed) * Math.sin(angle)])
     }
     return {
       t: 0, since: null, // when it was pressed
-      x: 0.5, y: 0.5,
-      radius: 0.13 / Math.pow(speed, 0.3),
-      wait: 1 / Math.sqrt(speed),
-      drift: [[0.2, 1.3 * speed, rng() * Math.PI * 2], [0.2, 1.7 * speed, rng() * Math.PI * 2]],
+      x: 0.5, y: 0.5, out: 0, allowance: SLIP_ALLOWANCE / Math.sqrt(speed),
+      radius: 0.17 / Math.pow(speed, 0.4),
+      wait: 1.4 / Math.sqrt(speed),
+      drift: [[0.16, Math.pow(speed, 1.3), rng() * Math.PI * 2], [0.16, 1.3 * Math.pow(speed, 1.3), rng() * Math.PI * 2]],
       jolts,
     }
   },
@@ -323,7 +326,7 @@ export const STEADY = {
     let x = 0.5 + ax * (Math.sin(wx * s + px) - Math.sin(px))
     let y = 0.5 + ay * (Math.sin(wy * s + py) - Math.sin(py))
     for (const [at, dx, dy] of g.jolts) {
-      const k = Math.min(1, Math.max(0, (s - at) / 0.12))
+      const k = Math.min(1, Math.max(0, (s - at) / 0.2))
       x += dx * k
       y += dy * k
     }
@@ -336,32 +339,33 @@ export const STEADY = {
       return g.t > g.wait ? 'lose' : null
     }
     ;[g.x, g.y] = this.place(g, g.t - g.since)
-    if (!input.down || Math.hypot(input.x - g.x, input.y - g.y) > g.radius) return 'lose'
-    return null
+    if (!input.down) return 'lose'
+    if (Math.hypot(input.x - g.x, input.y - g.y) > g.radius) g.out += dt
+    return g.out > g.allowance ? 'lose' : null
   },
   timeout: 'win',
 }
 
 // DODGE!: spikes fall, some right at you; hold and drag sideways to stay clear of them.
 export const DODGE_Y = 0.86 // where you are
-export const DODGE_REACH = 0.07 // how close a spike's middle can pass
+export const DODGE_REACH = 0.06 // how close a spike's middle can pass
 export const DODGE = {
   id: 'dodge',
   seconds: 4.5,
   start(rng, speed) {
     const spikes = []
-    for (let t = 0.25; t < this.seconds / speed - 0.5; t += (0.42 + 0.2 * rng()) / Math.pow(speed, 0.8)) {
+    for (let t = 0.25; t < this.seconds / speed - 0.5; t += (0.55 + 0.25 * rng()) / Math.pow(speed, 0.8)) {
       // Every other one at you (or near): standing still won't do.
       spikes.push({ t, aim: spikes.length % 2 === 0, roll: rng() })
     }
-    return { t: 0, x: 0.5, fall: 0.75 * speed, spikes, next: 0, falling: [] }
+    return { t: 0, x: 0.5, fall: 0.6 * speed, spikes, next: 0, falling: [] }
   },
   step(g, input, dt) {
     g.t += dt
     if (input.down) g.x = Math.min(0.94, Math.max(0.06, input.x))
     while (g.next < g.spikes.length && g.spikes[g.next].t <= g.t) {
       const { aim, roll } = g.spikes[g.next++]
-      const x = aim ? g.x + (roll - 0.5) * 0.2 : 0.08 + 0.84 * roll
+      const x = aim ? g.x + (roll - 0.5) * 0.1 : 0.08 + 0.84 * roll
       g.falling.push({ x: Math.min(0.94, Math.max(0.06, x)), y: -0.05 })
     }
     for (const spike of g.falling) {

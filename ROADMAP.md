@@ -9,10 +9,10 @@ numbers measured on the way, are in its commits (`git log m<N-1>..m<N>`, `git sh
 
 Status legend: ☐ todo · ◐ in progress · ☑ done
 
-## Where things stand (2026-10-23)
+## Where things stand (2026-11-02)
 
 - **M0–M9:** code done, automated gates passed, tagged `m0`–`m9`. Every **phone check is still open** (below).
-- **Tests:** `npm run check` green (267 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
+- **Tests:** `npm run check` green (270 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
   (your choice: it loads the CPU). Its specs follow the code but last ran before the 2026-10-21 changes (85 passed).
 - **Live:** https://liamthebox.github.io/vesica/, deployed by GitHub Actions on every push to `main`. From at
   least 2026-10-21 until 2026-10-23 it showed only a blank screen (see KNOWN_ISSUES), so the phone checks below
@@ -70,6 +70,11 @@ Requested along the way, each in its own commits:
   drifting through it (it had the lining's folds; then it was too glossy), and no longer shows through the wall
   around a ureter after a squirt. The bladder throbs red only at 100 % strain (it started at 30 %). The camera
   frames the new shape.
+- **2026-11-02, requested:** the microgames are easier and slower. The word shows longer (1.3 s, was 0.85), the
+  result too, and speed climbs a third more slowly to the same top speed (at game 75, was 50). Each game is forgiving
+  at the first speed and tightens with speed: wider timing windows and bands, slower swings, and STEADY forgives a
+  brief slip. Scripted people (`tools/micro-bots.mjs`) clear a median of 39 (casual) and 94 (typical) games, where
+  they cleared 4 and 12.
 
 ## Open: phone checks
 
@@ -103,6 +108,9 @@ On the live site (or `npm run preview:phone` for installing and offline). Tick t
   as it fills and its top pushes down into a hollow while voiding; the urine reads as liquid without looking
   glossy; the ureters are see-through and blend into its upper sides, with no yellow patch after a squirt; it
   throbs red only at 100 % strain; the whole organ fits the stage in portrait and landscape.
+
+- ☐ **Easier microgames (2026-11-02):** a first run reaches the first boss, with time to read each word; BALANCE,
+  HOLD, MATCH, STEADY and PULSE feel fair with a finger at the start, and it's hard by the time speed tops out.
 
 ## M10 — Release (optional) ◐
 
