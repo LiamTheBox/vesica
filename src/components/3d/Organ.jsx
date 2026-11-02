@@ -323,13 +323,13 @@ export default function Organ() {
       </group>
 
       {/* Stream: the jet and the drops it breaks into (stream.js), outside the body so it
-          falls straight; it leaves from wherever the body has moved the opening. No
-          transmission: on a jet this thin it's invisible, and it doubled the frame cost
-          while voiding. */}
-      <mesh ref={streamRef} geometry={rig.stream.jetGeo} material={rig.stream.material} renderOrder={5} visible={false} frustumCulled={false} />
+          falls straight; it leaves from wherever the body has moved the opening. It draws
+          its own light: no transmission, which on a jet this thin is invisible and doubled
+          the frame cost while voiding. */}
+      <mesh ref={streamRef} geometry={rig.stream.jetGeo} material={rig.stream.jetMaterial} renderOrder={5} visible={false} frustumCulled={false} />
       <instancedMesh
         ref={dropsRef}
-        args={[rig.stream.dropGeo, rig.stream.material, rig.stream.maxDrops]}
+        args={[rig.stream.dropGeo, rig.stream.dropMaterial, rig.stream.maxDrops]}
         renderOrder={5}
         visible={false}
         frustumCulled={false}

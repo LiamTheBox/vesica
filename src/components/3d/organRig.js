@@ -481,7 +481,7 @@ export function createOrganRig() {
 
     // Stream from the opening at the bottom of the urethra, wherever the body has moved it.
     outlet.set(neck.x, neckTop + OUTLET_Y - NECK_TOP_Y, neck.z).multiply(body.scale).add(body.offset)
-    stream.update(sim, dt, timeSec, outlet, objects.stream, objects.drops)
+    stream.update(sim, dt, timeSec, outlet, objects.stream, objects.drops, growth)
   }
 
   return {

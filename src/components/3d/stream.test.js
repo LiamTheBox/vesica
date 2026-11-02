@@ -19,7 +19,7 @@ const OUTLET = new THREE.Vector3(0, -3, -0.2)
 function setup(flowRate) {
   const stream = createStream(seeded(7))
   const jet = new THREE.Mesh(stream.jetGeo)
-  const drops = new THREE.InstancedMesh(stream.dropGeo, stream.material, stream.maxDrops)
+  const drops = new THREE.InstancedMesh(stream.dropGeo, stream.dropMaterial, stream.maxDrops)
   const sim = createSimState()
   sim.flowRate = flowRate
   let time = 0
@@ -39,25 +39,100 @@ function setup(flowRate) {
       c.divideScalar(12)
       let r = 0
       for (let j = 0; j < 12; j++) r += Math.hypot(pos.getX(k * 12 + j) - c.x, pos.getZ(k * 12 + j) - c.z)
-      out.push({ y: c.y, r: r / 12 })
+      out.push({ x: c.x, y: c.y, z: c.z, r: r / 12 })
     }
     return out
   }
-  return { sim, jet, drops, play, rings }
+  // How far the jet's tip ends up from straight below its start.
+  const sideways = () => {
+    const r = rings()
+    return Math.hypot(r.at(-1).x - r[0].x, r.at(-1).z - r[0].z)
+  }
+  return { stream, sim, jet, drops, play, rings, sideways }
 }
 
 describe('urine stream', () => {
-  it('leaves a single narrow opening and thins as it falls', () => {
-    const { jet, play, rings } = setup(20)
+  it('comes out of the opening, from just inside it, and thins as it falls', () => {
+    const { jet, play, rings } = setup(40)
     play(1)
     expect(jet.visible).toBe(true)
     const r = rings()
-    expect(r[0].y).toBeCloseTo(OUTLET.y, 6)
-    expect(r[0].r).toBeGreaterThan(0.04)
-    expect(r[0].r).toBeLessThan(0.1) // narrower than the opening (0.075 × 1.45)
-    // Thinner at the breakup point than at the outlet; a long jet at full flow.
-    expect(r[31].r).toBeLessThan(r[0].r)
+    expect(r[0].y).toBeGreaterThan(OUTLET.y)
+    expect(r[0].y).toBeLessThan(OUTLET.y + 0.3)
+    expect(r[0].r).toBeGreaterThan(0.1)
+    expect(r[37].r).toBeLessThan(r[0].r)
     expect(OUTLET.y - r.at(-1).y).toBeGreaterThan(2.5)
+  })
+
+  // How far below the opening the jet's end is, once it's running.
+  const reach = (q) => {
+    const { play, rings } = setup(q)
+    play(1)
+    return OUTLET.y - rings().at(-1).y
+  }
+  // How far the fluid falls in the first moments after it leaves: the front of a new jet.
+  const frontAfter = (q, seconds) => {
+    const { play, rings } = setup(q)
+    play(seconds)
+    return OUTLET.y - Math.min(...rings().filter((ring) => ring.r > 0.001).map((ring) => ring.y))
+  }
+
+  it('has the strength of a hose (requested): the front of the jet shoots out, far and fast', () => {
+    expect(frontAfter(40, 0.1)).toBeGreaterThan(2) // a good way down the screen in a tenth of a second
+    expect(frontAfter(160, 0.1)).toBeGreaterThan(frontAfter(40, 0.1))
+    expect(reach(160)).toBeGreaterThan(reach(40))
+    expect(reach(40)).toBeGreaterThan(reach(12))
+  })
+
+  it('runs nearly straight at a strong flow; a weak one wanders', () => {
+    const offStraight = (q) => {
+      const { play, rings, sideways } = setup(q)
+      play(1)
+      return sideways() / (OUTLET.y - rings().at(-1).y)
+    }
+    expect(offStraight(160)).toBeLessThan(0.15)
+    expect(offStraight(3)).toBeGreaterThan(offStraight(160))
+  })
+
+  it('never outgrows the opening, however much is pushing out', () => {
+    const widest = (q) => {
+      const { play, rings } = setup(q)
+      play(0.5)
+      return rings()[0].r
+    }
+    expect(widest(160)).toBeGreaterThan(widest(40))
+    expect(widest(3000)).toBeLessThan(0.21)
+  })
+
+  it('carries when each bit of it left the opening down the jet, for the streaks to race with it', () => {
+    const { play, stream } = setup(40)
+    play(1)
+    const flow = stream.jetGeo.attributes.aFlow
+    const leftAt = (ring) => flow.getX(ring * 12)
+    const before = [leftAt(0), leftAt(20), leftAt(47)]
+    expect(before[0]).toBeGreaterThan(before[1]) // the outlet's left last
+    expect(before[1]).toBeGreaterThan(before[2])
+    play(0.5)
+    expect(leftAt(20)).toBeCloseTo(before[1] + 0.5, 1)
+    expect(flow.getY(0)).toBe(0)
+    expect(flow.getY(47 * 12)).toBe(1)
+  })
+
+  it('gets further down the screen on an overfilled bladder, as the view backs off', () => {
+    const { stream, jet, drops, sim, rings } = setup(160)
+    for (let f = 1; f <= 60; f++) stream.update(sim, 1 / 60, f / 60, OUTLET, jet, drops, 2)
+    expect(OUTLET.y - rings().at(-1).y).toBeGreaterThan(reach(160) * 1.5)
+  })
+
+  it('takes its colour from how hydrated it is, in the jet and the drops', () => {
+    const { stream } = setup(40)
+    stream.setHydration(1)
+    const pale = stream.jetMaterial.uniforms.uColor.value.clone()
+    expect(stream.dropMaterial.color.getHex()).toBe(pale.getHex())
+    stream.setHydration(0.3)
+    const dark = stream.jetMaterial.uniforms.uColor.value
+    expect(dark.g).toBeLessThan(pale.g)
+    expect(stream.dropMaterial.color.getHex()).toBe(dark.getHex())
   })
 
   it('breaks into falling drops', () => {
@@ -87,8 +162,8 @@ describe('urine stream', () => {
   it('dribbles when the flow is weak: a short jet, few drops', () => {
     const { play, rings, drops } = setup(1.6)
     play(1)
-    expect(OUTLET.y - rings().at(-1).y).toBeLessThan(0.6)
-    expect(drops.count).toBeLessThan(12)
+    expect(OUTLET.y - rings().at(-1).y).toBeLessThan(0.8)
+    expect(drops.count).toBeLessThan(15)
   })
 
   it('falls away and is gone soon after the flow stops', () => {

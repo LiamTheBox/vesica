@@ -83,7 +83,8 @@ Requested along the way, each in its own commits:
   to fill; the arcade serves drinks more often, so its balance is as it was. Voiding pushes harder the fuller it is:
   full, it empties in about half a minute, and even tens of litres in about a minute. Pokes and slaps have a force
   limit: however many land, the wall dents and swells only so far and springs back. Subtitles are off unless turned
-  on in Settings.
+  on in Settings. The stream has the strength of a hose: a fast golden jet from inside the opening, streaked with light
+  that races down it, fraying into a spray; a weak one still wanders and dribbles.
 
 ## Open: phone checks
 
