@@ -321,10 +321,10 @@ export default {
   // The drinks menu.
   'drinks.title': 'Drinks Menu',
   'drinks.subtitle': '{n} drinks · tap one to drink it',
-  'drinks.amount': '+{ml} ml · {s} s',
+  'drinks.ml': '+{ml} ml',
+  'drinks.label': '{name}, {ml} ml over {s} s',
   'drinks.alcohol': '🍺 tires the clench',
   'drinks.caffeine': '☕ urges sooner',
-  'drinks.diuretic': 'diuretic',
 
   // Drink groups and drinks (sim/drinks.js).
   'drinkGroup.water': 'Water',

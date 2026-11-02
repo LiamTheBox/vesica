@@ -86,8 +86,6 @@ export const DRINK_GROUPS = [
 // Every drink by key, in menu order.
 export const DRINKS = Object.fromEntries(DRINK_GROUPS.flatMap((group) => Object.entries(group.drinks)))
 export const DRINK_COUNT = Object.keys(DRINKS).length
-// Shown as a diuretic on the menu: hydrates no better than this.
-export const DIURETIC_HYD = 0.4
 
 // What the bladder makes of a drink, for what it says: alcohol, then a big one (a lot at
 // once, whatever it is), then water, caffeine or anything else.
