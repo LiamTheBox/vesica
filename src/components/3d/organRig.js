@@ -39,16 +39,17 @@ const BELLY = 0.1 // the lower body's extra width when full, at its fullest
 const URINE_PIVOT_Y = -0.8
 
 // Detrusor contraction, in urge waves and while voiding: its muscle bundles stand out, and
-// the dome pushes down from the top (requested, like the book's emptying bladder). In an
-// urge wave it comes down a little and the sides bulge, since nothing can get out; while
-// voiding the wall tightens and the dome pushes right down into a hollow, pressing the
-// urine out, a little harder with each push.
-const CONTRACT_TIGHTEN = 0.04
-const CONTRACT_BUNDLES = 0.03
-const DOME_PUSH = { urge: 0.3, void: 0.62 } // how far the top comes down, as a share of the dome's height
+// the dome pushes down from the top (requested, like the book's emptying bladder, and
+// gently: it empties without caving in). In an urge wave it comes down a little and the
+// sides bulge, since nothing can get out; while voiding the wall tightens and the dome
+// eases down into a shallow hollow, pressing the urine out, a little harder with each push.
+const CONTRACT_TIGHTEN = 0.03
+const CONTRACT_BUNDLES = 0.012
+const DOME_PUSH = { urge: 0.15, void: 0.34 } // how far the top comes down, as a share of the dome's height
 const DOME_HEIGHT = DOME_TOP_Y - DOME_BASE_Y
-const PUSH_SECONDS = 1.6 // one push while voiding
-const PUSH_PULSE = 0.15 // how much each push adds
+const PUSH_EASE = 1.5 // how quickly the dome follows the push, 1/s
+const PUSH_SECONDS = 2.4 // one push while voiding
+const PUSH_PULSE = 0.1 // how much each push adds
 const URGE_BULGE = 0.1 // the sides' extra width for what the dome pushes in, in an urge wave
 
 // A slack bladder folds like a deflated balloon: soft pleats gathered toward the neck, like
@@ -124,9 +125,10 @@ export function createOrganRig() {
     const below = THREE.MathUtils.clamp((DOME_BASE_Y - y) / (DOME_BASE_Y + 2.0), 0, 1)
     belly[i] = 16 * below * below * (1 - below) * (1 - below) * (1 - pin[i])
     // The middle of the top comes down furthest and the sides hardly at all, a valley from
-    // front to back, so the top dips in seen from the front, as in the book.
-    const across = Math.min(1, Math.abs(x) / 2.1)
-    push[i] = (1 - across * across) ** 2 * THREE.MathUtils.smoothstep(y, 0.1, 1.0)
+    // front to back, so the top dips in seen from the front, as in the book. It fades out
+    // gradually down the body: any steeper, and the wall folds over itself.
+    const across = Math.min(1, Math.abs(x) / 1.9)
+    push[i] = (1 - across * across) ** 2 * THREE.MathUtils.smoothstep(y, -0.5, 1.2)
     const sin2phi = Math.sin(Math.acos(Math.max(-1, Math.min(1, y / 2.35))) * 2.0)
     jiggleS3[i] = Math.sin(theta * 3.0) * sin2phi
     jiggleC3[i] = Math.cos(theta * 3.0) * sin2phi
@@ -208,8 +210,8 @@ export function createOrganRig() {
   // `objects`: live meshes/materials from Organ.jsx refs (`body`: the group the organ's body
   // language moves), the camera, how the bladder feels (`mood`, for its breathing, slump
   // and blush; without one it holds still), whether the player asked for reduced motion
-  // (`reducedMotion`: smaller shakes), and what to call when a ureter squirts
-  // (onSquirt(side), -1 left, 1 right).
+  // (`reducedMotion`: smaller shakes), the uniform for the size of the urine's shimmer
+  // (`liquidSize`), and what to call when a ureter squirts (onSquirt(side), -1 left, 1 right).
   function update(sim, dt, timeSec, objects) {
     const { wallMat, urine, camera, cutaway } = objects
     const phys = physicsOf(sim)
@@ -223,6 +225,8 @@ export function createOrganRig() {
     const shapeFill = Math.min(fillRatio, SANDBOX_MOST)
     const growth = Math.max(1, inflationScale / INFLATION_SANDBOX_MOST)
     bladderGeo.boundingSphere.radius = urineGeo.boundingSphere.radius = BOUNDS_RADIUS * growth
+    // The urine's shimmer keeps its size on a bladder that's outgrown the frame.
+    if (objects.liquidSize) objects.liquidSize.value = growth
 
     // The cut runs down through the neck, so it halves the sphincter and the urethra too.
     if (cutaway && camera) orientCutaway(cutawayPlane, camera.position, cutCenter.set(0, ORGAN_CENTER.y, 0))
@@ -234,7 +238,7 @@ export function createOrganRig() {
     contraction += ((voiding ? 1 : spasm) - contraction) * Math.min(1, dt * 4)
     pushPhase = voiding ? (pushPhase + dt / PUSH_SECONDS) % 1 : 0
     const pushTarget = voiding ? DOME_PUSH.void * (1 - PUSH_PULSE * (0.5 + 0.5 * Math.cos(pushPhase * Math.PI * 2))) : DOME_PUSH.urge * spasm
-    domePush += (pushTarget - domePush) * Math.min(1, dt * 3)
+    domePush += (pushTarget - domePush) * Math.min(1, dt * PUSH_EASE)
     const pushDepth = domePush * DOME_HEIGHT
     const urgeBulge = voiding ? 0 : URGE_BULGE * Math.min(1, domePush / DOME_PUSH.urge)
 
@@ -242,18 +246,18 @@ export function createOrganRig() {
     body.step(sim, dt, mood)
 
     // A stretched wall is thinner, so more of the liquid shows through; a contracting
-    // one thickens and flushes.
+    // one thickens and flushes a little.
     const stretch = Math.min(1.0, fillRatio)
     if (wallMat) {
       // Strained muscle throbs red, as in the original, but only once the sphincter is at
       // 100 % (requested).
       const strainPulse = sim.sphincterToneStrain >= 1 ? Math.sin(timeSec * 15.0) * 0.35 + 0.35 : 0
-      wallMat.emissiveIntensity = 0.08 + stretch * 0.14 + strainPulse + contraction * 0.3 + body.flash * 0.6 + body.blush * 0.35
+      wallMat.emissiveIntensity = 0.08 + stretch * 0.14 + strainPulse + contraction * 0.1 + body.flash * 0.6 + body.blush * 0.35
       wallMat.emissive.copy(WALL_EMISSIVE).lerp(BLUSH_COLOR, body.blush)
       wallMat.roughness = THREE.MathUtils.lerp(0.55, 0.45, stretch)
     }
     // Toward the neck it turns solid, like the sphincter below it.
-    const alpha = THREE.MathUtils.lerp(0.64, 0.3, stretch) + contraction * 0.18
+    const alpha = THREE.MathUtils.lerp(0.64, 0.3, stretch) + contraction * 0.04
     if (Math.abs(alpha - wallAlpha) > 0.004) {
       wallAlpha = alpha
       for (let i = 0; i < count; i++) bColor.array[i * 4 + 3] = alpha + (1 - alpha) * solid[i]

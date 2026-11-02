@@ -74,12 +74,13 @@ const LIQUID_RIPPLE = /* glsl */ `
 const LIQUID_GLINT = /* glsl */ `
   totalEmissiveRadiance += vec3(1.0, 0.92, 0.6) * causticLines(vLiquid, uTime) * 0.2;
 `
-function liquidShader(time) {
+function liquidShader(time, size) {
   return (shader) => {
     shader.uniforms.uTime = time
+    shader.uniforms.uLiquidSize = size
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vLiquid;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLiquid = position;')
+      .replace('#include <common>', '#include <common>\nuniform float uLiquidSize;\nvarying vec3 vLiquid;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLiquid = position / uLiquidSize;')
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${LIQUID_PARS}`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>\n${LIQUID_RIPPLE}`)
@@ -92,7 +93,8 @@ export default function Organ() {
   const rig = useMemo(() => createOrganRig(), [])
   const textures = useMemo(() => createOrganTextures(), [])
   const cut = useMemo(() => createCutMaterials(), [])
-  const onLiquidCompile = useMemo(() => liquidShader(cut.urine.uniforms.uTime), [cut])
+  const liquidSize = useMemo(() => ({ value: 1 }), [])
+  const onLiquidCompile = useMemo(() => liquidShader(cut.urine.uniforms.uTime, liquidSize), [cut, liquidSize])
   const get = useThree((state) => state.get)
 
   const bodyRef = useRef()
@@ -232,6 +234,7 @@ export default function Organ() {
       wallMat: wallMatRef.current,
       urine: urineRef.current,
       fluidMat: fluidMatRef.current,
+      liquidSize,
       stream: streamRef.current,
       drops: dropsRef.current,
       camera: state.camera,

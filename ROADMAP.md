@@ -12,7 +12,7 @@ Status legend: ☐ todo · ◐ in progress · ☑ done
 ## Where things stand (2026-11-02)
 
 - **M0–M9:** code done, automated gates passed, tagged `m0`–`m9`. Every **phone check is still open** (below).
-- **Tests:** `npm run check` green (270 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
+- **Tests:** `npm run check` green (277 unit tests). The browser suite (`npm run test:e2e`) isn't required for now
   (your choice: it loads the CPU). Its specs follow the code but last ran before the 2026-10-21 changes (85 passed).
 - **Live:** https://liamthebox.github.io/vesica/, deployed by GitHub Actions on every push to `main`. From at
   least 2026-10-21 until 2026-10-23 it showed only a blank screen (see KNOWN_ISSUES), so the phone checks below
@@ -75,6 +75,9 @@ Requested along the way, each in its own commits:
   at the first speed and tightens with speed: wider timing windows and bands, slower swings, and STEADY forgives a
   brief slip. Scripted people (`tools/micro-bots.mjs`) clear a median of 39 (casual) and 94 (typical) games, where
   they cleared 4 and 12.
+- **2026-11-02, requested:** the bladder empties with less force. Its dome eases down into a shallow dip about half
+  as deep, in slower pushes, and it flushes much less, so the urine keeps its colour; an urge wave's dip is halved
+  too. The wall no longer folds over itself.
 
 ## Open: phone checks
 
@@ -105,8 +108,8 @@ On the live site (or `npm run preview:phone` for installing and offline). Tick t
   and waiting for 100 % loses in a minute or two; SHAKY shows in amber by the stamina bar after a close call or a
   clench that gives out.
 - ☐ **The realistic bladder (2026-10-23):** it looks like the model on the phone, the creases sharp; it rounds out
-  as it fills and its top pushes down into a hollow while voiding; the urine reads as liquid without looking
-  glossy; the ureters are see-through and blend into its upper sides, with no yellow patch after a squirt; it
+  as it fills and its top eases down into a shallow dip while voiding, with no crease; the urine reads as liquid
+  without looking glossy; the ureters are see-through and blend into its upper sides, with no yellow patch after a squirt; it
   throbs red only at 100 % strain; the whole organ fits the stage in portrait and landscape.
 
 - ☐ **Easier microgames (2026-11-02):** a first run reaches the first boss, with time to read each word; BALANCE,

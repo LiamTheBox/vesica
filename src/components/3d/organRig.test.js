@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 import { createOrganRig } from './organRig'
 import {
-  BLADDER_VERTICES, createOrganGeometry, FLUID_INSET, NECK_GAP, NECK_ROW, ORGAN_CENTER, orientCutaway, overfillGrowth, RESIDUAL_ML,
+  BLADDER_VERTICES, createOrganGeometry, FLUID_INSET, NECK_GAP, NECK_ROW, ORGAN_CENTER, orientCutaway, overfillGrowth, RADIAL, RESIDUAL_ML,
   RING_ROW, RING_VERTICES, urineScale,
 } from './organGeometry'
 import { WALL_EMISSIVE } from './bodyLanguage'
@@ -490,6 +490,64 @@ describe('its shape, like the realistic model and the book (requested)', () => {
     sim.isActivelyVoiding = false
     play(rig, sim, 4, 7)
     expect(topLine(rig).middle).toBeCloseTo(rest.middle, 1)
+  })
+
+  it('empties gently: the dome eases down and only part of the way (requested: it caved in)', () => {
+    const { rig, sim } = settle({ volume: 750 })
+    const rest = topLine(rig).middle
+    const { top, widest } = measure(rig.bladderGeo.attributes.position)
+    sim.isActivelyVoiding = true
+    play(rig, sim, 0.5, 3)
+    const early = rest - topLine(rig).middle
+    play(rig, sim, 3, 3.5)
+    const settled = rest - topLine(rig).middle
+    expect(early).toBeLessThan(settled * 0.7)
+    expect(settled).toBeLessThan(top * 0.3)
+    // It keeps its width: it isn't crushed flat.
+    expect(measure(rig.bladderGeo.attributes.position).widest).toBeGreaterThan(widest * 0.93)
+  })
+
+  // Down the front and the back, where x is 0 and the hollow doesn't come into it, the wall
+  // only ever goes down. It used to rise again: the wall folded over itself, showing a red
+  // slit across the front.
+  const FRONT_AND_BACK = [RADIAL / 4, (3 * RADIAL) / 4]
+  const highestRise = (rig) => {
+    const pos = rig.bladderGeo.attributes.position
+    let most = -Infinity
+    for (const column of FRONT_AND_BACK) {
+      for (let row = 0; (row + 1) * RING_VERTICES < BLADDER_VERTICES; row++) {
+        most = Math.max(most, pos.getY((row + 1) * RING_VERTICES + column) - pos.getY(row * RING_VERTICES + column))
+      }
+    }
+    return most
+  }
+  for (const [name, state] of Object.entries({
+    'voiding full': { volume: 750, isActivelyVoiding: true },
+    'voiding half full': { volume: 400, isActivelyVoiding: true },
+    'voiding nearly empty': { volume: 60, isActivelyVoiding: true },
+    'giving way, hugely overfilled': { volume: 38910, involuntaryVoiding: true },
+    'in an urge wave': { volume: 600, detrusorSpasmIntensity: 1 },
+  })) {
+    it(`never folds over itself (${name})`, () => {
+      const { rig, sim } = settle(state)
+      // A whole push, with the volume held so nothing but the push moves it.
+      for (let f = 0; f < 150; f++) {
+        rig.update(sim, 1 / 60, 3 + f / 60, {})
+        if (f % 10 === 0) expect(highestRise(rig)).toBeLessThan(0)
+      }
+    })
+  }
+
+  it("keeps the urine's shimmer the same size on a bladder that's outgrown the frame", () => {
+    const rig = createOrganRig()
+    const sim = createSimState()
+    const liquidSize = { value: 1 }
+    sim.volume = 750
+    rig.update(sim, 1 / 60, 0, { liquidSize })
+    expect(liquidSize.value).toBe(1)
+    sim.volume = 38910
+    rig.update(sim, 1 / 60, 0, { liquidSize })
+    expect(liquidSize.value).toBeCloseTo(overfillGrowth(38910 / 750), 9)
   })
 })
 
